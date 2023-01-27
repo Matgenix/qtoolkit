@@ -1,0 +1,18 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 7a70b18
+_src_path: gh:Matgenix/Matgenix-copier-template
+author_email: david.waroquiers@matgenix.com
+author_fullname: David Waroquiers
+author_username: davidwaroquiers
+conduct_email: conduct@matgenix.com
+copyright_date: '2023'
+copyright_holder: Matgenix SRL
+copyright_holder_email: software@matgenix.com
+package_name: qtoolkit
+project_long_name: Queue Tool Kit
+project_name: QToolKit
+repository_namespace: matgenix
+repository_provider: https://github.com
+short_description: QToolKit is a python wrapper interfacing with job queues (e.g.
+    PBS, SLURM, ...).
+
