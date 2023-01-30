@@ -61,3 +61,30 @@ def tmp_dir():
 @pytest.fixture(scope="session")
 def debug_mode():
     return False
+
+
+def is_msonable(obj):
+    from monty.json import MSONable
+
+    if not isinstance(obj, MSONable):
+        return False
+    if not obj.as_dict() == obj.__class__.from_dict(obj.as_dict()).as_dict():
+        return False
+    return True
+
+
+class TestUtils:
+    from monty.json import MSONable
+
+    @classmethod
+    def is_msonable(cls, obj):
+        if not isinstance(obj, cls.MSONable):
+            return False
+        if not obj.as_dict() == obj.__class__.from_dict(obj.as_dict()).as_dict():
+            return False
+        return True
+
+
+@pytest.fixture(scope="session")
+def test_utils():
+    return TestUtils
