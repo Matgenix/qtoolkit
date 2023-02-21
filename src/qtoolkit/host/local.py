@@ -1,0 +1,36 @@
+import subprocess
+from pathlib import Path
+
+from qtoolkit.host.base import BaseHost
+
+
+class LocalHost(BaseHost):
+    # def __init__(self, config):
+    #     self.config = config
+    def execute(self, command):
+        """Execute the given command on the host
+
+        Parameters
+        ----------
+        command: str or list of str
+            Command to execute, as a str or list of str
+
+        Returns
+        -------
+        stdout : str
+            Standard output of the command
+        stderr : str
+            Standard error of the command
+        exit_code : int
+            Exit code of the command.
+        """
+        if isinstance(command, str):
+            command = command.split()
+        proc = subprocess.run(command, capture_output=True)
+        return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
+
+    def mkdir(self, directory, recursive=True, exist_ok=True):
+        Path(directory).mkdir(parents=recursive, exist_ok=exist_ok)
+
+    def write_file(self, filepath, content):
+        Path(filepath).write_text(content)

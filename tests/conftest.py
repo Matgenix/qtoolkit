@@ -1,13 +1,15 @@
+from pathlib import Path
+
 import pytest
+
+module_dir = Path(__file__).resolve().parent
+test_dir = module_dir / "test_data"
+TEST_DIR = test_dir.resolve()
 
 
 @pytest.fixture(scope="session")
 def test_dir():
-    from pathlib import Path
-
-    module_dir = Path(__file__).resolve().parent
-    test_dir = module_dir / "test_data"
-    return test_dir.resolve()
+    return TEST_DIR
 
 
 @pytest.fixture(scope="session")
@@ -74,15 +76,30 @@ def is_msonable(obj):
 
 
 class TestUtils:
+    import json
+
     from monty.json import MSONable
+    from monty.serialization import MontyDecoder, MontyEncoder
 
     @classmethod
     def is_msonable(cls, obj):
         if not isinstance(obj, cls.MSONable):
             return False
-        if not obj.as_dict() == obj.__class__.from_dict(obj.as_dict()).as_dict():
+        obj_dict = obj.as_dict()
+        if not obj_dict == obj.__class__.from_dict(obj_dict).as_dict():
             return False
-        return True
+        json_string = cls.json.dumps(obj_dict, cls=cls.MontyEncoder)
+        obj_dict_from_json = cls.json.loads(json_string, cls=cls.MontyDecoder)
+        return obj_dict_from_json == obj_dict
+
+    @classmethod
+    def inkwargs_outref(cls, in_out_ref, inkey, outkey):
+        dec = cls.MontyDecoder()
+        inkwargs_string = in_out_ref[inkey]
+        inkwargs = dec.decode(inkwargs_string)
+        outref_string = in_out_ref[outkey]
+        outref = dec.decode(outref_string)
+        return inkwargs, outref
 
 
 @pytest.fixture(scope="session")
