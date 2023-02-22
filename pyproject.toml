@@ -36,6 +36,7 @@ tests = [
     "pytest-cov==4.0.0",
     "pytest-mock==3.10.0",
     "monty>=2022.9.9",
+    "ruamel.yaml",
     ]
 maintain = [
     "git-changelog>=0.6",
