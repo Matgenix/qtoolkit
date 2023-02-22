@@ -1,0 +1,62 @@
+- parse_submit_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "sbatch: error: invalid
+    partition specified: abcd\nsbatch: error: Batch job submission failed: Invalid
+    partition name specified\n"}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": null, "step_id": null, "exit_code": 1,
+    "stdout": "", "stderr": "sbatch: error: invalid partition specified: abcd\nsbatch:
+    error: Batch job submission failed: Invalid partition name specified\n", "status":
+    {"@module": "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version":
+    "0.0.1+d20230127", "value": "FAILED"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "Submitted batch job 24\n", "stderr":
+    ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "24", "step_id": null, "exit_code": 0,
+    "stdout": "Submitted batch job 24\n", "stderr": "", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "SubmissionStatus", "@version": "0.0.1+d20230127", "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "submitted batch job 15\n", "stderr":
+    ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "15", "step_id": null, "exit_code": 0,
+    "stdout": "submitted batch job 15\n", "stderr": "", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "SubmissionStatus", "@version": "0.0.1+d20230127", "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "Granted job allocation 10\n",
+    "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "10", "step_id": null, "exit_code": 0,
+    "stdout": "Granted job allocation 10\n", "stderr": "", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "SubmissionStatus", "@version": "0.0.1+d20230127", "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "granted job allocation 124\n",
+    "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "124", "step_id": null, "exit_code":
+    0, "stdout": "granted job allocation 124\n", "stderr": "", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.0.1+d20230127",
+    "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "sbatch: Submitted batch job 24\n",
+    "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "24", "step_id": null, "exit_code": 0,
+    "stdout": "sbatch: Submitted batch job 24\n", "stderr": "", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.0.1+d20230127",
+    "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "sbatch: submitted batch job 15\n",
+    "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "15", "step_id": null, "exit_code": 0,
+    "stdout": "sbatch: submitted batch job 15\n", "stderr": "", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.0.1+d20230127",
+    "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "salloc: Granted job allocation
+    10\n", "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "10", "step_id": null, "exit_code": 0,
+    "stdout": "salloc: Granted job allocation 10\n", "stderr": "", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.0.1+d20230127",
+    "value": "SUCCESSFUL"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "salloc: granted job allocation
+    124\n", "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.0.1+d20230127", "job_id": "124", "step_id": null, "exit_code":
+    0, "stdout": "salloc: granted job allocation 124\n", "stderr": "", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.0.1+d20230127",
+    "value": "SUCCESSFUL"}}'
