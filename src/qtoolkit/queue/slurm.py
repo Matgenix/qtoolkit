@@ -133,7 +133,7 @@ $${qverbatim}"""
     _STATUS_MAPPING = {
         SlurmState.CANCELLED: QState.SUSPENDED,  # Should this be failed ?
         SlurmState.COMPLETING: QState.RUNNING,
-        SlurmState.COMPLETED: QState.RUNNING,
+        SlurmState.COMPLETED: QState.DONE,
         SlurmState.CONFIGURING: QState.QUEUED,
         SlurmState.DEADLINE: QState.FAILED,
         SlurmState.FAILED: QState.FAILED,
