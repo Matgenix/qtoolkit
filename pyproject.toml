@@ -42,6 +42,7 @@ maintain = [
     "git-changelog>=0.6",
 ]
 strict = []
+remote = ["fabric>=3.0.0"]
 msonable = ["monty>=2022.9.9",]
 
 [project.scripts]
