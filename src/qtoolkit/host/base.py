@@ -47,3 +47,8 @@ class BaseHost(QBase):
     def mkdir(self, directory, recursive=True, exist_ok=True):
         """Create directory on the host."""
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def write_file(self, filepath, content):
+        """Write content to a file on the host."""
+        raise NotImplementedError
