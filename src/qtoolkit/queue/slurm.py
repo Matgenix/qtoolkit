@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
-from typing import Union
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -212,9 +213,7 @@ $${qverbatim}"""
             status=status,
         )
 
-    def get_job(
-        self, job: Union[QJob, int, str], inplace=False, get_job_cmd="scontrol"
-    ):
+    def get_job(self, job: QJob | int | str, inplace=False, get_job_cmd="scontrol"):
         # TODO: there are two options to get info on a job in slurm:
         #  - scontrol show job JOB_ID
         #  - sacct -j JOB_ID

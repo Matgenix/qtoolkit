@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import subprocess
 from pathlib import Path
 
@@ -29,8 +31,8 @@ class LocalHost(BaseHost):
         proc = subprocess.run(command, capture_output=True)
         return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
 
-    def mkdir(self, directory, recursive=True, exist_ok=True):
+    def mkdir(self, directory, recursive=True, exist_ok=True) -> None:
         Path(directory).mkdir(parents=recursive, exist_ok=exist_ok)
 
-    def write_file(self, filepath, content):
+    def write_file(self, filepath, content) -> None:
         Path(filepath).write_text(content)
