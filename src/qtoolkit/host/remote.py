@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from qtoolkit.host.base import BaseHost
 
 

@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import List, Optional, Union
 
 from qtoolkit.core.base import QBase
 from qtoolkit.core.data_objects import QJob
@@ -28,13 +29,11 @@ class BaseQueue(QBase):
 
     header_template: str
     name: str = "name of queue"
-    host: Union[
-        BaseHost,
-    ] = field(default_factory=LocalHost)
+    host: BaseHost = field(default_factory=LocalHost)
     default_shebang: str = "#!/bin/bash"
 
     SCRIPT_FNAME = "submit.script"
-    SUBMIT_CMD: Optional[str] = None
+    SUBMIT_CMD: str | None = None
 
     # host : QToolKit.Host or paramiko Client or Fabric client or None
     #         The host where the command should be executed.
@@ -113,7 +112,7 @@ class BaseQueue(QBase):
 
     def get_submission_script(
         self,
-        commands: Union[str, List[str]],
+        commands: str | list[str] | None,
         resources=None,
         submit_dir=None,
         environment=None,
@@ -291,7 +290,7 @@ class BaseQueue(QBase):
 
         return f"{self.SUBMIT_CMD} {script_file}"
 
-    def get_cancel_cmd(self, job: Union[QJob, int, str]) -> str:
+    def get_cancel_cmd(self, job: QJob | int | str) -> str:
         """
         Get the command used to cancel a given job.
 
@@ -302,7 +301,7 @@ class BaseQueue(QBase):
         job_id = QJob.qid if isinstance(job, QJob) else job
         return f"{self.CANCEL_CMD} {job_id}"
 
-    def write_script(self, script_fpath: Union[str, Path], script_content: str):
+    def write_script(self, script_fpath: str | Path, script_content: str) -> None:
         self.host.write_file(script_fpath, script_content)
 
     @abc.abstractmethod
@@ -315,7 +314,7 @@ class BaseQueue(QBase):
 
     def submit(
         self,
-        commands: Union[str, List[str]],
+        commands: str | list[str] | None,
         resources=None,
         submit_dir=None,
         environment=None,
@@ -344,13 +343,13 @@ class BaseQueue(QBase):
             exit_code=returncode, stdout=stdout, stderr=stderr
         )
 
-    def get_job_info(self, job: Union[QJob, int, str]):
+    def get_job_info(self, job: QJob | int | str):
         pass
 
-    def get_jobs(self, jobs: List[Union[QJob, int, str]]):
+    def get_jobs(self, jobs: list[QJob | int | str]):
         pass
 
-    def cancel(self, job: Union[QJob, int, str]):
+    def cancel(self, job: QJob | int | str):
         cancel_cmd = self.get_cancel_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(cancel_cmd)
         return self._parse_cancel_cmd_output(
@@ -363,5 +362,5 @@ class BaseQueue(QBase):
     #     pass
 
     @abc.abstractmethod
-    def get_job(self, job: Union[QJob, int, str]):
+    def get_job(self, job: QJob | int | str):
         pass

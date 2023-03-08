@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional, Union
 
 from qtoolkit.core.base import QBase, QEnum
 
@@ -12,12 +13,12 @@ class SubmissionStatus(QEnum):
 
 @dataclass
 class SubmissionResult(QBase):
-    job_id: Optional[Union[int, str]] = None
-    step_id: Optional[int] = None
-    exit_code: Optional[int] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    status: Optional[SubmissionStatus] = None
+    job_id: int | str | None = None
+    step_id: int | None = None
+    exit_code: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    status: SubmissionStatus | None = None
 
 
 class CancelStatus(QEnum):
@@ -28,12 +29,12 @@ class CancelStatus(QEnum):
 
 @dataclass
 class CancelResult(QBase):
-    job_id: Optional[Union[int, str]] = None
-    step_id: Optional[int] = None
-    exit_code: Optional[int] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    status: Optional[CancelStatus] = None
+    job_id: int | str | None = None
+    step_id: int | None = None
+    exit_code: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    status: CancelStatus | None = None
 
 
 class QState(QEnum):
@@ -111,7 +112,7 @@ class QResources(QBase):
 
     queue_name: str = None
     memory: int = 1024
-    nodes: Union[int, List] = 1
+    nodes: int | list = 1
     cpus_per_node: int = 1
     cores_per_cpu: int = 1
     hyperthreading: int = 1
@@ -135,10 +136,10 @@ class QOptions(QBase):
 
 @dataclass
 class QJob(QBase):
-    name: Optional[str] = None
-    qid: Optional[str] = None
-    exit_status: Optional[int] = None
-    state: Optional[QState] = None  # Standard
-    sub_state: Optional[QSubState] = None
-    resources: Optional[QResources] = None
-    job_info: Optional[QJobInfo] = None
+    name: str | None = None
+    qid: str | None = None
+    exit_status: int | None = None
+    state: QState | None = None  # Standard
+    sub_state: QSubState | None = None
+    resources: QResources | None = None
+    job_info: QJobInfo | None = None

@@ -1,27 +1,28 @@
+from __future__ import annotations
+
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
 
 from qtoolkit.core.base import QBase
 
 
 @dataclass
 class HostConfig(QBase):
-    root_dir: Union[str, Path]
+    root_dir: str | Path
 
 
 class BaseHost(QBase):
     """Base Host class."""
 
     # def __init__(self, config, user):
-    def __init__(self, config=None):
-        self.config = config or {}
+    def __init__(self, config: HostConfig | None = None) -> None:
+        self.config = config
 
     #     self.user = user
 
     @abc.abstractmethod
-    def execute(self, command, stdin=None, stdout=None, stderr=None):
+    def execute(self, command: str | list[str], stdin=None, stdout=None, stderr=None):
         """Execute the given command on the host
 
         Parameters
@@ -44,6 +45,6 @@ class BaseHost(QBase):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mkdir(self, directory, recursive=True, exist_ok=True):
+    def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True):
         """Create directory on the host."""
         raise NotImplementedError
