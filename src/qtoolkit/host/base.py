@@ -22,13 +22,22 @@ class BaseHost(QBase):
     #     self.user = user
 
     @abc.abstractmethod
-    def execute(self, command: str | list[str], stdin=None, stdout=None, stderr=None):
+    def execute(
+        self,
+        command: str | list[str],
+        workdir: str | None = None,
+        # stdin=None,
+        # stdout=None,
+        # stderr=None,
+    ):
         """Execute the given command on the host
 
         Parameters
         ----------
         command: str or list of str
             Command to execute, as a str or list of str
+        workdir: str or None
+            path where the command will be executed.
         stdin: None, PIPE or file-like
             Standard input, /dev/null if None
         stdout: None, PIPE or file-like
@@ -42,9 +51,20 @@ class BaseHost(QBase):
             Local process object associated to the connection, if dryrun is False,
             else None
         """
+        # TODO: define a common error that is raised or a returned in case the procedure
+        # fails to avoid handling different kind of errors for the different hosts
         raise NotImplementedError
 
     @abc.abstractmethod
     def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True):
         """Create directory on the host."""
+        # TODO: define a common error that is raised or a returned in case the procedure
+        # fails to avoid handling different kind of errors for the different hosts
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def write_text_file(self, filepath, content):
+        """Write content to a file on the host."""
+        # TODO: define a common error that is raised or a returned in case the procedure
+        # fails to avoid handling different kind of errors for the different hosts
         raise NotImplementedError

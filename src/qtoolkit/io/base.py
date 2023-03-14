@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from string import Template
 
 from qtoolkit.core.base import QBase
 from qtoolkit.core.data_objects import QJob
-from qtoolkit.host.base import BaseHost
-from qtoolkit.host.local import LocalHost
 
 
 class QTemplate(Template):
@@ -16,27 +14,20 @@ class QTemplate(Template):
 
 
 @dataclass
-class BaseQueue(QBase):
+class BaseSchedulerIO(QBase):
     """Base class for job queues.
 
     Attributes
     ----------
-    name : str
-        Name of the queue
-    host : BaseHost
-        Host where the command should be executed.
+
     """
 
     header_template: str
-    name: str = "name of queue"
-    host: BaseHost = field(default_factory=LocalHost)
-    default_shebang: str = "#!/bin/bash"
 
-    SCRIPT_FNAME = "submit.script"
-    SUBMIT_CMD: str | None = None
+    SUBMIT_CMD: str | None
+    CANCEL_CMD: str | None
 
-    # host : QToolKit.Host or paramiko Client or Fabric client or None
-    #         The host where the command should be executed.
+    shebang: str = "#!/bin/bash"
 
     # config: QueueConfig = None
 
@@ -92,30 +83,12 @@ class BaseQueue(QBase):
         timelimit_hard: hard limelimit for this queue
         priority: Priority level, integer number > 0
         condition: Condition object (dictionary)
-            """
-
-    def execute_cmd(self, cmd):
-        """Execute a command.
-
-        Parameters
-        ----------
-        cmd : str
-            Command to be executed
-
-        Returns
-        -------
-        stdout : str
-        stderr : str
-        exit_code : int
-        """
-        return self.host.execute(cmd)
+    """
 
     def get_submission_script(
         self,
-        commands: str | list[str] | None,
-        resources=None,
-        submit_dir=None,
-        environment=None,
+        commands: str | list[str],
+        options: dict | None = None,
     ) -> str:
         """
         This is roughly what/how it is done in the existing solutions.
@@ -191,40 +164,27 @@ class BaseQueue(QBase):
             files for each type of job queue.
         """
         script_blocks = [self.shebang]
-        if header := self.get_header(resources):
+        if header := self.generate_header(options):
             script_blocks.append(header)
-        if environment_setup := self.get_environment_setup(environment):
-            script_blocks.append(environment_setup)
-        if change_dir := self.get_change_dir():
-            script_blocks.append(change_dir)
-        if prerun := self.get_prerun():
-            script_blocks.append(prerun)
-        if run_commands := self.get_run_commands(commands):
-            script_blocks.append(run_commands)
-        if postrun := self.get_postrun():
-            script_blocks.append(postrun)
-        if footer := self.get_footer():
+
+        run_commands = self.generate_run_commands(commands)
+        script_blocks.append(run_commands)
+
+        if footer := self.generate_footer():
             script_blocks.append(footer)
+
         return "\n".join(script_blocks)
 
-    @property
-    def shebang(self):
-        return "#!/bin/bash"
-
-    # @abc.abstractmethod
-    # def get_header(self, job):
-    #     pass
-
-    def get_header(self, resources):
+    def generate_header(self, options):
         # needs info from self.meta_info (email, job name [also execution])
         # queuing_options (priority, account, qos and submit as hold)
         # execution (rerunnable)
         # resources (nodes, cores, memory, time, [gpus])
         # default values for (almost) everything in the object ?
-        mapping = {}
-        if resources:
-            mapping.update(resources)
-        unclean_header = QTemplate(self.header_template).safe_substitute(mapping)
+        if not options:
+            return ""
+
+        unclean_header = QTemplate(self.header_template).safe_substitute(options)
         # Remove lines with leftover $$.
         clean_header = []
         for line in unclean_header.split("\n"):
@@ -233,62 +193,39 @@ class BaseQueue(QBase):
 
         return "\n".join(clean_header)
 
-    def get_environment_setup(self, env_config):
-        if env_config:
-            env_setup = []
-            if "modules" in env_config:
-                env_setup.append("module purge")
-                for mod in env_config["modules"]:
-                    env_setup.append(f"module load {mod}")
-            if "source_files" in env_config:
-                for source_file in env_config["source_files"]:
-                    env_setup.append(f"source {source_file}")
-            if "conda_environment" in env_config:
-                env_setup.append(f'conda activate {env_config["conda_environment"]}')
-            if "environ" in env_config:
-                for var, value in env_config["environ"].items():
-                    env_setup.append(f"export {var}={value}")
-            return "\n".join(env_setup)
-        # This is from aiida, maybe we need to think about this escape_for_bash ?
-        # lines = ['# ENVIRONMENT VARIABLES BEGIN ###']
-        # for key, value in template.job_environment.items():
-        #     lines.append(f'export {key.strip()}={
-        #         escape_for_bash(value,
-        #                         template.environment_variables_double_quotes)
-        #         }')
-        # lines.append('# ENVIRONMENT VARIABLES END ###')
-        return None
+    def generate_run_commands(self, commands: list[str] | str) -> str:
+        if isinstance(commands, list):
+            commands = "\n".join(commands)
 
-    def get_change_dir(self):
-        pass
+        return commands
 
-    def get_prerun(self):
-        pass
+    def generate_footer(self) -> str:
+        return ""
 
-    def get_run_commands(self, commands):
-        if isinstance(commands, str):
-            return commands
-        elif isinstance(commands, list):
-            return "\n".join(commands)
-        else:
-            raise ValueError("commands should be a str or a list of str.")
+    def generate_ids_list(self, jobs: list[QJob | int | str]) -> list[str]:
+        ids_list = []
+        for j in jobs:
+            if isinstance(j, QJob):
+                ids_list.append(j.qid)
+            else:
+                ids_list.append(str(j))
 
-    def get_postrun(self):
-        pass
+        return ids_list
 
-    def get_footer(self):
-        pass
-
-    def get_submit_cmd(self, script_file: str | Path = SCRIPT_FNAME) -> str:
+    def get_submit_cmd(self, script_file: str | Path | None = "submit.script") -> str:
         """
         Get the command used to submit a given script to the queue.
 
         Parameters
         ----------
-        script_file: (str) name of the script file to use.
+        script_file: (str) path of the script file to use.
         """
-
+        script_file = script_file or ""
         return f"{self.SUBMIT_CMD} {script_file}"
+
+    @abc.abstractmethod
+    def parse_submit_output(self, exit_code, stdout, stderr):
+        pass
 
     def get_cancel_cmd(self, job: QJob | int | str) -> str:
         """
@@ -301,66 +238,22 @@ class BaseQueue(QBase):
         job_id = QJob.qid if isinstance(job, QJob) else job
         return f"{self.CANCEL_CMD} {job_id}"
 
-    def write_script(self, script_fpath: str | Path, script_content: str) -> None:
-        self.host.write_text_file(script_fpath, script_content)
-
     @abc.abstractmethod
-    def _parse_submit_cmd_output(self, exit_code, stdout, stderr):
+    def parse_cancel_output(self, exit_code, stdout, stderr):
         pass
 
     @abc.abstractmethod
-    def _parse_cancel_cmd_output(self, exit_code, stdout, stderr):
-        pass
-
-    def submit(
-        self,
-        commands: str | list[str] | None,
-        resources=None,
-        submit_dir=None,
-        environment=None,
-        script_fname=SCRIPT_FNAME,
-        create_submit_dir=False,
-    ):
-        script_str = self.get_submission_script(
-            commands=commands,
-            resources=resources,
-            # TODO: Do we need the submit_dir here ?
-            #  Should we distinguish submit_dir and work_dir ?
-            submit_dir=submit_dir,
-            environment=environment,
-        )
-        # TODO: deal with remote directory directly on the host here.
-        #  Will currently only work on the localhost.
-        submit_dir = Path(submit_dir) if submit_dir is not None else Path.cwd()
-        if create_submit_dir:
-            self.host.mkdir(submit_dir, recursive=True, exist_ok=True)
-        script_fpath = Path(submit_dir, script_fname)
-        self.write_script(script_fpath, script_str)
-        submit_cmd = self.get_submit_cmd(script_fpath)
-        print(submit_cmd)
-        stdout, stderr, returncode = self.execute_cmd(submit_cmd)
-        return self._parse_submit_cmd_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
-        )
-
-    def get_job_info(self, job: QJob | int | str):
-        pass
-
-    def get_jobs(self, jobs: list[QJob | int | str]):
-        pass
-
-    def cancel(self, job: QJob | int | str):
-        cancel_cmd = self.get_cancel_cmd(job)
-        stdout, stderr, returncode = self.execute_cmd(cancel_cmd)
-        return self._parse_cancel_cmd_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
-        )
-
-    # @abc.abstractmethod
-    # def _get_jobs_cmd(self, jobs=None, user=None) -> str:
-    #     """Get multiple jobs at once."""
-    #     pass
+    def get_jobs_cmd(self, jobs=None, user=None) -> str:
+        """Get multiple jobs at once."""
 
     @abc.abstractmethod
-    def get_job(self, job: QJob | int | str):
+    def parse_get_jobs_output(self, exit_code, stdout, stderr):
+        """Get multiple jobs at once."""
+
+    @abc.abstractmethod
+    def get_job_cmd(self, job: QJob | int | str) -> str:
+        pass
+
+    @abc.abstractmethod
+    def parse_job_output(self, exit_code, stdout, stderr):
         pass

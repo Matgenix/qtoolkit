@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
 from qtoolkit.host.base import BaseHost
+from qtoolkit.utils import cd
 
 
 class LocalHost(BaseHost):
     # def __init__(self, config):
     #     self.config = config
-    def execute(self, command):
+    def execute(self, command, workdir: str | None = None):
         """Execute the given command on the host
 
         Parameters
@@ -28,11 +30,14 @@ class LocalHost(BaseHost):
         """
         if isinstance(command, str):
             command = command.split()
-        proc = subprocess.run(command, capture_output=True)
+        if not workdir:
+            workdir = os.getcwd()
+        with cd(workdir):
+            proc = subprocess.run(command, capture_output=True)
         return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
 
     def mkdir(self, directory, recursive=True, exist_ok=True) -> None:
         Path(directory).mkdir(parents=recursive, exist_ok=exist_ok)
 
-    def write_file(self, filepath, content) -> None:
+    def write_text_file(self, filepath, content) -> None:
         Path(filepath).write_text(content)
