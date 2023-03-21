@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from qtoolkit.core.base import QBase
-from qtoolkit.core.data_objects import QJob
+from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.host.base import BaseHost
 from qtoolkit.host.local import LocalHost
 from qtoolkit.io.base import BaseSchedulerIO
@@ -24,7 +24,7 @@ class QueueManager(QBase):
         self.scheduler_io = scheduler_io
         self.host = host or LocalHost()
 
-    def execute_cmd(self, cmd, workdir=None):
+    def execute_cmd(self, cmd, workdir: str | Path | None = None):
         """Execute a command.
 
         Parameters
@@ -45,10 +45,10 @@ class QueueManager(QBase):
     def get_submission_script(
         self,
         commands: str | list[str] | None,
-        options=None,
-        work_dir=None,
-        pre_run=None,
-        post_run=None,
+        options: dict | QResources = None,
+        work_dir: str | Path | None = None,
+        pre_run: str | list[str] | None = None,
+        post_run: str | list[str] | None = None,
         environment=None,
     ) -> str:
         """ """
@@ -65,7 +65,7 @@ class QueueManager(QBase):
             commands_list.append(post_run)
         return self.scheduler_io.get_submission_script(commands_list, options)
 
-    def get_environment_setup(self, env_config):
+    def get_environment_setup(self, env_config) -> str:
         if env_config:
             env_setup = []
             if "modules" in env_config:
@@ -91,14 +91,15 @@ class QueueManager(QBase):
         # lines.append('# ENVIRONMENT VARIABLES END ###')
         return None
 
-    def get_change_dir(self, dir_path):
+    def get_change_dir(self, dir_path: str | Path | None) -> str:
         if dir_path:
             return f"cd {dir_path}"
+        return ""
 
-    def get_pre_run(self, pre_run):
+    def get_pre_run(self, pre_run) -> str:
         pass
 
-    def get_run_commands(self, commands):
+    def get_run_commands(self, commands) -> str:
         if isinstance(commands, str):
             return commands
         elif isinstance(commands, list):
@@ -106,7 +107,7 @@ class QueueManager(QBase):
         else:
             raise ValueError("commands should be a str or a list of str.")
 
-    def get_post_run(self, post_run):
+    def get_post_run(self, post_run) -> str:
         pass
 
     def submit(
@@ -117,7 +118,7 @@ class QueueManager(QBase):
         environment=None,
         script_fname="submit.script",
         create_submit_dir=False,
-    ):
+    ) -> SubmissionResult:
         script_str = self.get_submission_script(
             commands=commands,
             options=options,
@@ -130,7 +131,9 @@ class QueueManager(QBase):
         #  Will currently only work on the localhost.
         work_dir = Path(work_dir) if work_dir is not None else Path.cwd()
         if create_submit_dir:
-            self.host.mkdir(work_dir, recursive=True, exist_ok=True)
+            created = self.host.mkdir(work_dir, recursive=True, exist_ok=True)
+            if not created:
+                raise RuntimeError("failed to create directory")
         script_fpath = Path(work_dir, script_fname)
         self.host.write_text_file(script_fpath, script_str)
         submit_cmd = self.scheduler_io.get_submit_cmd(script_fpath)
@@ -139,22 +142,25 @@ class QueueManager(QBase):
             exit_code=returncode, stdout=stdout, stderr=stderr
         )
 
-    def get_job_info(self, job: QJob | int | str):
-        pass
-
-    def get_jobs(self, jobs: list[QJob | int | str]):
-        pass
-
-    def cancel(self, job: QJob | int | str):
+    def cancel(self, job: QJob | int | str) -> CancelResult:
         cancel_cmd = self.scheduler_io.get_cancel_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(cancel_cmd)
         return self.scheduler_io.parse_cancel_output(
             exit_code=returncode, stdout=stdout, stderr=stderr
         )
 
-    def get_job(self, job: QJob | int | str):
+    def get_job(self, job: QJob | int | str) -> QJob:
         job_cmd = self.scheduler_io.get_job_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
         return self.scheduler_io.parse_job_output(
+            exit_code=returncode, stdout=stdout, stderr=stderr
+        )
+
+    def get_jobs_list(
+        self, jobs: list[QJob | int | str] | None = None, user: str | None = None
+    ) -> list[QJob]:
+        job_cmd = self.scheduler_io.get_jobs_list_cmd(jobs, user)
+        stdout, stderr, returncode = self.execute_cmd(job_cmd)
+        return self.scheduler_io.parse_jobs_list_output(
             exit_code=returncode, stdout=stdout, stderr=stderr
         )

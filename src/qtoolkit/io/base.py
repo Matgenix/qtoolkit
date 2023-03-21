@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
+import shlex
+from dataclasses import fields
 from pathlib import Path
 from string import Template
 
 from qtoolkit.core.base import QBase
-from qtoolkit.core.data_objects import QJob
+from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
+from qtoolkit.core.exceptions import UnsupportedResourcesErrors
 
 
 class QTemplate(Template):
     delimiter = "$$"
 
 
-@dataclass
 class BaseSchedulerIO(QBase):
     """Base class for job queues.
 
@@ -175,7 +176,7 @@ class BaseSchedulerIO(QBase):
 
         return "\n".join(script_blocks)
 
-    def generate_header(self, options):
+    def generate_header(self, options: dict | QResources | None) -> str:
         # needs info from self.meta_info (email, job name [also execution])
         # queuing_options (priority, account, qos and submit as hold)
         # execution (rerunnable)
@@ -183,6 +184,9 @@ class BaseSchedulerIO(QBase):
         # default values for (almost) everything in the object ?
         if not options:
             return ""
+
+        if isinstance(options, QResources):
+            options = self.check_convert_qresources(options)
 
         unclean_header = QTemplate(self.header_template).safe_substitute(options)
         # Remove lines with leftover $$.
@@ -202,11 +206,13 @@ class BaseSchedulerIO(QBase):
     def generate_footer(self) -> str:
         return ""
 
-    def generate_ids_list(self, jobs: list[QJob | int | str]) -> list[str]:
+    def generate_ids_list(self, jobs: list[QJob | int | str] | None) -> list[str]:
+        if jobs is None:
+            return None
         ids_list = []
         for j in jobs:
             if isinstance(j, QJob):
-                ids_list.append(j.qid)
+                ids_list.append(j.job_id)
             else:
                 ids_list.append(str(j))
 
@@ -224,7 +230,7 @@ class BaseSchedulerIO(QBase):
         return f"{self.SUBMIT_CMD} {script_file}"
 
     @abc.abstractmethod
-    def parse_submit_output(self, exit_code, stdout, stderr):
+    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         pass
 
     def get_cancel_cmd(self, job: QJob | int | str) -> str:
@@ -235,25 +241,78 @@ class BaseSchedulerIO(QBase):
         ----------
         job: (str) job to be cancelled.
         """
-        job_id = QJob.qid if isinstance(job, QJob) else job
+        job_id = QJob.job_id if isinstance(job, QJob) else job
         return f"{self.CANCEL_CMD} {job_id}"
 
     @abc.abstractmethod
-    def parse_cancel_output(self, exit_code, stdout, stderr):
+    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
         pass
 
-    @abc.abstractmethod
-    def get_jobs_cmd(self, jobs=None, user=None) -> str:
-        """Get multiple jobs at once."""
-
-    @abc.abstractmethod
-    def parse_get_jobs_output(self, exit_code, stdout, stderr):
-        """Get multiple jobs at once."""
-
-    @abc.abstractmethod
     def get_job_cmd(self, job: QJob | int | str) -> str:
+        job_id = self.generate_ids_list([job])[0]
+        shlex.quote(job_id)
+        return self._get_job_cmd(job_id)
+
+    @abc.abstractmethod
+    def _get_job_cmd(self, job_id: str) -> str:
         pass
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr):
+    def parse_job_output(self, exit_code, stdout, stderr) -> QJob:
+        pass
+
+    def check_convert_qresources(self, resources: QResources) -> dict:
+        """
+        Converts a Qresources instance to a dict that will be used to fill in the
+        header of the submission script.
+        Also checks that passed values are declared to be handled by the corresponding
+        subclass.
+        """
+        not_none = set()
+        for field in fields(resources):
+            if getattr(resources, field.name) is not None:
+                not_none.add(field.name)
+
+        unsupported_options = not_none.difference(self.supported_qresources_keys)
+
+        if unsupported_options:
+            msg = f"Keys not supported: {', '.join(unsupported_options)}"
+            raise UnsupportedResourcesErrors(msg)
+
+        return self._convert_qresources(resources)
+
+    @abc.abstractmethod
+    def _convert_qresources(self, resources: QResources) -> dict:
+        """
+        Converts a Qresources instance to a dict that will be used to fill in the
+        header of the submission script.
+        A subclass does not strictly need to support all the options available in
+        QResources. For this reason a list of supported attributes should be
+        maintained and the supported attributes in the implementation of this
+        method should match the list of values defined in  supported_qresources_keys.
+        """
+
+    @property
+    def supported_qresources_keys(self) -> list:
+        """
+        List of attributes of QResources that are correctly handled by the
+        _convert_qresources method. It is used to validate that the user
+        does not pass an unsupported value, expecting to have an effect.
+        """
+        return []
+
+    def get_jobs_list_cmd(
+        self, jobs: list[QJob | int | str] | None, user: str | None
+    ) -> str:
+        job_ids = self.generate_ids_list(jobs)
+        if user:
+            user = shlex.quote(user)
+        return self._get_jobs_list_cmd(job_ids, user)
+
+    @abc.abstractmethod
+    def _get_jobs_list_cmd(self, job_ids: list[str] | None, user: str | None) -> str:
+        pass
+
+    @abc.abstractmethod
+    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         pass

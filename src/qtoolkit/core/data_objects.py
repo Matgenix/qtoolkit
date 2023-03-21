@@ -110,36 +110,49 @@ class QResources(QBase):
          to what you asked (in the case of a "shared" node), you get killed.
     """
 
-    queue_name: str = None
-    memory: int = 1024
-    nodes: int | list = 1
-    cpus_per_node: int = 1
-    cores_per_cpu: int = 1
-    hyperthreading: int = 1
+    queue_name: str | None = None
+    memory_per_thread: int | None = 1024
+    nodes: int | None = 1
+    processes: int | None = 1
+    processes_per_node: int | None = None
+    threads_per_process: int | None = None
+    time_limit: int | None = None
+    hold: bool | None = None
+    account: str | None = None
+    qos: str | None = None
+    priority: int | None = None
 
     # TODO: how to allow heterogeneous resources (e.g. 1 node with 12 cores and
     #  1 node with 4 cores or heterogeous memory requirements, e.g. "master"
     #  core needs more memory than the other ones)
 
 
+@dataclass
 class QJobInfo(QBase):
-    pass
+    memory: int | None = None  # in Kb
+    memory_per_cpu: int | None = None  # in Kb
+    nodes: int | None = None
+    cpus: int | None = None
+    threads_per_process: int | None = None
+    time_limit: int | None = None
 
 
 @dataclass
 class QOptions(QBase):
-    hold: bool = False
-    account: str = None
-    qos: str = None
-    priority: int = None
+    hold: bool | None = False
+    account: str | None = None
+    qos: str | None = None
+    priority: int | None = None
 
 
 @dataclass
 class QJob(QBase):
     name: str | None = None
-    qid: str | None = None
+    job_id: str | None = None
     exit_status: int | None = None
     state: QState | None = None  # Standard
     sub_state: QSubState | None = None
-    resources: QResources | None = None
-    job_info: QJobInfo | None = None
+    info: QJobInfo | None = None
+    account: str | None = None
+    runtime: int | None = None
+    queue_name: str | None = None

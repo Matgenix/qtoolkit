@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import fabric
 
@@ -141,7 +142,7 @@ class RemoteHost(BaseHost):
     def connection(self):
         return self._connection
 
-    def execute(self, command: str | list[str], workdir: str | None = None):
+    def execute(self, command: str | list[str], workdir: str | Path | None = None):
         """Execute the given command on the host
 
         Parameters
@@ -166,17 +167,19 @@ class RemoteHost(BaseHost):
         # TODO: check if this works:
         if not workdir:
             workdir = "."
+        else:
+            workdir = str(workdir)
         with self.connection.cd(workdir):
             out = self.connection.run(command, hide=True, warn=True)
 
-        return out.stout, out.stderr, out.exited
+        return out.stdout, out.stderr, out.exited
 
-    def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True):
+    def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True) -> bool:
         """Create directory on the host."""
         command = "mkdir "
         if recursive:
             command += "-p "
-        command += directory
+        command += str(directory)
         try:
             stdout, stderr, returncode = self.execute(command)
             return returncode == 0
@@ -187,4 +190,4 @@ class RemoteHost(BaseHost):
         """Write content to a file on the host."""
         f = io.StringIO(content)
 
-        self.connection.put(f, filepath)
+        self.connection.put(f, str(filepath))

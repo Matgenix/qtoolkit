@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 
 from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
     QJob,
+    QJobInfo,
     QResources,
     QState,
     QSubState,
     SubmissionResult,
     SubmissionStatus,
 )
+from qtoolkit.core.exceptions import CommandFailedError, OutputParsingError
 from qtoolkit.io.base import BaseSchedulerIO
 
 # States in Slurm from squeue's manual. We currently only take the most important ones.
@@ -100,7 +101,6 @@ class SlurmState(QSubState):
     TIMEOUT = "TIMEOUT", "TO"
 
 
-@dataclass
 class SlurmIO(BaseSchedulerIO):
     header_template: str = """
 #SBATCH --partition=$${queue_name}
@@ -133,8 +133,6 @@ $${qverbatim}"""
         "scancel -v"  # The -v is needed as the default is to report nothing
     )
 
-    get_job_executable: str = "sacct"
-
     _STATUS_MAPPING = {
         SlurmState.CANCELLED: QState.SUSPENDED,  # Should this be failed ?
         SlurmState.COMPLETING: QState.RUNNING,
@@ -150,7 +148,13 @@ $${qverbatim}"""
         SlurmState.TIMEOUT: QState.FAILED,
     }
 
-    def parse_submit_output(self, exit_code, stdout, stderr):
+    def __int__(
+        self, get_job_executable: str = "scontrol", split_separator: str = "<><>"
+    ):
+        self.get_job_executable = get_job_executable
+        self.split_separator = split_separator
+
+    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -181,7 +185,21 @@ $${qverbatim}"""
             status=status,
         )
 
-    def parse_cancel_output(self, exit_code, stdout, stderr):
+    squeue_fields = [
+        ("%i", "job_id"),  # job or job step id
+        ("%t", "state_raw"),  # job state in compact form
+        ("%r", "annotation"),  # reason for the job being in its current state
+        ("%j", "job_name"),  # job name (title)
+        ("%u", "username"),  # username
+        ("%P", "partition"),  # partition (queue) of the job
+        ("%l", "time_limit"),  # time limit in days-hours:minutes:seconds
+        ("%D", "number_nodes"),  # number of nodes allocated
+        ("%C", "number_cpus"),  # number of allocated cores (if already running)
+        ("%M", "time_used"),  # Time used by the job in days-hours:minutes:seconds
+        ("%m", "min_memory"),  # Minimum size of memory (in MB) requested by the job
+    ]
+
+    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
         """Parse the output of the scancel command."""
         # Possible error messages:
         # scancel: error: No job identification provided
@@ -217,7 +235,7 @@ $${qverbatim}"""
             status=status,
         )
 
-    def get_job_cmd(self, job: QJob | int | str, inplace=False):
+    def _get_job_cmd(self, job_id: str, inplace=False):
         # TODO: there are two options to get info on a job in slurm:
         #  - scontrol show job JOB_ID
         #  - sacct -j JOB_ID
@@ -228,10 +246,9 @@ $${qverbatim}"""
         #  at least it disappears rapidly. Currently I am only
         #  using/implementing scontrol.
 
-        job_id = job.qid if isinstance(job, QJob) else job
         if self.get_job_executable == "scontrol":
             # -o is to get the output as a one-liner
-            cmd = f"scontrol show job -o {job_id}"
+            cmd = f"SLURM_TIME_FORMAT='standard' scontrol show job -o {job_id}"
         elif self.get_job_executable == "sacct":
             raise NotImplementedError("sacct for get_job not yet implemented.")
         else:
@@ -241,9 +258,15 @@ $${qverbatim}"""
 
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr):
+    def parse_job_output(self, exit_code, stdout, stderr) -> QJob:
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode()
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode()
         if exit_code != 0:
-            return None
+            msg = f"command {self.get_job_executable} failed: {stderr}"
+            raise CommandFailedError(msg)
+
         if self.get_job_executable == "scontrol":
             parse_output = self._parse_scontrol_cmd_output(
                 exit_code=exit_code, stdout=stdout, stderr=stderr
@@ -257,33 +280,258 @@ $${qverbatim}"""
 
         slurm_state = SlurmState(parse_output["JobState"])
         job_state = self._STATUS_MAPPING[slurm_state]
-        # print(type(job_state))
-        # print("\n".join([f"{k}: {v}" for k, v in parse_output.items()]))
-        resources = QResources(
-            queue_name=parse_output["Partition"],
-            memory=parse_output["MinMemoryCPU"],
-            # TODO: clarify here what are tasks, cpus, cores, etc ...
-            #  and whether this makes sense
-            nodes=parse_output["NumCPUs"],
-            cpus_per_node=parse_output["NumTasks"],
-            cores_per_cpu=parse_output["CPUs/Task"],
+
+        try:
+            memory_per_cpu = self._convert_memory_str(parse_output["MinMemoryCPU"])
+        except OutputParsingError:
+            memory_per_cpu = None
+
+        try:
+            nodes = int(parse_output["NumNodes"])
+        except ValueError:
+            nodes = None
+
+        try:
+            cpus = int(parse_output["NumCPUs"])
+        except ValueError:
+            cpus = None
+
+        try:
+            cpus_task = int(parse_output["CPUs/Task"])
+        except ValueError:
+            cpus_task = None
+
+        try:
+            priority = int(parse_output["Priority"])
+        except ValueError:
+            priority = None
+
+        try:
+            time_limit = self._convert_time_str(parse_output["TimeLimit"])
+        except OutputParsingError:
+            time_limit = None
+
+        info = QJobInfo(
+            memory=memory_per_cpu,
+            nodes=nodes,
+            cpus=cpus,
+            threads_per_process=cpus_task,
+            time_limit=time_limit,
+            priority=priority,
+            qos=parse_output["QOS"],
         )
         return QJob(
             name=parse_output["JobName"],
-            qid=parse_output["JobId"],
+            job_id=parse_output["JobId"],
             state=job_state,  # type: ignore # mypy thinks job_state is a str
             sub_state=slurm_state,
-            resources=resources,
+            info=info,
+            account=parse_output["UserId"],
+            queue_name=parse_output["Partition"],
         )
 
     def _parse_scontrol_cmd_output(self, exit_code, stdout, stderr):
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode()
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode()
-        if exit_code != 0:
-            return {}
         return {
             data.split("=", maxsplit=1)[0]: data.split("=", maxsplit=1)[1]
             for data in stdout.split()
         }
+
+    def _get_jobs_list_cmd(self, job_ids: list[str] | None, user: str | None) -> str:
+
+        if user and job_ids:
+            raise ValueError("Cannot query by user and job(s) in SLURM")
+
+        # also leave one empty space to clarify how the split happens in case
+        # some columns are empty
+        fields = f"{self.split_separator} ".join(f[0] for f in self.squeue_fields)
+
+        command = [
+            "SLURM_TIME_FORMAT='standard'",
+            "squeue",
+            "--noheader",
+            f"-o '{fields}'",
+        ]
+
+        if user:
+            command.append(f"-u{user}")
+
+        if job_ids:
+            # Trick copied from aiida-core: When asking for a single job,
+            # append the same job once more.
+            if len(job_ids) == 1:
+                job_ids += [job_ids[0]]
+
+            command.append(f"--jobs={','.join(job_ids)}")
+
+        return " ".join(command)
+
+    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+
+        if exit_code != 0:
+            msg = f"command {self.get_job_executable} failed: {stderr}"
+            raise CommandFailedError(msg)
+
+        num_fields = len(self.squeue_fields)
+
+        # assume the split chosen does not appear
+        jobdata_raw = [
+            chunk.split(self.split_separator)
+            for chunk in stdout.splitlines()
+            if self.split_separator in chunk
+        ]
+
+        # Create dictionary and parse specific fields
+        job_list = []
+        for data in jobdata_raw:
+            if len(data) != num_fields:
+
+                msg = f"Wrong number of fields. Found {len(jobdata_raw)}, expected {num_fields}"
+                # TODO should this raise or just continue? and should there be
+                # a logging of the errors?
+                raise OutputParsingError(msg)
+
+            thisjob_dict = {k[1]: v.strip() for k, v in zip(self.squeue_fields, data)}
+
+            qjob = QJob()
+            qjob.job_id = thisjob_dict["job_id"]
+
+            job_state_string = thisjob_dict["state_raw"]
+
+            try:
+                slurm_job_state = SlurmState(job_state_string)
+            except ValueError:
+                msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
+                raise OutputParsingError(msg)
+            qjob.sub_state = slurm_job_state
+            qjob.state = self._STATUS_MAPPING[slurm_job_state]  # type: ignore
+
+            qjob.username = thisjob_dict["username"]
+
+            info = QJobInfo()
+
+            try:
+                info.nodes = int(thisjob_dict["number_nodes"])
+            except ValueError:
+                info.nodes = None
+
+            try:
+                info.cpus = int(thisjob_dict["number_cpus"])
+            except ValueError:
+                info.cpus = None
+
+            try:
+                info.memory_per_cpu = self._convert_memory_str(
+                    thisjob_dict["min_memory"]
+                )
+            except OutputParsingError:
+                info.memory_per_cpu = None
+
+            info.partition = thisjob_dict["partition"]
+
+            # TODO here _convert_time_str can raise. If parsing errors are accepted
+            # handle differently
+            info.time_limit = self._convert_time_str(thisjob_dict["time_limit"])
+
+            try:
+                qjob.runtime = self._convert_time_str(thisjob_dict["time_used"])
+            except OutputParsingError:
+                # if the job did not start usually it is set to 00:00, but if it is
+                # empty it should be fine.
+                qjob.runtime = None
+
+            qjob.name = thisjob_dict["job_name"]
+            qjob.info = info
+
+            # I append to the list of jobs to return
+            job_list.append(qjob)
+
+        return job_list
+
+    def _convert_time_str(self, time_str):
+        """
+        Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds.
+        """
+
+        if not time_str:
+            return None
+
+        if time_str in ["UNLIMITED", "NOT_SET"]:
+            return None
+
+        time_split = time_str.split(":")
+
+        days = hours = minutes = seconds = 0
+
+        try:
+            if "-" in time_split[0]:
+                split_day = time_split[0].split("-")
+                days = int(split_day[0])
+                time_split = [split_day[0]] + time_split[1:]
+
+            if len(time_split) == 3:
+                hours, minutes, seconds = (int(v) for v in time_split)
+            elif len(time_split) == 2:
+                minutes, seconds = (int(v) for v in time_split)
+            elif len(time_split) == 1:
+                minutes = int(time_split[0])
+            else:
+                raise OutputParsingError()
+
+        except ValueError:
+            raise OutputParsingError()
+
+        return days * 86400 + hours * 3600 + minutes * 60 + seconds
+
+    def _convert_memory_str(self, memory: str) -> int:
+        if all(u in memory for u in ("K", "M", "G", "T")):
+            # assume Mb
+            units = "M"
+        else:
+            units = memory[-1]
+            memory = memory[:-1]
+        try:
+            v = int(memory)
+        except ValueError:
+            raise OutputParsingError
+        power_labels = {"K": 0, "M": 1, "G": 2, "T": 3}
+
+        return v * (1024 ** power_labels[units])
+
+    # helper attribute to match the values defined in REsources and
+    # the dictionary that should be passed to the template
+    _qresources_mapping = {
+        "queue_name": "partition",
+        "memory_per_thread": "mem-per-cpu",
+        "nodes": "nodes",
+        "processes": "ntasks",
+        "processes_per_node": "ntasks-per-node",
+        "threads_per_process": "cpus-per-task",
+        "time_limit": "time",
+        "hold": "hold",
+        "account": "account",
+        "qos": "qos",
+        "priority": "priority",
+    }
+
+    def _convert_qresources(self, resources: QResources) -> dict:
+        """
+        Converts a Qresources instance to a dict that will be used to fill in the
+        header of the submission script.
+        """
+
+        header_dict = {}
+        for qr_field, slurm_field in self._qresources_mapping.items():
+            val = getattr(resources, qr_field)
+            if val is not None:
+                header_dict[slurm_field] = val
+
+        return header_dict
+
+    @property
+    def supported_qresources_keys(self) -> list:
+        """
+        List of attributes of QResources that are correctly handled by the
+        _convert_qresources method. It is used to validate that the user
+        does not pass an unsupported value, expecting to have an effect.
+        """
+        return list(self._qresources_mapping.keys())

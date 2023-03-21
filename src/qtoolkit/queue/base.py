@@ -298,7 +298,7 @@ class BaseQueue(QBase):
         ----------
         job: (str) job to be cancelled.
         """
-        job_id = QJob.qid if isinstance(job, QJob) else job
+        job_id = QJob.job_id if isinstance(job, QJob) else job
         return f"{self.CANCEL_CMD} {job_id}"
 
     def write_script(self, script_fpath: str | Path, script_content: str) -> None:

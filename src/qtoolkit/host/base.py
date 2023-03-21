@@ -25,7 +25,7 @@ class BaseHost(QBase):
     def execute(
         self,
         command: str | list[str],
-        workdir: str | None = None,
+        workdir: str | Path | None = None,
         # stdin=None,
         # stdout=None,
         # stderr=None,
@@ -56,7 +56,7 @@ class BaseHost(QBase):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True):
+    def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True) -> bool:
         """Create directory on the host."""
         # TODO: define a common error that is raised or a returned in case the procedure
         # fails to avoid handling different kind of errors for the different hosts
