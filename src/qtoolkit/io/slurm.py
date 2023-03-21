@@ -268,7 +268,7 @@ $${qverbatim}"""
             raise CommandFailedError(msg)
 
         if self.get_job_executable == "scontrol":
-            parse_output = self._parse_scontrol_cmd_output(
+            parsed_output = self._parse_scontrol_cmd_output(
                 exit_code=exit_code, stdout=stdout, stderr=stderr
             )
         elif self.get_job_executable == "sacct":
@@ -278,36 +278,36 @@ $${qverbatim}"""
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
 
-        slurm_state = SlurmState(parse_output["JobState"])
+        slurm_state = SlurmState(parsed_output["JobState"])
         job_state = self._STATUS_MAPPING[slurm_state]
 
         try:
-            memory_per_cpu = self._convert_memory_str(parse_output["MinMemoryCPU"])
+            memory_per_cpu = self._convert_memory_str(parsed_output["MinMemoryCPU"])
         except OutputParsingError:
             memory_per_cpu = None
 
         try:
-            nodes = int(parse_output["NumNodes"])
+            nodes = int(parsed_output["NumNodes"])
         except ValueError:
             nodes = None
 
         try:
-            cpus = int(parse_output["NumCPUs"])
+            cpus = int(parsed_output["NumCPUs"])
         except ValueError:
             cpus = None
 
         try:
-            cpus_task = int(parse_output["CPUs/Task"])
+            cpus_task = int(parsed_output["CPUs/Task"])
         except ValueError:
             cpus_task = None
 
         try:
-            priority = int(parse_output["Priority"])
+            priority = int(parsed_output["Priority"])
         except ValueError:
             priority = None
 
         try:
-            time_limit = self._convert_time_str(parse_output["TimeLimit"])
+            time_limit = self._convert_time_str(parsed_output["TimeLimit"])
         except OutputParsingError:
             time_limit = None
 
@@ -318,16 +318,16 @@ $${qverbatim}"""
             threads_per_process=cpus_task,
             time_limit=time_limit,
             priority=priority,
-            qos=parse_output["QOS"],
+            qos=parsed_output["QOS"],
         )
         return QJob(
-            name=parse_output["JobName"],
-            job_id=parse_output["JobId"],
+            name=parsed_output["JobName"],
+            job_id=parsed_output["JobId"],
             state=job_state,  # type: ignore # mypy thinks job_state is a str
             sub_state=slurm_state,
             info=info,
-            account=parse_output["UserId"],
-            queue_name=parse_output["Partition"],
+            account=parsed_output["UserId"],
+            queue_name=parsed_output["Partition"],
         )
 
     def _parse_scontrol_cmd_output(self, exit_code, stdout, stderr):
@@ -353,7 +353,7 @@ $${qverbatim}"""
         ]
 
         if user:
-            command.append(f"-u{user}")
+            command.append(f"-u {user}")
 
         if job_ids:
             # Trick copied from aiida-core: When asking for a single job,
@@ -373,7 +373,8 @@ $${qverbatim}"""
 
         num_fields = len(self.squeue_fields)
 
-        # assume the split chosen does not appear
+        # assume the split chosen does not appear in the output. (e.g. in the
+        # name of the job)
         jobdata_raw = [
             chunk.split(self.split_separator)
             for chunk in stdout.splitlines()

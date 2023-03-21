@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import os
 from contextlib import contextmanager
+from pathlib import Path
 
 
 @contextmanager
-def cd(path):
+def cd(path: str | Path):
     """
     A Fabric-inspired cd context that temporarily changes directory for
     performing some tasks, and returns to the original working directory
@@ -17,7 +20,7 @@ def cd(path):
     Args:
         path: Path to cd to.
     """
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     os.chdir(path)
     try:
         yield

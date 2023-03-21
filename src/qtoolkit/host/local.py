@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 
@@ -35,7 +34,7 @@ class LocalHost(BaseHost):
         if isinstance(command, (list, tuple)):
             command = " ".join(command)
         if not workdir:
-            workdir = os.getcwd()
+            workdir = Path.cwd()
         else:
             workdir = str(workdir)
         with cd(workdir):

@@ -24,7 +24,7 @@ class QueueManager(QBase):
         self.scheduler_io = scheduler_io
         self.host = host or LocalHost()
 
-    def execute_cmd(self, cmd, workdir: str | Path | None = None):
+    def execute_cmd(self, cmd: str, workdir: str | Path | None = None):
         """Execute a command.
 
         Parameters
