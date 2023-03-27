@@ -100,6 +100,27 @@ class SlurmState(QSubState):
     SUSPENDED = "SUSPENDED", "S"
     TIMEOUT = "TIMEOUT", "TO"
 
+    @property
+    def qstate(self) -> QState:
+        # the type:ignore is required due to the dynamic class creation of QEnum
+        return _STATUS_MAPPING[self]  # type: ignore
+
+
+_STATUS_MAPPING = {
+    SlurmState.CANCELLED: QState.SUSPENDED,  # Should this be failed ?
+    SlurmState.COMPLETING: QState.RUNNING,
+    SlurmState.COMPLETED: QState.DONE,
+    SlurmState.CONFIGURING: QState.QUEUED,
+    SlurmState.DEADLINE: QState.FAILED,
+    SlurmState.FAILED: QState.FAILED,
+    SlurmState.NODE_FAIL: QState.FAILED,
+    SlurmState.OUT_OF_MEMORY: QState.FAILED,
+    SlurmState.PENDING: QState.QUEUED,
+    SlurmState.RUNNING: QState.RUNNING,
+    SlurmState.SUSPENDED: QState.SUSPENDED,
+    SlurmState.TIMEOUT: QState.FAILED,
+}
+
 
 class SlurmIO(BaseSchedulerIO):
     header_template: str = """
@@ -123,9 +144,10 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --nodelist=$${nodelist}
 #SBATCH --propagate=$${propagate}
 #SBATCH --licenses=$${licenses}
-#SBATCH --output=$${_qout_path}
-#SBATCH --error=$${_qerr_path}
+#SBATCH --output=$${qout_path}
+#SBATCH --error=$${qerr_path}
 #SBATCH --qos=$${qos}
+#SBATCH --priority=$${priority}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "sbatch"
@@ -133,20 +155,19 @@ $${qverbatim}"""
         "scancel -v"  # The -v is needed as the default is to report nothing
     )
 
-    _STATUS_MAPPING = {
-        SlurmState.CANCELLED: QState.SUSPENDED,  # Should this be failed ?
-        SlurmState.COMPLETING: QState.RUNNING,
-        SlurmState.COMPLETED: QState.DONE,
-        SlurmState.CONFIGURING: QState.QUEUED,
-        SlurmState.DEADLINE: QState.FAILED,
-        SlurmState.FAILED: QState.FAILED,
-        SlurmState.NODE_FAIL: QState.FAILED,
-        SlurmState.OUT_OF_MEMORY: QState.FAILED,
-        SlurmState.PENDING: QState.QUEUED,
-        SlurmState.RUNNING: QState.RUNNING,
-        SlurmState.SUSPENDED: QState.SUSPENDED,
-        SlurmState.TIMEOUT: QState.FAILED,
-    }
+    squeue_fields = [
+        ("%i", "job_id"),  # job or job step id
+        ("%t", "state_raw"),  # job state in compact form
+        ("%r", "annotation"),  # reason for the job being in its current state
+        ("%j", "job_name"),  # job name (title)
+        ("%u", "username"),  # username
+        ("%P", "partition"),  # partition (queue) of the job
+        ("%l", "time_limit"),  # time limit in days-hours:minutes:seconds
+        ("%D", "number_nodes"),  # number of nodes allocated
+        ("%C", "number_cpus"),  # number of allocated cores (if already running)
+        ("%M", "time_used"),  # Time used by the job in days-hours:minutes:seconds
+        ("%m", "min_memory"),  # Minimum size of memory (in MB) requested by the job
+    ]
 
     def __int__(
         self, get_job_executable: str = "scontrol", split_separator: str = "<><>"
@@ -185,20 +206,6 @@ $${qverbatim}"""
             status=status,
         )
 
-    squeue_fields = [
-        ("%i", "job_id"),  # job or job step id
-        ("%t", "state_raw"),  # job state in compact form
-        ("%r", "annotation"),  # reason for the job being in its current state
-        ("%j", "job_name"),  # job name (title)
-        ("%u", "username"),  # username
-        ("%P", "partition"),  # partition (queue) of the job
-        ("%l", "time_limit"),  # time limit in days-hours:minutes:seconds
-        ("%D", "number_nodes"),  # number of nodes allocated
-        ("%C", "number_cpus"),  # number of allocated cores (if already running)
-        ("%M", "time_used"),  # Time used by the job in days-hours:minutes:seconds
-        ("%m", "min_memory"),  # Minimum size of memory (in MB) requested by the job
-    ]
-
     def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
         """Parse the output of the scancel command."""
         # Possible error messages:
@@ -235,7 +242,7 @@ $${qverbatim}"""
             status=status,
         )
 
-    def _get_job_cmd(self, job_id: str, inplace=False):
+    def _get_job_cmd(self, job_id: str):
         # TODO: there are two options to get info on a job in slurm:
         #  - scontrol show job JOB_ID
         #  - sacct -j JOB_ID
@@ -258,7 +265,7 @@ $${qverbatim}"""
 
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob:
+    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -268,9 +275,7 @@ $${qverbatim}"""
             raise CommandFailedError(msg)
 
         if self.get_job_executable == "scontrol":
-            parsed_output = self._parse_scontrol_cmd_output(
-                exit_code=exit_code, stdout=stdout, stderr=stderr
-            )
+            parsed_output = self._parse_scontrol_cmd_output(stdout=stdout)
         elif self.get_job_executable == "sacct":
             raise NotImplementedError("sacct for get_job not yet implemented.")
         else:
@@ -278,8 +283,11 @@ $${qverbatim}"""
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
 
+        if not parsed_output:
+            return None
+
         slurm_state = SlurmState(parsed_output["JobState"])
-        job_state = self._STATUS_MAPPING[slurm_state]
+        job_state = slurm_state.qstate
 
         try:
             memory_per_cpu = self._convert_memory_str(parsed_output["MinMemoryCPU"])
@@ -302,11 +310,6 @@ $${qverbatim}"""
             cpus_task = None
 
         try:
-            priority = int(parsed_output["Priority"])
-        except ValueError:
-            priority = None
-
-        try:
             time_limit = self._convert_time_str(parsed_output["TimeLimit"])
         except OutputParsingError:
             time_limit = None
@@ -317,20 +320,18 @@ $${qverbatim}"""
             cpus=cpus,
             threads_per_process=cpus_task,
             time_limit=time_limit,
-            priority=priority,
-            qos=parsed_output["QOS"],
         )
         return QJob(
             name=parsed_output["JobName"],
             job_id=parsed_output["JobId"],
-            state=job_state,  # type: ignore # mypy thinks job_state is a str
+            state=job_state,
             sub_state=slurm_state,
             info=info,
             account=parsed_output["UserId"],
             queue_name=parsed_output["Partition"],
         )
 
-    def _parse_scontrol_cmd_output(self, exit_code, stdout, stderr):
+    def _parse_scontrol_cmd_output(self, stdout):
         return {
             data.split("=", maxsplit=1)[0]: data.split("=", maxsplit=1)[1]
             for data in stdout.split()
@@ -366,6 +367,10 @@ $${qverbatim}"""
         return " ".join(command)
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode()
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode()
 
         if exit_code != 0:
             msg = f"command {self.get_job_executable} failed: {stderr}"
@@ -382,7 +387,7 @@ $${qverbatim}"""
         ]
 
         # Create dictionary and parse specific fields
-        job_list = []
+        jobs_list = []
         for data in jobdata_raw:
             if len(data) != num_fields:
 
@@ -404,7 +409,7 @@ $${qverbatim}"""
                 msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
                 raise OutputParsingError(msg)
             qjob.sub_state = slurm_job_state
-            qjob.state = self._STATUS_MAPPING[slurm_job_state]  # type: ignore
+            qjob.state = slurm_job_state.qstate
 
             qjob.username = thisjob_dict["username"]
 
@@ -444,9 +449,9 @@ $${qverbatim}"""
             qjob.info = info
 
             # I append to the list of jobs to return
-            job_list.append(qjob)
+            jobs_list.append(qjob)
 
-        return job_list
+        return jobs_list
 
     def _convert_time_str(self, time_str):
         """
@@ -483,7 +488,10 @@ $${qverbatim}"""
 
         return days * 86400 + hours * 3600 + minutes * 60 + seconds
 
-    def _convert_memory_str(self, memory: str) -> int:
+    def _convert_memory_str(self, memory: str) -> int | None:
+        if not memory:
+            return None
+
         if all(u in memory for u in ("K", "M", "G", "T")):
             # assume Mb
             units = "M"
@@ -498,20 +506,22 @@ $${qverbatim}"""
 
         return v * (1024 ** power_labels[units])
 
-    # helper attribute to match the values defined in REsources and
+    # helper attribute to match the values defined in QResources and
     # the dictionary that should be passed to the template
     _qresources_mapping = {
         "queue_name": "partition",
+        "job_name": "job_name",
         "memory_per_thread": "mem-per-cpu",
         "nodes": "nodes",
         "processes": "ntasks",
         "processes_per_node": "ntasks-per-node",
         "threads_per_process": "cpus-per-task",
         "time_limit": "time",
-        "hold": "hold",
         "account": "account",
         "qos": "qos",
         "priority": "priority",
+        "output_filepath": "qout_path",
+        "error_filepath": "qerr_path",
     }
 
     def _convert_qresources(self, resources: QResources) -> dict:

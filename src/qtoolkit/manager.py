@@ -149,7 +149,7 @@ class QueueManager(QBase):
             exit_code=returncode, stdout=stdout, stderr=stderr
         )
 
-    def get_job(self, job: QJob | int | str) -> QJob:
+    def get_job(self, job: QJob | int | str) -> QJob | None:
         job_cmd = self.scheduler_io.get_job_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
         return self.scheduler_io.parse_job_output(

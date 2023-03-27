@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import abc
 from dataclasses import dataclass
+from pathlib import Path
 
 from qtoolkit.core.base import QBase, QEnum
 
@@ -83,6 +85,11 @@ class QSubState(QEnum):
             ", ".join([repr(v) for v in self._all_values]),
         )
 
+    @property
+    @abc.abstractmethod
+    def qstate(self) -> QState:
+        raise NotImplementedError
+
 
 @dataclass
 class QResources(QBase):
@@ -111,19 +118,21 @@ class QResources(QBase):
     """
 
     queue_name: str | None = None
+    job_name: str | None = None
     memory_per_thread: int | None = 1024
     nodes: int | None = 1
     processes: int | None = 1
     processes_per_node: int | None = None
     threads_per_process: int | None = None
     time_limit: int | None = None
-    hold: bool | None = None
     account: str | None = None
     qos: str | None = None
-    priority: int | None = None
+    priority: int | str | None = None
+    output_filepath: str | Path | None = None
+    error_filepath: str | Path | None = None
 
     # TODO: how to allow heterogeneous resources (e.g. 1 node with 12 cores and
-    #  1 node with 4 cores or heterogeous memory requirements, e.g. "master"
+    #  1 node with 4 cores or heterogeneous memory requirements, e.g. "master"
     #  core needs more memory than the other ones)
 
 

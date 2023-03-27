@@ -241,7 +241,11 @@ class BaseSchedulerIO(QBase):
         ----------
         job: (str) job to be cancelled.
         """
-        job_id = QJob.job_id if isinstance(job, QJob) else job
+        job_id = job.job_id if isinstance(job, QJob) else job
+        if job_id is None or job_id == "":
+            raise ValueError(
+                f"The id of the job to be cancelled should be defined. Received: {job_id}"
+            )
         return f"{self.CANCEL_CMD} {job_id}"
 
     @abc.abstractmethod
@@ -258,7 +262,7 @@ class BaseSchedulerIO(QBase):
         pass
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob:
+    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
         pass
 
     def check_convert_qresources(self, resources: QResources) -> dict:
@@ -284,7 +288,7 @@ class BaseSchedulerIO(QBase):
     @abc.abstractmethod
     def _convert_qresources(self, resources: QResources) -> dict:
         """
-        Converts a Qresources instance to a dict that will be used to fill in the
+        Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
         A subclass does not strictly need to support all the options available in
         QResources. For this reason a list of supported attributes should be
