@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -130,7 +131,7 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --ntasks=$${number_of_tasks}
 #SBATCH --ntasks-per-node=$${ntasks_per_node}
 #SBATCH --cpus-per-task=$${cpus_per_task}
-#####SBATCH --mem=$${mem}
+#SBATCH --mem=$${mem}
 #SBATCH --mem-per-cpu=$${mem_per_cpu}
 #SBATCH --hint=$${hint}
 #SBATCH --time=$${time}
@@ -148,6 +149,7 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --error=$${qerr_path}
 #SBATCH --qos=$${qos}
 #SBATCH --priority=$${priority}
+#SBATCH --array=$${array}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "sbatch"
@@ -169,7 +171,7 @@ $${qverbatim}"""
         ("%m", "min_memory"),  # Minimum size of memory (in MB) requested by the job
     ]
 
-    def __int__(
+    def __init__(
         self, get_job_executable: str = "scontrol", split_separator: str = "<><>"
     ):
         self.get_job_executable = get_job_executable
@@ -310,7 +312,7 @@ $${qverbatim}"""
             cpus_task = None
 
         try:
-            time_limit = self._convert_time_str(parsed_output["TimeLimit"])
+            time_limit = self._convert_str_to_time(parsed_output["TimeLimit"])
         except OutputParsingError:
             time_limit = None
 
@@ -436,10 +438,10 @@ $${qverbatim}"""
 
             # TODO here _convert_time_str can raise. If parsing errors are accepted
             # handle differently
-            info.time_limit = self._convert_time_str(thisjob_dict["time_limit"])
+            info.time_limit = self._convert_str_to_time(thisjob_dict["time_limit"])
 
             try:
-                qjob.runtime = self._convert_time_str(thisjob_dict["time_used"])
+                qjob.runtime = self._convert_str_to_time(thisjob_dict["time_used"])
             except OutputParsingError:
                 # if the job did not start usually it is set to 00:00, but if it is
                 # empty it should be fine.
@@ -453,7 +455,7 @@ $${qverbatim}"""
 
         return jobs_list
 
-    def _convert_time_str(self, time_str):
+    def _convert_str_to_time(self, time_str) -> int | None:
         """
         Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds.
         """
@@ -506,17 +508,23 @@ $${qverbatim}"""
 
         return v * (1024 ** power_labels[units])
 
+    def _convert_time_to_str(self, time: int | timedelta) -> str:
+        if isinstance(time, int):
+            time = timedelta(seconds=time)
+
+        days = time.days
+        hours, remainder = divmod(time.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        time_str = f"{days}-{hours}:{minutes}:{seconds}"
+        return time_str
+
     # helper attribute to match the values defined in QResources and
     # the dictionary that should be passed to the template
     _qresources_mapping = {
         "queue_name": "partition",
         "job_name": "job_name",
         "memory_per_thread": "mem-per-cpu",
-        "nodes": "nodes",
-        "processes": "ntasks",
-        "processes_per_node": "ntasks-per-node",
-        "threads_per_process": "cpus-per-task",
-        "time_limit": "time",
         "account": "account",
         "qos": "qos",
         "priority": "priority",
@@ -536,6 +544,33 @@ $${qverbatim}"""
             if val is not None:
                 header_dict[slurm_field] = val
 
+        if resources.njobs and resources.njobs > 1:
+            header_dict["array"] = f"1-{resources.njobs}"
+
+        if resources.time_limit:
+            header_dict["time"] = self._convert_time_to_str(resources.time_limit)
+
+        nodes, processes, processes_per_node = resources.get_processes_distribution()
+        if processes:
+            header_dict["number_of_tasks"] = processes
+        if processes_per_node:
+            header_dict["ntasks_per_node"] = processes_per_node
+        if nodes:
+            header_dict["number_of_nodes"] = nodes
+
+        if resources.threads_per_process:
+            header_dict["cpus_per_task"] = resources.threads_per_process
+
+        if resources.gpus_per_job:
+            header_dict["gres"] = f"gpu:{resources.gpus_per_job}"
+
+        if resources.email_address:
+            header_dict["mail_user"] = resources.email_address
+            header_dict["mail_type"] = "ALL"
+
+        if resources.kwargs:
+            header_dict.update(resources.kwargs)
+
         return header_dict
 
     @property
@@ -545,4 +580,17 @@ $${qverbatim}"""
         _convert_qresources method. It is used to validate that the user
         does not pass an unsupported value, expecting to have an effect.
         """
-        return list(self._qresources_mapping.keys())
+        supported = list(self._qresources_mapping.keys())
+        supported += [
+            "njobs",
+            "time_limit",
+            "processes",
+            "processes_per_node",
+            "process_placement",
+            "nodes",
+            "threads_per_process",
+            "gpus_per_job",
+            "email_address",
+            "kwargs",
+        ]
+        return supported

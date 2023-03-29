@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 
 from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
+    ProcessPlacement,
     QJob,
     QJobInfo,
     QResources,
@@ -13,7 +15,7 @@ from qtoolkit.core.data_objects import (
     SubmissionResult,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import OutputParsingError
+from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesErrors
 from qtoolkit.io.base import BaseSchedulerIO
 
 # States in PBS from qstat's man.
@@ -93,16 +95,12 @@ class PBSIO(BaseSchedulerIO):
 #PBS -o $${qout_path}
 #PBS -e $${qerr_path}
 #PBS -p $${priority}
+#PBS -r $${rerunnable}
+#PBS -J $${array}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
-
-    def __int__(
-        self, get_job_executable: str = "scontrol", split_separator: str = "<><>"
-    ):
-        self.get_job_executable = get_job_executable
-        self.split_separator = split_separator
 
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
@@ -279,12 +277,14 @@ $${qverbatim}"""
 
             # TODO here _convert_time_str can raise. If parsing errors are accepted
             # handle differently
-            info.time_limit = self._convert_time_str(data.get("Resource_List.walltime"))
+            info.time_limit = self._convert_str_to_time(
+                data.get("Resource_List.walltime")
+            )
 
             try:
                 runtime_str = data.get("resources_used.walltime")
                 if runtime_str:
-                    qjob.runtime = self._convert_time_str(runtime_str)
+                    qjob.runtime = self._convert_str_to_time(runtime_str)
             except OutputParsingError:
                 qjob.runtime = None
 
@@ -296,7 +296,7 @@ $${qverbatim}"""
 
         return jobs_list
 
-    def _convert_time_str(self, time_str):
+    def _convert_str_to_time(self, time_str):
         """
         Convert a string in the format used by SLURM DD:HH:MM:SS to a number of seconds.
         It may contain only H:M:S, only M:S or only S.
@@ -346,18 +346,27 @@ $${qverbatim}"""
     _qresources_mapping = {
         "queue_name": "queue",
         "job_name": "job_name",
-        "time_limit": "walltime",
         "account": "account",
         "priority": "priority",
         "output_filepath": "qout_path",
         "error_filepath": "qerr_path",
+        "project": "group_list",
     }
+
+    def _convert_time_to_str(self, time: int | timedelta) -> str:
+        if isinstance(time, int):
+            time = timedelta(seconds=time)
+
+        hours, remainder = divmod(int(time.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        time_str = f"{hours}:{minutes}:{seconds}"
+        return time_str
 
     def _convert_qresources(self, resources: QResources) -> dict:
         """
         Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
-        #TODO incomplete
         """
 
         header_dict = {}
@@ -365,6 +374,65 @@ $${qverbatim}"""
             val = getattr(resources, qr_field)
             if val is not None:
                 header_dict[slurm_field] = val
+
+        if resources.njobs and resources.njobs > 1:
+            header_dict["array"] = f"1-{resources.njobs}"
+
+        if resources.time_limit:
+            header_dict["walltime"] = self._convert_time_to_str(resources.time_limit)
+
+        if resources.rerunnable is not None:
+            header_dict["rerunnable"] = "y" if resources.rerunnable else "n"
+
+        nodes, processes, processes_per_node = resources.get_processes_distribution()
+        select = None
+        if resources.process_placement == ProcessPlacement.NO_CONSTRAINTS:
+            select = f"select={processes}"
+            if resources.threads_per_process:
+                select += f":ncpus={resources.threads_per_process}"
+                select += f":ompthreads={resources.threads_per_process}"
+            if resources.memory_per_thread:
+                threads_per_process = resources.threads_per_process or 1
+                select += f":mem={threads_per_process * resources.memory_per_thread}mb"
+        elif resources.process_placement in (
+            ProcessPlacement.EVENLY_DISTRIBUTED,
+            ProcessPlacement.SAME_NODE,
+            ProcessPlacement.SCATTERED,
+        ):
+            select = f"select={nodes}"
+            if resources.threads_per_process and resources.threads_per_process > 1:
+                cpus = resources.threads_per_process * processes_per_node
+                ompthreads = resources.threads_per_process
+            else:
+                cpus = processes_per_node
+                ompthreads = None
+            select += f":ncpus={cpus}"
+            select += f":mpiprocs={processes_per_node}"
+            if ompthreads:
+                select += f":ompthreads={ompthreads}"
+            if resources.memory_per_thread:
+                mem = cpus * resources.memory_per_thread
+                select += f":mem={mem}mb"
+
+            if resources.process_placement in (
+                ProcessPlacement.EVENLY_DISTRIBUTED,
+                ProcessPlacement.SCATTERED,
+            ):
+                header_dict["place"] = "scatter"
+            elif resources.process_placement == ProcessPlacement.SAME_NODE:
+                header_dict["place"] = "pack"
+        else:
+            msg = f"process placement {resources.process_placement} is not supported for PBS"
+            raise UnsupportedResourcesErrors(msg)
+
+        header_dict["select"] = select
+
+        if resources.email_address:
+            header_dict["mail_user"] = resources.email_address
+            header_dict["mail_type"] = "abe"
+
+        if resources.kwargs:
+            header_dict.update(resources.kwargs)
 
         return header_dict
 
@@ -375,4 +443,16 @@ $${qverbatim}"""
         _convert_qresources method. It is used to validate that the user
         does not pass an unsupported value, expecting to have an effect.
         """
-        return list(self._qresources_mapping.keys())
+        supported = list(self._qresources_mapping.keys())
+        supported += [
+            "njobs",
+            "time_limit",
+            "processes",
+            "processes_per_node",
+            "process_placement",
+            "nodes",
+            "threads_per_process",
+            "email_address",
+            "kwargs",
+        ]
+        return supported

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 
 from qtoolkit.core.base import QBase, QEnum
+from qtoolkit.core.exceptions import UnsupportedResourcesErrors
 
 
 class SubmissionStatus(QEnum):
@@ -91,6 +93,13 @@ class QSubState(QEnum):
         raise NotImplementedError
 
 
+class ProcessPlacement(QEnum):
+    NO_CONSTRAINTS = "NO_CONSTRAINTS"
+    SCATTERED = "SCATTERED"
+    SAME_NODE = "SAME_NODE"
+    EVENLY_DISTRIBUTED = "EVENLY_DISTRIBUTED"
+
+
 @dataclass
 class QResources(QBase):
     """Data defining resources for a given job (submitted or to be submitted).
@@ -104,36 +113,80 @@ class QResources(QBase):
         Maximum amount of memory requested for a job.
     nodes : int
         Number of nodes requested for a job.
-    cpus_per_node : int
-        Number of cpus for each node requested for a job.
-    cores_per_cpu : int
-        Number of cores for each cpu requested for a job.
-    hyperthreading : int
-        Number of threads to be used (hyperthreading).
-        TODO: check this and how to combine with OpenMP environment. Also is it
-         something that needs to be passed down somewhere to the queueing system
-         (and thus, is it worth putting it here in the resources ?) ?
-         On PBS (zenobe) if you use to many processes with respect
-         to what you asked (in the case of a "shared" node), you get killed.
+
     """
 
     queue_name: str | None = None
     job_name: str | None = None
-    memory_per_thread: int | None = 1024
-    nodes: int | None = 1
-    processes: int | None = 1
+    memory_per_thread: int | None = None
+    nodes: int | None = None
+    processes: int | None = None
     processes_per_node: int | None = None
     threads_per_process: int | None = None
-    time_limit: int | None = None
+    gpus_per_job: int | None = None
+    time_limit: int | timedelta | None = None
     account: str | None = None
     qos: str | None = None
     priority: int | str | None = None
     output_filepath: str | Path | None = None
     error_filepath: str | Path | None = None
+    process_placement: ProcessPlacement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QEnum
+    email_address: str | None = None
+    rerunnable: bool | None = None
 
-    # TODO: how to allow heterogeneous resources (e.g. 1 node with 12 cores and
-    #  1 node with 4 cores or heterogeneous memory requirements, e.g. "master"
-    #  core needs more memory than the other ones)
+    project: str | None = None
+    njobs: int | None = None  # for job arrays
+
+    kwargs: dict | None = None
+
+    def get_processes_distribution(self) -> list[int | None]:
+        nodes = self.nodes
+        processes = self.processes
+        processes_per_node = self.processes_per_node
+        if self.process_placement == ProcessPlacement.SCATTERED:
+            if not nodes:
+                nodes = processes
+            elif not processes:
+                processes = nodes
+            elif nodes != processes:
+                msg = "ProcessPlacement.SCATTERED is incompatible with different values of nodes and processes"
+                raise UnsupportedResourcesErrors(msg)
+            if not nodes and not processes:
+                nodes = processes = 1
+
+            if processes_per_node not in (None, 1):
+                msg = f"ProcessPlacement.SCATTERED is incompatible with {self.processes_per_node} processes_per_node"
+                raise UnsupportedResourcesErrors(msg)
+            processes_per_node = 1
+        elif self.process_placement == ProcessPlacement.SAME_NODE:
+            if nodes not in (None, 1):
+                msg = f"ProcessPlacement.SAME_NODE is incompatible with {self.nodes} nodes"
+                raise UnsupportedResourcesErrors(msg)
+            nodes = 1
+            if not processes:
+                processes = processes_per_node
+            elif not processes_per_node:
+                processes_per_node = processes
+            elif processes_per_node != processes:
+                msg = "ProcessPlacement.SAME_NODE is incompatible with different values of nodes and processes"
+                raise UnsupportedResourcesErrors(msg)
+            if not processes_per_node and not processes:
+                processes_per_node = processes = 1
+        elif self.process_placement == ProcessPlacement.EVENLY_DISTRIBUTED:
+            if not nodes:
+                nodes = 1
+            if processes:
+                msg = "ProcessPlacement.EVENLY_DISTRIBUTED is incompatible with processes attribute"
+                raise UnsupportedResourcesErrors(msg)
+            processes_per_node = processes_per_node or 1
+        elif self.process_placement == ProcessPlacement.NO_CONSTRAINTS:
+            if processes_per_node or nodes:
+                msg = "ProcessPlacement.NO_CONSTRAINTS is incompatible with processes_per_node and nodes attribute"
+                raise UnsupportedResourcesErrors(msg)
+            if not processes:
+                processes = 1
+
+        return [nodes, processes, processes_per_node]
 
 
 @dataclass

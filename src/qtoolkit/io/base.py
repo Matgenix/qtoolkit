@@ -14,6 +14,28 @@ from qtoolkit.core.exceptions import UnsupportedResourcesErrors
 class QTemplate(Template):
     delimiter = "$$"
 
+    def get_identifiers(self) -> list:
+        """
+        Returns a list of the valid identifiers in the template,
+        in the order they first appear, ignoring any invalid identifiers.
+        Imported from implementation in python 3.11 for backward compatibility.
+        """
+        ids = []
+        for mo in self.pattern.finditer(self.template):
+            named = mo.group("named") or mo.group("braced")
+            if named is not None and named not in ids:
+                # add a named group only the first time it appears
+                ids.append(named)
+            elif (
+                named is None
+                and mo.group("invalid") is None
+                and mo.group("escaped") is None
+            ):
+                # If all the groups are None, there must be
+                # another group we're not expecting
+                raise ValueError("Unrecognized named group in pattern", self.pattern)
+        return ids
+
 
 class BaseSchedulerIO(QBase):
     """Base class for job queues.
@@ -188,7 +210,16 @@ class BaseSchedulerIO(QBase):
         if isinstance(options, QResources):
             options = self.check_convert_qresources(options)
 
-        unclean_header = QTemplate(self.header_template).safe_substitute(options)
+        template = QTemplate(self.header_template)
+
+        # check that all the options are present in the template
+        keys = set(options.keys())
+        extra = keys.difference(template.get_identifiers())
+        if extra:
+            msg = f"The following keys are not present in the template: {', '.join(extra)}"
+            raise ValueError(msg)
+
+        unclean_header = template.safe_substitute(options)
         # Remove lines with leftover $$.
         clean_header = []
         for line in unclean_header.split("\n"):
