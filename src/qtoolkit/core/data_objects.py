@@ -6,7 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from qtoolkit.core.base import QBase, QEnum
-from qtoolkit.core.exceptions import UnsupportedResourcesErrors
+from qtoolkit.core.exceptions import UnsupportedResourcesError
 
 
 class SubmissionStatus(QEnum):
