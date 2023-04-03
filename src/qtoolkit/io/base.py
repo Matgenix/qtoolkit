@@ -8,7 +8,7 @@ from string import Template
 
 from qtoolkit.core.base import QBase
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
-from qtoolkit.core.exceptions import UnsupportedResourcesErrors
+from qtoolkit.core.exceptions import UnsupportedResourcesError
 
 
 class QTemplate(Template):
