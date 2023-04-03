@@ -6,8 +6,8 @@ class QTKException(Exception):
 
 class CommandFailedError(QTKException):
     """
-    Exception raised when it is determined that the execution of a
-    command has failed, typically by a non-zero return code
+    Exception raised when the execution of a command has failed,
+    typically by a non-zero return code.
     """
 
 
