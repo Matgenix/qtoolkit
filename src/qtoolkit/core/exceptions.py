@@ -18,7 +18,7 @@ class OutputParsingError(QTKException):
     """
 
 
-class UnsupportedResourcesErrors(QTKException):
+class UnsupportedResourcesError(QTKException):
     """
     Exception raised when the resources requested are not supported
     in qtoolkit for the chosen scheduler.
