@@ -474,7 +474,7 @@ $${qverbatim}"""
             if "-" in time_split[0]:
                 split_day = time_split[0].split("-")
                 days = int(split_day[0])
-                time_split = [split_day[0]] + time_split[1:]
+                time_split = [split_day[1]] + time_split[1:]
 
             if len(time_split) == 3:
                 hours, minutes, seconds = (int(v) for v in time_split)
