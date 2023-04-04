@@ -455,7 +455,8 @@ $${qverbatim}"""
 
         return jobs_list
 
-    def _convert_str_to_time(self, time_str) -> int | None:
+    @staticmethod
+    def _convert_str_to_time(time_str: str | None) -> int | None:
         """
         Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds.
         """
@@ -490,7 +491,8 @@ $${qverbatim}"""
 
         return days * 86400 + hours * 3600 + minutes * 60 + seconds
 
-    def _convert_memory_str(self, memory: str) -> int | None:
+    @staticmethod
+    def _convert_memory_str(memory: str | None) -> int | None:
         if not memory:
             return None
 
@@ -508,7 +510,8 @@ $${qverbatim}"""
 
         return v * (1024 ** power_labels[units])
 
-    def _convert_time_to_str(self, time: int | timedelta) -> str:
+    @staticmethod
+    def _convert_time_to_str(time: int | timedelta) -> str:
         if isinstance(time, int):
             time = timedelta(seconds=time)
 

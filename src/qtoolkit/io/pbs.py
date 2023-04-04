@@ -15,7 +15,7 @@ from qtoolkit.core.data_objects import (
     SubmissionResult,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesErrors
+from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.base import BaseSchedulerIO
 
 # States in PBS from qstat's man.
@@ -296,9 +296,10 @@ $${qverbatim}"""
 
         return jobs_list
 
-    def _convert_str_to_time(self, time_str):
+    @staticmethod
+    def _convert_str_to_time(time_str: str | None):
         """
-        Convert a string in the format used by SLURM DD:HH:MM:SS to a number of seconds.
+        Convert a string in the format used by PBS DD:HH:MM:SS to a number of seconds.
         It may contain only H:M:S, only M:S or only S.
         """
 
@@ -319,7 +320,8 @@ $${qverbatim}"""
 
         return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
 
-    def _convert_memory_str(self, memory: str) -> int | None:
+    @staticmethod
+    def _convert_memory_str(memory: str | None) -> int | None:
         if not memory:
             return None
 
@@ -353,7 +355,8 @@ $${qverbatim}"""
         "project": "group_list",
     }
 
-    def _convert_time_to_str(self, time: int | timedelta) -> str:
+    @staticmethod
+    def _convert_time_to_str(time: int | timedelta) -> str:
         if isinstance(time, int):
             time = timedelta(seconds=time)
 
@@ -370,10 +373,10 @@ $${qverbatim}"""
         """
 
         header_dict = {}
-        for qr_field, slurm_field in self._qresources_mapping.items():
+        for qr_field, pbs_field in self._qresources_mapping.items():
             val = getattr(resources, qr_field)
             if val is not None:
-                header_dict[slurm_field] = val
+                header_dict[pbs_field] = val
 
         if resources.njobs and resources.njobs > 1:
             header_dict["array"] = f"1-{resources.njobs}"
@@ -423,7 +426,7 @@ $${qverbatim}"""
                 header_dict["place"] = "pack"
         else:
             msg = f"process placement {resources.process_placement} is not supported for PBS"
-            raise UnsupportedResourcesErrors(msg)
+            raise UnsupportedResourcesError(msg)
 
         header_dict["select"] = select
 

@@ -130,7 +130,7 @@ class QResources(QBase):
     priority: int | str | None = None
     output_filepath: str | Path | None = None
     error_filepath: str | Path | None = None
-    process_placement: ProcessPlacement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QEnum
+    process_placement: ProcessPlacement | None = None
     email_address: str | None = None
     rerunnable: bool | None = None
 
@@ -139,50 +139,95 @@ class QResources(QBase):
 
     kwargs: dict | None = None
 
-    def get_processes_distribution(self) -> list[int | None]:
+    def __post_init__(self):
+        if self.process_placement is None:
+            if self.processes and not self.processes_per_node and not self.nodes:
+                self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QEnum
+            elif self.nodes and self.processes_per_node and not self.processes:
+                self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
+            else:
+                msg = "When process_placement is None either define only nodes plus processes_per_node or only processes"
+                raise UnsupportedResourcesError(msg)
+
+    @classmethod
+    def no_constraints(cls, processes, **kwargs):
+        if "nodes" in kwargs or "processes_per_node" in kwargs:
+            msg = (
+                "nodes and processes_per_node are incompatible with no constraints jobs"
+            )
+            raise UnsupportedResourcesError(msg)
+        kwargs["process_placement"] = ProcessPlacement.NO_CONSTRAINTS
+        return cls(processes=processes, **kwargs)
+
+    @classmethod
+    def evenly_distributed(cls, nodes, processes_per_node, **kwargs):
+        if "processes" in kwargs:
+            msg = "processes is incompatible with evenly distributed jobs"
+            raise UnsupportedResourcesError(msg)
+        kwargs["process_placement"] = ProcessPlacement.EVENLY_DISTRIBUTED
+        return cls(nodes=nodes, processes_per_node=processes_per_node, **kwargs)
+
+    @classmethod
+    def scattered(cls, processes, **kwargs):
+        if "nodes" in kwargs or "processes_per_node" in kwargs:
+            msg = "nodes and processes_per_node are incompatible with scattered jobs"
+            raise UnsupportedResourcesError(msg)
+        kwargs["process_placement"] = ProcessPlacement.SCATTERED
+        return cls(processes=processes, **kwargs)
+
+    @classmethod
+    def same_node(cls, processes, **kwargs):
+        if "nodes" in kwargs or "processes_per_node" in kwargs:
+            msg = "nodes and processes_per_node are incompatible with same node jobs"
+            raise UnsupportedResourcesError(msg)
+        kwargs["process_placement"] = ProcessPlacement.SAME_NODE
+        return cls(processes=processes, **kwargs)
+
+    def get_processes_distribution(self) -> list:
+        # TODO consider moving this to the __post_init__
         nodes = self.nodes
         processes = self.processes
         processes_per_node = self.processes_per_node
         if self.process_placement == ProcessPlacement.SCATTERED:
-            if not nodes:
+            if nodes is None:
                 nodes = processes
-            elif not processes:
+            elif processes is None:
                 processes = nodes
             elif nodes != processes:
                 msg = "ProcessPlacement.SCATTERED is incompatible with different values of nodes and processes"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             if not nodes and not processes:
                 nodes = processes = 1
 
             if processes_per_node not in (None, 1):
                 msg = f"ProcessPlacement.SCATTERED is incompatible with {self.processes_per_node} processes_per_node"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             processes_per_node = 1
         elif self.process_placement == ProcessPlacement.SAME_NODE:
             if nodes not in (None, 1):
                 msg = f"ProcessPlacement.SAME_NODE is incompatible with {self.nodes} nodes"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             nodes = 1
-            if not processes:
+            if processes is None:
                 processes = processes_per_node
-            elif not processes_per_node:
+            elif processes_per_node is None:
                 processes_per_node = processes
             elif processes_per_node != processes:
                 msg = "ProcessPlacement.SAME_NODE is incompatible with different values of nodes and processes"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             if not processes_per_node and not processes:
                 processes_per_node = processes = 1
         elif self.process_placement == ProcessPlacement.EVENLY_DISTRIBUTED:
-            if not nodes:
+            if nodes is None:
                 nodes = 1
             if processes:
                 msg = "ProcessPlacement.EVENLY_DISTRIBUTED is incompatible with processes attribute"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             processes_per_node = processes_per_node or 1
         elif self.process_placement == ProcessPlacement.NO_CONSTRAINTS:
             if processes_per_node or nodes:
                 msg = "ProcessPlacement.NO_CONSTRAINTS is incompatible with processes_per_node and nodes attribute"
-                raise UnsupportedResourcesErrors(msg)
+                raise UnsupportedResourcesError(msg)
             if not processes:
                 processes = 1
 
@@ -197,14 +242,6 @@ class QJobInfo(QBase):
     cpus: int | None = None
     threads_per_process: int | None = None
     time_limit: int | None = None
-
-
-@dataclass
-class QOptions(QBase):
-    hold: bool | None = False
-    account: str | None = None
-    qos: str | None = None
-    priority: int | None = None
 
 
 @dataclass

@@ -312,7 +312,7 @@ class BaseSchedulerIO(QBase):
 
         if unsupported_options:
             msg = f"Keys not supported: {', '.join(unsupported_options)}"
-            raise UnsupportedResourcesErrors(msg)
+            raise UnsupportedResourcesError(msg)
 
         return self._convert_qresources(resources)
 
