@@ -227,7 +227,7 @@ $${qverbatim}"""
             raise RuntimeError(
                 "Cannot update job information inplace when the QJob is not provided."
             )
-        job_id = job.qid if isinstance(job, QJob) else job
+        job_id = job.job_id if isinstance(job, QJob) else job
         if get_job_cmd == "scontrol":
             # -o is to get the output as a one-liner
             cmd = f"scontrol show job -o {job_id}"
@@ -254,7 +254,7 @@ $${qverbatim}"""
         )
         return QJob(
             name=scontrol_out["JobName"],
-            qid=scontrol_out["JobId"],
+            job_id=scontrol_out["JobId"],
             state=job_state,  # type: ignore # mypy thinks job_state is a str
             sub_state=slurm_state,
             resources=resources,
