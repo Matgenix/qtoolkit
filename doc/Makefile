@@ -69,4 +69,4 @@ html-build: generate
 	@echo
 	@echo "Build finished. The HTML pages are in build/html."
 api-doc:
-	sphinx-apidoc -f -o source/api ../src/qtoolkit
+	sphinx-apidoc -e -f -o source/api ../src/qtoolkit
