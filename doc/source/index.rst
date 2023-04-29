@@ -32,17 +32,17 @@ SLURM, PBS, ...
         Getting Started
         ^^^^^^^^^^^^^^^
 
-        New to QToolKit? Check out the Absolute Beginner's Guide. It contains an
-        introduction to QToolKit's main concepts and links to additional tutorials.
+        If you want to get started quickly, check out our quickstart section.
+        It contains an introduction to QToolKit's main concepts.
 
         +++
 
-        .. button-ref:: user/absolute_beginners
+        .. button-ref:: user/quickstart
             :expand:
             :color: secondary
             :click-parent:
 
-            To the absolute beginner's guide
+            Quickstart
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/user_guide.svg
@@ -60,7 +60,7 @@ SLURM, PBS, ...
             :color: secondary
             :click-parent:
 
-            To the user guide
+            User Guide
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/api.svg
@@ -80,7 +80,7 @@ SLURM, PBS, ...
             :color: secondary
             :click-parent:
 
-            To the reference guide
+            API Reference
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/contributor.svg
