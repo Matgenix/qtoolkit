@@ -81,7 +81,6 @@ _STATUS_MAPPING = {
 
 class PBSIO(BaseSchedulerIO):
     header_template: str = """
-#!/bin/bash
 #PBS -q $${queue}
 #PBS -N $${job_name}
 #PBS -A $${account}
@@ -168,7 +167,9 @@ $${qverbatim}"""
             return out[0]
         return None
 
-    def _get_jobs_list_cmd(self, job_ids: list[str] | None, user: str | None) -> str:
+    def _get_jobs_list_cmd(
+        self, job_ids: list[str] | None = None, user: str | None = None
+    ) -> str:
 
         if user and job_ids:
             raise ValueError("Cannot query by user and job(s) in PBS")

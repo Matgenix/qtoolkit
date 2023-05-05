@@ -146,7 +146,10 @@ class QResources(QBase):
             elif self.nodes and self.processes_per_node and not self.processes:
                 self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
             else:
-                msg = "When process_placement is None either define only nodes plus processes_per_node or only processes"
+                msg = (
+                    "When process_placement is None either define only nodes "
+                    "plus processes_per_node or only processes"
+                )
                 raise UnsupportedResourcesError(msg)
 
     @classmethod

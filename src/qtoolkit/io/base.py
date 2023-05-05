@@ -204,8 +204,6 @@ class BaseSchedulerIO(QBase):
         # execution (rerunnable)
         # resources (nodes, cores, memory, time, [gpus])
         # default values for (almost) everything in the object ?
-        if not options:
-            return ""
 
         if isinstance(options, QResources):
             options = self.check_convert_qresources(options)
@@ -345,7 +343,9 @@ class BaseSchedulerIO(QBase):
         return self._get_jobs_list_cmd(job_ids, user)
 
     @abc.abstractmethod
-    def _get_jobs_list_cmd(self, job_ids: list[str] | None, user: str | None) -> str:
+    def _get_jobs_list_cmd(
+        self, job_ids: list[str] | None = None, user: str | None = None
+    ) -> str:
         pass
 
     @abc.abstractmethod
