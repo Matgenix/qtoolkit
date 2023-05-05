@@ -81,7 +81,6 @@ _STATUS_MAPPING = {
 
 class PBSIO(BaseSchedulerIO):
     header_template: str = """
-#!/bin/bash
 #PBS -q $${queue}
 #PBS -N $${job_name}
 #PBS -A $${account}

@@ -204,8 +204,6 @@ class BaseSchedulerIO(QBase):
         # execution (rerunnable)
         # resources (nodes, cores, memory, time, [gpus])
         # default values for (almost) everything in the object ?
-        if not options:
-            return ""
 
         if isinstance(options, QResources):
             options = self.check_convert_qresources(options)

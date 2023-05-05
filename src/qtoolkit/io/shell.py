@@ -59,7 +59,6 @@ _STATUS_MAPPING = {
 
 class ShellIO(BaseSchedulerIO):
     header_template: str = """
-##!/bin/bash
 $${qverbatim}
 """
 
