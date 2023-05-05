@@ -345,7 +345,9 @@ class BaseSchedulerIO(QBase):
         return self._get_jobs_list_cmd(job_ids, user)
 
     @abc.abstractmethod
-    def _get_jobs_list_cmd(self, job_ids: list[str] | None, user: str | None) -> str:
+    def _get_jobs_list_cmd(
+        self, job_ids: list[str] | None = None, user: str | None = None
+    ) -> str:
         pass
 
     @abc.abstractmethod
