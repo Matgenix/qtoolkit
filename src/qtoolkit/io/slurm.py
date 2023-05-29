@@ -125,10 +125,10 @@ _STATUS_MAPPING = {
 
 class SlurmIO(BaseSchedulerIO):
     header_template: str = """
-#SBATCH --partition=$${queue_name}
+#SBATCH --partition=$${partition}
 #SBATCH --job-name=$${job_name}
-#SBATCH --nodes=$${number_of_nodes}
-#SBATCH --ntasks=$${number_of_tasks}
+#SBATCH --nodes=$${nodes}
+#SBATCH --ntasks=$${ntasks}
 #SBATCH --ntasks-per-node=$${ntasks_per_node}
 #SBATCH --cpus-per-task=$${cpus_per_task}
 #SBATCH --mem=$${mem}
