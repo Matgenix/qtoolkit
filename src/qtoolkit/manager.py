@@ -45,7 +45,7 @@ class QueueManager(QBase):
     def get_submission_script(
         self,
         commands: str | list[str] | None,
-        options: dict | QResources = None,
+        options: dict | QResources | None = None,
         work_dir: str | Path | None = None,
         pre_run: str | list[str] | None = None,
         post_run: str | list[str] | None = None,
