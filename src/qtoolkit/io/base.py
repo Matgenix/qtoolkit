@@ -111,7 +111,7 @@ class BaseSchedulerIO(QBase):
     def get_submission_script(
         self,
         commands: str | list[str],
-        options: dict | None = None,
+        options: dict | QResources | None = None,
     ) -> str:
         """
         This is roughly what/how it is done in the existing solutions.
@@ -204,6 +204,8 @@ class BaseSchedulerIO(QBase):
         # execution (rerunnable)
         # resources (nodes, cores, memory, time, [gpus])
         # default values for (almost) everything in the object ?
+
+        options = options or {}
 
         if isinstance(options, QResources):
             options = self.check_convert_qresources(options)
