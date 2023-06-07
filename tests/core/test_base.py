@@ -51,7 +51,7 @@ class TestQBase:
             name: str = "name"
 
         qc = QClass()
-        assert test_utils.is_msonable(qc)
+        assert test_utils.is_msonable(qc, obj_cls=QClass)
 
     def test_not_msonable(self, test_utils, qtk_core_base_mocked_monty_not_found):
         @dataclass
@@ -72,11 +72,11 @@ class TestQEnum:
             VAL2 = "VAL2"
 
         se = SomeEnum("VAL1")
-        assert test_utils.is_msonable(se)
+        assert test_utils.is_msonable(se, obj_cls=SomeEnum)
         assert isinstance(se, enum.Enum)
 
         se = SomeEnum.VAL2
-        assert test_utils.is_msonable(se)
+        assert test_utils.is_msonable(se, obj_cls=SomeEnum)
         assert isinstance(se, enum.Enum)
 
         class SomeEnum(qbase.QEnum):
@@ -84,11 +84,11 @@ class TestQEnum:
             VAL2 = 4
 
         se = SomeEnum(3)
-        assert test_utils.is_msonable(se)
+        assert test_utils.is_msonable(se, obj_cls=SomeEnum)
         assert isinstance(se, enum.Enum)
 
         se = SomeEnum.VAL2
-        assert test_utils.is_msonable(se)
+        assert test_utils.is_msonable(se, obj_cls=SomeEnum)
         assert isinstance(se, enum.Enum)
 
     def test_not_msonable(self, test_utils, qtk_core_base_mocked_monty_not_found):

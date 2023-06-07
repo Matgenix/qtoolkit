@@ -37,7 +37,7 @@ class QTemplate(Template):
         return ids
 
 
-class BaseSchedulerIO(QBase):
+class BaseSchedulerIO(QBase, abc.ABC):
     """Base class for job queues.
 
     Attributes
