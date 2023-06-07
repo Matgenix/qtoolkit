@@ -151,6 +151,7 @@ class QResources(QBase):
                     "plus processes_per_node or only processes"
                 )
                 raise UnsupportedResourcesError(msg)
+        self.kwargs = self.kwargs or {}
 
     @classmethod
     def no_constraints(cls, processes, **kwargs):

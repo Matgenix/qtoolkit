@@ -5,11 +5,13 @@ from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
     ProcessPlacement,
+    QResources,
     QState,
     QSubState,
     SubmissionResult,
     SubmissionStatus,
 )
+from qtoolkit.core.exceptions import UnsupportedResourcesError
 
 try:
     import monty
@@ -209,3 +211,125 @@ class TestProcessPlacement:
             "SAME_NODE",
             "EVENLY_DISTRIBUTED",
         }
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        pp1 = ProcessPlacement.SCATTERED
+        assert test_utils.is_msonable(pp1)
+        pp2 = ProcessPlacement("SAME_NODE")
+        assert test_utils.is_msonable(pp2)
+
+
+class TestQResources:
+    def test_no_process_placement(self):
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"When process_placement is None either define only nodes "
+            r"plus processes_per_node or only processes",
+        ):
+            QResources(processes=8, nodes=2)
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"When process_placement is None either define only nodes "
+            r"plus processes_per_node or only processes",
+        ):
+            QResources(processes=8, processes_per_node=2)
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        qr1 = QResources(
+            queue_name="main",
+            job_name="myjob",
+            memory_per_thread=1024,
+            processes=16,
+            time_limit=86400,
+        )
+        assert test_utils.is_msonable(qr1)
+        qr2 = QResources.evenly_distributed(nodes=4, processes_per_node=8)
+        assert test_utils.is_msonable(qr2)
+
+    def test_no_constraints(self):
+        qr = QResources.no_constraints(processes=16, queue_name="main")
+        assert qr.queue_name == "main"
+        assert qr.process_placement == ProcessPlacement.NO_CONSTRAINTS
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with no constraints jobs",
+        ):
+            QResources.no_constraints(processes=16, nodes=4)
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with no constraints jobs",
+        ):
+            QResources.no_constraints(processes=16, processes_per_node=2)
+
+    def test_evenly_distributed(self):
+        qr = QResources.evenly_distributed(
+            nodes=4, processes_per_node=2, queue_name="main"
+        )
+        assert qr.queue_name == "main"
+        assert qr.process_placement == ProcessPlacement.EVENLY_DISTRIBUTED
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"processes is incompatible with evenly distributed jobs",
+        ):
+            QResources.evenly_distributed(nodes=4, processes_per_node=2, processes=12)
+
+    def test_scattered(self):
+        qr = QResources.scattered(processes=16, queue_name="main")
+        assert qr.queue_name == "main"
+        assert qr.process_placement == ProcessPlacement.SCATTERED
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with scattered jobs",
+        ):
+            QResources.scattered(processes=16, nodes=4)
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with scattered jobs",
+        ):
+            QResources.scattered(processes=16, processes_per_node=4)
+
+    def test_same_node(self):
+        qr = QResources.same_node(processes=16, queue_name="main")
+        assert qr.queue_name == "main"
+        assert qr.process_placement == ProcessPlacement.SAME_NODE
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with same node jobs",
+        ):
+            QResources.same_node(processes=16, nodes=4)
+
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"nodes and processes_per_node are incompatible with same node jobs",
+        ):
+            QResources.same_node(processes=16, processes_per_node=4)
+
+    def test_equality(self):
+        qr1 = QResources.evenly_distributed(
+            nodes=4, processes_per_node=4, job_name="myjob"
+        )
+        qr2 = QResources(
+            nodes=4,
+            processes_per_node=4,
+            job_name="myjob",
+            process_placement=ProcessPlacement.EVENLY_DISTRIBUTED,
+        )
+        qr3 = QResources(nodes=4, processes_per_node=4, job_name="myjob")
+        qr4 = QResources(
+            nodes=4,
+            processes_per_node=4,
+            job_name="myjob",
+            process_placement=ProcessPlacement.SAME_NODE,
+        )
+        assert qr1 == qr2
+        assert qr1 == qr3
+        assert qr1 != qr4
