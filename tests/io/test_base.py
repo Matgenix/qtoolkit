@@ -104,4 +104,28 @@ def test_base_scheduler():
 
     header = scheduler.generate_header({"option2": "value_option2"})
     assert header == """#SPECCMD --option2=value_option2"""
-    scheduler.parse_submit_output(0, "", "")
+
+    ids_list = scheduler.generate_ids_list(
+        [QJob(job_id=4), QJob(job_id="job_id_abc1"), 215, "job12345"]
+    )
+    assert ids_list == ["4", "job_id_abc1", "215", "job12345"]
+
+    submit_cmd = scheduler.get_submit_cmd()
+    assert submit_cmd == "mysubmit submit.script"
+    submit_cmd = scheduler.get_submit_cmd(script_file="sub.sh")
+    assert submit_cmd == "mysubmit sub.sh"
+
+    cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id=5))
+    assert cancel_cmd == "mycancel 5"
+    cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id="abc1"))
+    assert cancel_cmd == "mycancel abc1"
+    cancel_cmd = scheduler.get_cancel_cmd("jobid2")
+    assert cancel_cmd == "mycancel jobid2"
+    cancel_cmd = scheduler.get_cancel_cmd(632)
+    assert cancel_cmd == "mycancel 632"
+
+    with pytest.raises(
+        ValueError,
+        match=r"The id of the job to be cancelled should be defined. Received: None",
+    ):
+        scheduler.get_cancel_cmd(job=None)

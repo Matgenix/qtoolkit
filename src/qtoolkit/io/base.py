@@ -243,7 +243,7 @@ class BaseSchedulerIO(QBase, abc.ABC):
         ids_list = []
         for j in jobs:
             if isinstance(j, QJob):
-                ids_list.append(j.job_id)
+                ids_list.append(str(j.job_id))
             else:
                 ids_list.append(str(j))
 
