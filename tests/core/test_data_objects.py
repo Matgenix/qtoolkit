@@ -5,6 +5,8 @@ from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
     ProcessPlacement,
+    QJob,
+    QJobInfo,
     QResources,
     QState,
     QSubState,
@@ -333,3 +335,151 @@ class TestQResources:
         assert qr1 == qr2
         assert qr1 == qr3
         assert qr1 != qr4
+
+    def test_get_processes_distribution(self):
+        qr = QResources(nodes=4, processes_per_node=2)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [4, None, 2]
+        qr = QResources(processes=18)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [None, 18, None]
+        qr = QResources.scattered(processes=12)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [12, 12, 1]
+        qr = QResources.same_node(processes=12)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [1, 12, 12]
+        qr = QResources.evenly_distributed(nodes=4, processes_per_node=8)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [4, None, 8]
+        qr = QResources.no_constraints(processes=14)
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [None, 14, None]
+
+
+class TestQJobInfo:
+    def test_equality(self):
+        qji1 = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qji2 = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qji3 = QJobInfo(
+            memory=4000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        assert qji1 == qji2
+        assert qji1 != qji3
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        qji = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        assert test_utils.is_msonable(qji)
+
+
+class TestQJob:
+    def test_equality(self):
+        qji1 = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qji2 = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qji3 = QJobInfo(
+            memory=4000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qjob1 = QJob(
+            name="job1",
+            job_id="id1",
+            exit_status=0,
+            state=QState.DONE,
+            sub_state=SomeSubState.STATE_A,
+            info=qji1,
+            account="myacc",
+            runtime=2541,
+            queue_name="mymain",
+        )
+        qjob2 = QJob(
+            name="job1",
+            job_id="id1",
+            exit_status=0,
+            state=QState.DONE,
+            sub_state=SomeSubState.STATE_A,
+            info=qji2,
+            account="myacc",
+            runtime=2541,
+            queue_name="mymain",
+        )
+        qjob3 = QJob(
+            name="job1",
+            job_id="id1",
+            exit_status=0,
+            state=QState.DONE,
+            sub_state=SomeSubState.STATE_A,
+            info=qji3,
+            account="myacc",
+            runtime=2541,
+            queue_name="mymain",
+        )
+        assert qjob1 == qjob2
+        assert qjob1 != qjob3
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        qji = QJobInfo(
+            memory=2000,
+            memory_per_cpu=500,
+            nodes=2,
+            cpus=4,
+            threads_per_process=2,
+            time_limit=3600,
+        )
+        qjob = QJob(
+            name="job1",
+            job_id="id1",
+            exit_status=0,
+            state=QState.DONE,
+            sub_state=SomeSubState.STATE_A,
+            info=qji,
+            account="myacc",
+            runtime=2541,
+            queue_name="mymain",
+        )
+        assert test_utils.is_msonable(qjob)
