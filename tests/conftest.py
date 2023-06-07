@@ -1,3 +1,5 @@
+from dataclasses import is_dataclass
+from enum import Enum
 from pathlib import Path
 
 import pytest
@@ -98,7 +100,9 @@ class TestUtils:
             obj_from_json = obj_cls.from_dict(obj_from_json)
         if not isinstance(obj_from_json, obj.__class__):
             return False
-        return obj_from_json == obj
+        if is_dataclass(obj) or isinstance(obj, Enum):
+            return obj_from_json == obj
+        return obj_from_json.as_dict() == obj.as_dict()
 
     @classmethod
     def inkwargs_outref(cls, in_out_ref, inkey, outkey):
