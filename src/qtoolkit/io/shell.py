@@ -37,7 +37,7 @@ class ShellState(QSubState):
     STOPPED = "T"
     STOPPED_DEBUGGER = "t"
     PAGING = "W"
-    DEAD = "D"
+    DEAD = "X"
     DEFUNCT = "Z"
 
     @property
@@ -172,6 +172,9 @@ $${qverbatim}
         return " ".join(command)
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+        print("exit_code", (type(exit_code), repr(exit_code)))
+        print("stdout", (type(stdout), repr(stdout)))
+        print("stderr", (type(stderr), repr(stderr)))
 
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
