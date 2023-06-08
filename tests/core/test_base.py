@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 def qtk_core_base_mocked_monty_not_found(mocker):
     # Note:
     #     Here we use importlib to dynamically import the qtoolkit.core.base module.
-    #     We want to test the QBase and QEnum super classes with monty present or not.
+    #     We want to test the QTKObject and QTKEnum super classes with monty present or not.
     #     This is done by mocking the import. We then need to use importlib to reload
     #     the qtoolkit.core.base module when we want to change the behaviour of the
     #     the monty.json import inside the qtoolkit.core.base module (i.e. mocking the
@@ -47,7 +47,7 @@ class TestQBase:
         import qtoolkit.core.base as qbase
 
         @dataclass
-        class QClass(qbase.QBase):
+        class QClass(qbase.QTKObject):
             name: str = "name"
 
         qc = QClass()
@@ -55,7 +55,7 @@ class TestQBase:
 
     def test_not_msonable(self, test_utils, qtk_core_base_mocked_monty_not_found):
         @dataclass
-        class QClass(qtk_core_base_mocked_monty_not_found.QBase):
+        class QClass(qtk_core_base_mocked_monty_not_found.QTKObject):
             name: str = "name"
 
         qc = QClass()
@@ -67,7 +67,7 @@ class TestQEnum:
     def test_msonable(self, test_utils):
         import qtoolkit.core.base as qbase
 
-        class SomeEnum(qbase.QEnum):
+        class SomeEnum(qbase.QTKEnum):
             VAL1 = "VAL1"
             VAL2 = "VAL2"
 
@@ -79,7 +79,7 @@ class TestQEnum:
         assert test_utils.is_msonable(se, obj_cls=SomeEnum)
         assert isinstance(se, enum.Enum)
 
-        class SomeEnum(qbase.QEnum):
+        class SomeEnum(qbase.QTKEnum):
             VAL1 = 3
             VAL2 = 4
 
@@ -92,7 +92,7 @@ class TestQEnum:
         assert isinstance(se, enum.Enum)
 
     def test_not_msonable(self, test_utils, qtk_core_base_mocked_monty_not_found):
-        class SomeEnum(qtk_core_base_mocked_monty_not_found.QEnum):
+        class SomeEnum(qtk_core_base_mocked_monty_not_found.QTKEnum):
             VAL1 = "VAL1"
             VAL2 = "VAL2"
 
@@ -104,7 +104,7 @@ class TestQEnum:
         assert not test_utils.is_msonable(se)
         assert isinstance(se, enum.Enum)
 
-        class SomeEnum(qtk_core_base_mocked_monty_not_found.QEnum):
+        class SomeEnum(qtk_core_base_mocked_monty_not_found.QTKEnum):
             VAL1 = 3
             VAL2 = 4
 

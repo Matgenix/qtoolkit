@@ -6,7 +6,7 @@ from dataclasses import fields
 from pathlib import Path
 from string import Template
 
-from qtoolkit.core.base import QBase
+from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.core.exceptions import UnsupportedResourcesError
 
@@ -37,7 +37,7 @@ class QTemplate(Template):
         return ids
 
 
-class BaseSchedulerIO(QBase, abc.ABC):
+class BaseSchedulerIO(QTKObject, abc.ABC):
     """Base class for job queues.
 
     Attributes

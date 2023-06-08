@@ -5,18 +5,18 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
-from qtoolkit.core.base import QBase, QEnum
+from qtoolkit.core.base import QTKEnum, QTKObject
 from qtoolkit.core.exceptions import UnsupportedResourcesError
 
 
-class SubmissionStatus(QEnum):
+class SubmissionStatus(QTKEnum):
     SUCCESSFUL = "SUCCESSFUL"
     FAILED = "FAILED"
     JOB_ID_UNKNOWN = "JOB_ID_UNKNOWN"
 
 
 @dataclass
-class SubmissionResult(QBase):
+class SubmissionResult(QTKObject):
     job_id: int | str | None = None
     step_id: int | None = None
     exit_code: int | None = None
@@ -25,14 +25,14 @@ class SubmissionResult(QBase):
     status: SubmissionStatus | None = None
 
 
-class CancelStatus(QEnum):
+class CancelStatus(QTKEnum):
     SUCCESSFUL = "SUCCESSFUL"
     FAILED = "FAILED"
     JOB_ID_UNKNOWN = "JOB_ID_UNKNOWN"
 
 
 @dataclass
-class CancelResult(QBase):
+class CancelResult(QTKObject):
     job_id: int | str | None = None
     step_id: int | None = None
     exit_code: int | None = None
@@ -41,7 +41,7 @@ class CancelResult(QBase):
     status: CancelStatus | None = None
 
 
-class QState(QEnum):
+class QState(QTKEnum):
     """Enumeration of possible ("standardized") job states.
 
     These "standardized" states are based on the drmaa specification.
@@ -64,7 +64,7 @@ class QState(QEnum):
     FAILED = "FAILED"
 
 
-class QSubState(QEnum):
+class QSubState(QTKEnum):
     """QSubState class defined without any enum values so it can be subclassed.
 
     These sub-states should be the actual job states in a given queuing system
@@ -93,7 +93,7 @@ class QSubState(QEnum):
         raise NotImplementedError
 
 
-class ProcessPlacement(QEnum):
+class ProcessPlacement(QTKEnum):
     NO_CONSTRAINTS = "NO_CONSTRAINTS"
     SCATTERED = "SCATTERED"
     SAME_NODE = "SAME_NODE"
@@ -101,7 +101,7 @@ class ProcessPlacement(QEnum):
 
 
 @dataclass
-class QResources(QBase):
+class QResources(QTKObject):
     """Data defining resources for a given job (submitted or to be submitted).
 
     Attributes
@@ -142,7 +142,7 @@ class QResources(QBase):
     def __post_init__(self):
         if self.process_placement is None:
             if self.processes and not self.processes_per_node and not self.nodes:
-                self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QEnum
+                self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QTKEnum
             elif self.nodes and self.processes_per_node and not self.processes:
                 self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
             else:
@@ -239,7 +239,7 @@ class QResources(QBase):
 
 
 @dataclass
-class QJobInfo(QBase):
+class QJobInfo(QTKObject):
     memory: int | None = None  # in Kb
     memory_per_cpu: int | None = None  # in Kb
     nodes: int | None = None
@@ -249,7 +249,7 @@ class QJobInfo(QBase):
 
 
 @dataclass
-class QJob(QBase):
+class QJob(QTKObject):
     name: str | None = None
     job_id: str | None = None
     exit_status: int | None = None

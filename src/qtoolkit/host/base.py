@@ -4,15 +4,15 @@ import abc
 from dataclasses import dataclass
 from pathlib import Path
 
-from qtoolkit.core.base import QBase
+from qtoolkit.core.base import QTKObject
 
 
 @dataclass
-class HostConfig(QBase):
+class HostConfig(QTKObject):
     root_dir: str | Path
 
 
-class BaseHost(QBase):
+class BaseHost(QTKObject):
     """Base Host class."""
 
     # def __init__(self, config, user):

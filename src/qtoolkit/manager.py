@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from qtoolkit.core.base import QBase
+from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.host.base import BaseHost
 from qtoolkit.host.local import LocalHost
 from qtoolkit.io.base import BaseSchedulerIO
 
 
-class QueueManager(QBase):
+class QueueManager(QTKObject):
     """Base class for job queues.
 
     Attributes
