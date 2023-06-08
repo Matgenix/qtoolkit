@@ -10,9 +10,15 @@ from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
     QJob,
+    QResources,
     QState,
     SubmissionResult,
     SubmissionStatus,
+)
+from qtoolkit.core.exceptions import (
+    CommandFailedError,
+    OutputParsingError,
+    UnsupportedResourcesError,
 )
 from qtoolkit.io.shell import ShellIO, ShellState
 
@@ -162,3 +168,27 @@ class TestShellIO:
                 sub_state=ShellState.INTERRUPTIBLE_SLEEP,
             ),
         ]
+        with pytest.raises(
+            CommandFailedError, match=r"command ps failed: string in stderr"
+        ):
+            shell_io.parse_jobs_list_output(
+                exit_code=1,
+                stdout=b"",
+                stderr=b"string in stderr",
+            )
+        with pytest.raises(
+            OutputParsingError, match=r"Unknown job state K for job id 18112"
+        ):
+            shell_io.parse_jobs_list_output(
+                exit_code=0,
+                stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     465 S bash\n  18112 davidwa+     461 K bash\n",
+                stderr=b"",
+            )
+
+    def test_check_convert_qresources(self, shell_io):
+        qr = QResources(processes=1)
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"Keys not supported: kwargs, process_placement, processes",
+        ):
+            shell_io.check_convert_qresources(qr)
