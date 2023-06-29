@@ -103,7 +103,7 @@ class SlurmState(QSubState):
 
     @property
     def qstate(self) -> QState:
-        # the type:ignore is required due to the dynamic class creation of QEnum
+        # the type:ignore is required due to the dynamic class creation of QTKEnum
         return _STATUS_MAPPING[self]  # type: ignore
 
 

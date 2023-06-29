@@ -1,3 +1,5 @@
+from dataclasses import is_dataclass
+from enum import Enum
 from pathlib import Path
 
 import pytest
@@ -82,15 +84,25 @@ class TestUtils:
     from monty.serialization import MontyDecoder, MontyEncoder
 
     @classmethod
-    def is_msonable(cls, obj):
+    def is_msonable(cls, obj, obj_cls=None):
         if not isinstance(obj, cls.MSONable):
             return False
         obj_dict = obj.as_dict()
         if not obj_dict == obj.__class__.from_dict(obj_dict).as_dict():
             return False
         json_string = cls.json.dumps(obj_dict, cls=cls.MontyEncoder)
-        obj_dict_from_json = cls.json.loads(json_string, cls=cls.MontyDecoder)
-        return obj_dict_from_json == obj_dict
+        obj_from_json = cls.json.loads(json_string, cls=cls.MontyDecoder)
+        # When the class is defined as an inner class, the MontyDecoder is unable
+        # to find it automatically. This is only used in the core/test_base tests.
+        # The next check on the type of the obj_from_json is of course not relevant
+        # in that specific case.
+        if obj_cls is not None:
+            obj_from_json = obj_cls.from_dict(obj_from_json)
+        if not isinstance(obj_from_json, obj.__class__):
+            return False
+        if is_dataclass(obj) or isinstance(obj, Enum):
+            return obj_from_json == obj
+        return obj_from_json.as_dict() == obj.as_dict()
 
     @classmethod
     def inkwargs_outref(cls, in_out_ref, inkey, outkey):
