@@ -37,7 +37,7 @@ class ShellState(QSubState):
     STOPPED = "T"
     STOPPED_DEBUGGER = "t"
     PAGING = "W"
-    DEAD = "D"
+    DEAD = "X"
     DEFUNCT = "Z"
 
     @property
@@ -65,6 +65,17 @@ $${qverbatim}
     CANCEL_CMD: str | None = "kill -9"
 
     def __init__(self, blocking=False, stdout_path="stdout", stderr_path="stderr"):
+        """Construct the ShellIO object.
+
+        Parameters
+        ----------
+        blocking: bool
+            Whether the execution should be blocking.
+        stdout_path: str or Path
+            Path to the standard output file.
+        stderr_path: str or Path
+            Path to the standard error file.
+        """
         self.blocking = blocking
         self.stdout_path = stdout_path
         self.stderr_path = stderr_path
@@ -75,7 +86,8 @@ $${qverbatim}
 
         Parameters
         ----------
-        script_file: (str) path of the script file to use.
+        script_file: str or Path
+            Path of the script file to use.
         """
         script_file = script_file or ""
 
@@ -172,7 +184,17 @@ $${qverbatim}
         return " ".join(command)
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+        """Parse the output of the ps command to list jobs.
 
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the ps command.
+        stdout : str
+            Standard output of the ps command.
+        stderr : str
+            Standard error of the ps command.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):

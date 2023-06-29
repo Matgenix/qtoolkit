@@ -6,7 +6,7 @@ from dataclasses import fields
 from pathlib import Path
 from string import Template
 
-from qtoolkit.core.base import QBase
+from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.core.exceptions import UnsupportedResourcesError
 
@@ -37,7 +37,7 @@ class QTemplate(Template):
         return ids
 
 
-class BaseSchedulerIO(QBase):
+class BaseSchedulerIO(QTKObject, abc.ABC):
     """Base class for job queues.
 
     Attributes
@@ -243,7 +243,7 @@ class BaseSchedulerIO(QBase):
         ids_list = []
         for j in jobs:
             if isinstance(j, QJob):
-                ids_list.append(j.job_id)
+                ids_list.append(str(j.job_id))
             else:
                 ids_list.append(str(j))
 
@@ -311,7 +311,7 @@ class BaseSchedulerIO(QBase):
         unsupported_options = not_none.difference(self.supported_qresources_keys)
 
         if unsupported_options:
-            msg = f"Keys not supported: {', '.join(unsupported_options)}"
+            msg = f"Keys not supported: {', '.join(sorted(unsupported_options))}"
             raise UnsupportedResourcesError(msg)
 
         return self._convert_qresources(resources)

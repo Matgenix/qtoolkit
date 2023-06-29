@@ -11,9 +11,9 @@ except ModuleNotFoundError:
     enum_superclses = (Enum,)  # type: ignore
 
 
-class QBase(supercls):  # type: ignore
+class QTKObject(supercls):  # type: ignore
     pass
 
 
-class QEnum(*enum_superclses):  # type: ignore
+class QTKEnum(*enum_superclses):  # type: ignore
     pass
