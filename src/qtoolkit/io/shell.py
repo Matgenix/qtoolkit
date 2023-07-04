@@ -59,6 +59,10 @@ _STATUS_MAPPING = {
 
 class ShellIO(BaseSchedulerIO):
     header_template: str = """
+exec > $${qout_path}
+exec 2> $${qerr_path}
+
+echo $${job_name}
 $${qverbatim}
 """
 
@@ -200,8 +204,10 @@ $${qverbatim}
         if isinstance(stderr, bytes):
             stderr = stderr.decode()
 
-        if exit_code != 0:
-            msg = f"command ps failed: {stderr}"
+        # if asking only for pid that are not running the exit code is != 0,
+        # so check also on stderr for failing
+        if exit_code != 0 and stderr.strip():
+            msg = f"command ps failed: stdout: {stdout}. stderr: {stderr}"
             raise CommandFailedError(msg)
 
         jobs_list = []

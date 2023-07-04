@@ -161,6 +161,10 @@ class RemoteHost(BaseHost):
         exit_code : int
             Exit code of the command.
         """
+
+        if isinstance(command, (list, tuple)):
+            command = " ".join(command)
+
         # TODO: check here if we use the context manager. What happens if we provide the
         #  connection from outside (not through a config) and we want to keep it alive ?
 
