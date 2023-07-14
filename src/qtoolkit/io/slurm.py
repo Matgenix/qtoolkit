@@ -128,7 +128,7 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --partition=$${partition}
 #SBATCH --job-name=$${job_name}
 #SBATCH --nodes=$${nodes}
-#SBATCH --ntasks=$${number_of_tasks}
+#SBATCH --ntasks=$${ntasks}
 #SBATCH --ntasks-per-node=$${ntasks_per_node}
 #SBATCH --cpus-per-task=$${cpus_per_task}
 #SBATCH --mem=$${mem}
@@ -555,11 +555,11 @@ $${qverbatim}"""
 
         nodes, processes, processes_per_node = resources.get_processes_distribution()
         if processes:
-            header_dict["number_of_tasks"] = processes
+            header_dict["ntasks"] = processes
         if processes_per_node:
             header_dict["ntasks_per_node"] = processes_per_node
         if nodes:
-            header_dict["number_of_nodes"] = nodes
+            header_dict["nodes"] = nodes
 
         if resources.threads_per_process:
             header_dict["cpus_per_task"] = resources.threads_per_process
