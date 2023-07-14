@@ -128,7 +128,7 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --partition=$${partition}
 #SBATCH --job-name=$${job_name}
 #SBATCH --nodes=$${nodes}
-#SBATCH --ntasks=$${ntasks}
+#SBATCH --ntasks=$${number_of_tasks}
 #SBATCH --ntasks-per-node=$${ntasks_per_node}
 #SBATCH --cpus-per-task=$${cpus_per_task}
 #SBATCH --mem=$${mem}
@@ -342,7 +342,6 @@ $${qverbatim}"""
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-
         if user and job_ids:
             raise ValueError("Cannot query by user and job(s) in SLURM")
 
@@ -394,7 +393,6 @@ $${qverbatim}"""
         jobs_list = []
         for data in jobdata_raw:
             if len(data) != num_fields:
-
                 msg = f"Wrong number of fields. Found {len(jobdata_raw)}, expected {num_fields}"
                 # TODO should this raise or just continue? and should there be
                 # a logging of the errors?
