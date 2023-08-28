@@ -174,9 +174,10 @@ $${qverbatim}
             )
             raise ValueError(msg)
 
+        # use etime instead of etimes for compatibility
         command = [
             "ps",
-            "-o pid,user,etimes,state,comm",
+            "-o pid,user,etime,state,comm",
         ]
 
         if user:
@@ -220,7 +221,7 @@ $${qverbatim}
             qjob = QJob()
             qjob.job_id = data[0]
             qjob.username = data[1]
-            qjob.runtime = int(data[2])
+            qjob.runtime = self._convert_str_to_time(data[2])
             qjob.name = data[4]
 
             try:
@@ -251,3 +252,35 @@ $${qverbatim}
         does not pass an unsupported value, expecting to have an effect.
         """
         return []
+
+    @staticmethod
+    def _convert_str_to_time(time_str: str | None) -> int | None:
+        """
+        Convert a string in the format used in etime [[DD-]hh:]mm:ss to a
+        number of seconds.
+        """
+
+        if not time_str:
+            return None
+
+        time_split = time_str.split(":")
+
+        days = hours = 0
+
+        try:
+            if "-" in time_split[0]:
+                split_day = time_split[0].split("-")
+                days = int(split_day[0])
+                time_split = [split_day[1]] + time_split[1:]
+
+            if len(time_split) == 3:
+                hours, minutes, seconds = (int(v) for v in time_split)
+            elif len(time_split) == 2:
+                minutes, seconds = (int(v) for v in time_split)
+            else:
+                raise OutputParsingError()
+
+        except ValueError:
+            raise OutputParsingError()
+
+        return days * 86400 + hours * 3600 + minutes * 60 + seconds
