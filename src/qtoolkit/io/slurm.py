@@ -342,7 +342,6 @@ $${qverbatim}"""
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-
         if user and job_ids:
             raise ValueError("Cannot query by user and job(s) in SLURM")
 
@@ -394,7 +393,6 @@ $${qverbatim}"""
         jobs_list = []
         for data in jobdata_raw:
             if len(data) != num_fields:
-
                 msg = f"Wrong number of fields. Found {len(jobdata_raw)}, expected {num_fields}"
                 # TODO should this raise or just continue? and should there be
                 # a logging of the errors?
@@ -557,11 +555,11 @@ $${qverbatim}"""
 
         nodes, processes, processes_per_node = resources.get_processes_distribution()
         if processes:
-            header_dict["number_of_tasks"] = processes
+            header_dict["ntasks"] = processes
         if processes_per_node:
             header_dict["ntasks_per_node"] = processes_per_node
         if nodes:
-            header_dict["number_of_nodes"] = nodes
+            header_dict["nodes"] = nodes
 
         if resources.threads_per_process:
             header_dict["cpus_per_task"] = resources.threads_per_process
