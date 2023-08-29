@@ -169,7 +169,7 @@ class TestShellIO:
             ),
         ]
         with pytest.raises(
-            CommandFailedError, match=r"command ps failed: string in stderr"
+            CommandFailedError, match=r"command ps failed: .* string in stderr"
         ):
             shell_io.parse_jobs_list_output(
                 exit_code=1,
@@ -192,3 +192,15 @@ class TestShellIO:
             match=r"Keys not supported: kwargs, process_placement, processes",
         ):
             shell_io.check_convert_qresources(qr)
+
+    def test_header(self, shell_io):
+        # check that the required elements are properly handled in header template
+        options = {
+            "qout_path": "/some/file",
+            "qerr_path": "/some/file",
+            "job_name": "NAME",
+        }
+        header = shell_io.generate_header(options)
+        assert "exec > /some/file" in header
+        assert "exec 2> /some/file" in header
+        assert "NAME" in header

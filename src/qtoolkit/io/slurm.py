@@ -150,6 +150,7 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --qos=$${qos}
 #SBATCH --priority=$${priority}
 #SBATCH --array=$${array}
+#SBATCH --exclusive=$${exclusive}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "sbatch"
