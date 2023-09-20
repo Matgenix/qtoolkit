@@ -225,7 +225,7 @@ $${qverbatim}
             qjob.name = data[4]
 
             try:
-                shell_job_state = ShellState(data[3])
+                shell_job_state = ShellState(data[3][0])
             except ValueError:
                 msg = f"Unknown job state {data[3]} for job id {qjob.job_id}"
                 raise OutputParsingError(msg)
