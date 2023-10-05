@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
 _commit: 7a70b18
-_src_path: gh:Matgenix/Matgenix-copier-template
+_src_path: git@github.com:Matgenix/Matgenix-copier-template
 author_email: david.waroquiers@matgenix.com
 author_fullname: David Waroquiers
 author_username: davidwaroquiers
