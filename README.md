@@ -1,9 +1,17 @@
-# QToolKit
+<div align="center">
+
+# <img width="180px" alt="QToolKit" align="center" src="https://raw.githubusercontent.com/Matgenix/QToolKit/main/doc/img/qtoolkit_logo.svg">
+
+</div>
+
+<div align="center">
 
 [![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=main&label=tests)](https://github.com/matgenix/qtoolkit/actions/workflows/testing.yml)
 [![code coverage](https://img.shields.io/codecov/c/gh/matgenix/qtoolkit)](https://codecov.io/gh/matgenix/qtoolkit)
 [![pypi version](https://img.shields.io/pypi/v/qtoolkit?color=blue)](https://pypi.org/project/qtoolkit)
 ![supported python versions](https://img.shields.io/pypi/pyversions/qtoolkit)
+
+</div>
 
 **[Full Documentation][docs]**
 
