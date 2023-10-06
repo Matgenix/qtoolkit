@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img width="180px" alt="QToolKit" align="center" src="https://raw.githubusercontent.com/Matgenix/QToolKit/ml-evs/add_logos/doc/img/qtoolkit_logo.svg">
+# <img width="180px" alt="QToolKit" align="center" src="https://raw.githubusercontent.com/Matgenix/QToolKit/main/doc/img/qtoolkit_logo.svg">
 
 </div>
 
