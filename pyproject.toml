@@ -12,7 +12,6 @@ authors = [{ name = "David Waroquiers", email = "david.waroquiers@matgenix.com" 
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -24,8 +23,8 @@ classifiers = [
     "Topic :: Other/Nonlisted Topic",
     "Topic :: Scientific/Engineering",
 ]
-requires-python = ">=3.8"
-dependencies = []
+requires-python = ">=3.9"
+dependencies =[]
 
 [project.optional-dependencies]
 dev = [
@@ -73,7 +72,7 @@ max-line-length = 88
 max-doc-length = 88
 select = "C, E, F, W, B"
 extend-ignore = "E203, W503, E501, F401, RST21"
-min-python-version = "3.8.0"
+min-python-version = "3.9.0"
 docstring-convention = "numpy"
 rst-roles = "class, func, ref, obj"
 

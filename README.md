@@ -1,38 +1,19 @@
 # QToolKit
 
-[![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=main&label=tests)](https://github.com/matgenix/qtoolkit/actions?query=workflow%3Atesting)
+[![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=main&label=tests)](https://github.com/matgenix/qtoolkit/actions/workflows/testing.yml)
 [![code coverage](https://img.shields.io/codecov/c/gh/matgenix/qtoolkit)](https://codecov.io/gh/matgenix/qtoolkit)
 [![pypi version](https://img.shields.io/pypi/v/qtoolkit?color=blue)](https://pypi.org/project/qtoolkit)
 ![supported python versions](https://img.shields.io/pypi/pyversions/qtoolkit)
 
-** [Full Documentation][docs] **
+**[Full Documentation][docs]**
 
-QToolKit is a python software for ... Features of QToolKit include
-
-- Feature A
-- Feature B
-- ...
-
-## Quick start
-
-How to get started.
-
-## Installation
-
-How to install.
-
-## User guide
-
-How to use the software.
+> **Warning**:
+> :construction: This repository is still under construction. :construction:
 
 ## Need help?
 
 Ask questions about QToolKit on the [QToolKit support forum][help-forum].
 If you've found an issue with QToolKit, please submit a bug report on [GitHub Issues][issues].
-
-## Reference
-
-Full reference
 
 ## What’s new?
 
@@ -60,11 +41,12 @@ QToolKit is developed and maintained by Matgenix SRL.
 
 A full list of all contributors can be found [here][contributors].
 
-[help-forum]: https://github.com/materialsproject/atomate2/issues
-[issues]: https://github.com/materialsproject/atomate2/issues
-[installation]: https://matgenix.github.io/qtoolkit/user/install.html
+[help-forum]: https://https://github.com/matgenix/qtoolkit/issues
+[issues]: https://https://github.com/matgenix/qtoolkit/issues
+[installation]: https://https://github.com/matgenix/qtoolkit/blob/main/INSTALL.md
 [contributing]: https://github.com/matgenix/qtoolkit/blob/main/CONTRIBUTING.md
 [codeofconduct]: https://github.com/matgenix/qtoolkit/blob/main/CODE_OF_CONDUCT.md
-[contributors]: https://matgenix.github.io/qtoolkit/about/contributors.html
-[license]: https://raw.githubusercontent.com/matgenix//main/LICENSE
+[changelog]: https://https://github.com/matgenix/qtoolkit/blob/main/CHANGELOG.md
+[contributors]: https://matgenix.github.io/qtoolkit/graphs/contributors
+[license]: https://raw.githubusercontent.com/matgenix/qtoolkit/main/LICENSE
 [docs]: https://matgenix.github.io/qtoolkit/
