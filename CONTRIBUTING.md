@@ -1,7 +1,5 @@
 # Contributing to QToolKit
 
-Full name is Queue Tool Kit
-
 We love your input! We want to make contributing to as easy and
 transparent as possible, whether it's:
 
@@ -64,6 +62,9 @@ We have a few tips for writing good PRs that are accepted into the main repo:
   to python](https://docs.python-guide.org/writing/tests) for some good
   resources on writing good tests.
 - Understand your contributions will fall under the same license as this repo.
+- This project uses `pre-commit` for uniform linting across many developers. You can install
+  it through the extra dev dependencies with `pip install -e .[dev]`  and then run `pre-commit install`
+  to activate it for you local repository.
 
 When you submit your PR, our CI service will automatically run your tests.
 We welcome good discussion on the best ways to write your code, and the comments
