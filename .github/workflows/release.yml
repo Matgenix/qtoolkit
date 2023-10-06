@@ -73,7 +73,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.RELEASE_PAT_BOT }}
 
     - name: Build source distribution
-      run: python -m build
+      run: |
+        pip install -U build
+        python -m build
 
     - name: Publish package to Test PyPI first
       uses: pypa/gh-action-pypi-publish@release/v1
