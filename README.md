@@ -1,14 +1,12 @@
-<div align="center" style="padding-bottom: 1em;">
-<img width="100px" align="center" src="./doc/img/qtoolkit_logo.svg">
-</div>
-
-# <div align="center">QToolKit</div>
+# <img width="100px" alt="QToolKit" align="center" src="https://raw.githubusercontent.com/matgenix/qtoolkit/ml-evs/add_logos/doc/src/img/qtoolkit_logo.svg">
 
 <div align="center">
+
 [![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=main&label=tests)](https://github.com/matgenix/qtoolkit/actions/workflows/testing.yml)
 [![code coverage](https://img.shields.io/codecov/c/gh/matgenix/qtoolkit)](https://codecov.io/gh/matgenix/qtoolkit)
 [![pypi version](https://img.shields.io/pypi/v/qtoolkit?color=blue)](https://pypi.org/project/qtoolkit)
 ![supported python versions](https://img.shields.io/pypi/pyversions/qtoolkit)
+
 </div>
 
 **[Full Documentation][docs]**
