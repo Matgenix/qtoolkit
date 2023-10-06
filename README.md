@@ -1,4 +1,8 @@
+<div align="center">
+
 # <img width="100px" alt="QToolKit" align="center" src="https://raw.githubusercontent.com/matgenix/qtoolkit/ml-evs/add_logos/doc/src/img/qtoolkit_logo.svg">
+
+</div>
 
 <div align="center">
 
