@@ -63,8 +63,16 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Required to generate rst files from markdown
+          apt install pandoc
           python -m pip install --upgrade pip
-          pip install .[strict,docs]
+          pip install .[docs]
 
-      - name: Build
-        run: jupyter-book build docs --path-output docs_build
+      - name: Build Sphinx docs
+        workdir: doc
+        run: |
+          # cannot use sphinx build directly as the makefile handles generation
+          # of some rst files
+          make html
+
+
