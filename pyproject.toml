@@ -44,6 +44,9 @@ docs = [
     "sphinx",
     "sphinx_design",
     "pydata-sphinx-theme",
+    "matplotlib",
+    "ipython!=8.1.0",
+    "qtoolkit[remote,msonable]",
 ]
 strict = []
 remote = ["fabric>=3.0.0"]
