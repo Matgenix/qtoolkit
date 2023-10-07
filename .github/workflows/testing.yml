@@ -70,7 +70,7 @@ jobs:
           pip install .[docs]
 
       - name: Build Sphinx docs
-        workdir: doc
+        working-directory: doc
         run: |
           # cannot use sphinx build directly as the makefile handles generation
           # of some rst files
