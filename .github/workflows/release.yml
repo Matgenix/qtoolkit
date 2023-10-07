@@ -109,7 +109,7 @@ jobs:
         path: ./doc/build
 
   deploy_docs:
-    if: ${{github.repository == 'matgenix/qtoolkit' && github.event_name == 'release' }}
+    if: github.repository == 'matgenix/qtoolkit' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       pages: write      # to deploy to Pages
