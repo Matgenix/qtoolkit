@@ -97,7 +97,28 @@ jobs:
         # of some rst files
         make html
 
+    - name: Fix permissions # following https://github.com/actions/upload-pages-artifact?tab=readme-ov-file#file-permissions
+      run: |
+        chmod -c -R +rX "./doc/build" | while read line; do
+          echo "::warning title=Invalid file permissions automatically fixed::$line"
+        done
+
     - name: Upload docs artifact
       uses: actions/upload-pages-artifact@v2
       with:
         path: ./doc/build
+
+  deploy_docs:
+    if: ${{github.repository == 'matgenix/qtoolkit' && github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    needs: publish
+    environment:
+      name: "Documentation"
+      url: https://matgenix.github.io/QToolKit
+
+    steps:
+    - name: Deploy docs
+      uses: actions/deploy-pages@v2
