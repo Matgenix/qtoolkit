@@ -16,29 +16,39 @@ class SubmissionStatus(QTKEnum):
 
 
 @dataclass
-class SubmissionResult(QTKObject):
+class OperationResult(QTKObject):
     job_id: int | str | None = None
+    """Job ID of the submitted job."""
+
     step_id: int | None = None
+    """Step ID of the submitted job."""
+
     exit_code: int | None = None
+    """Exit code of the submitted job."""
+
     stdout: str | None = None
+    """Standard output of the submitted job."""
+
     stderr: str | None = None
+    """Standard error of the submitted job."""
+
+
+@dataclass
+class SubmissionResult(OperationResult):
     status: SubmissionStatus | None = None
+    """Status of the submission."""
+
+
+@dataclass
+class CancelResult(OperationResult):
+    status: CancelStatus | None = None
+    """Status of the cancellation."""
 
 
 class CancelStatus(QTKEnum):
     SUCCESSFUL = "SUCCESSFUL"
     FAILED = "FAILED"
     JOB_ID_UNKNOWN = "JOB_ID_UNKNOWN"
-
-
-@dataclass
-class CancelResult(QTKObject):
-    job_id: int | str | None = None
-    step_id: int | None = None
-    exit_code: int | None = None
-    stdout: str | None = None
-    stderr: str | None = None
-    status: CancelStatus | None = None
 
 
 class QState(QTKEnum):
@@ -102,42 +112,67 @@ class ProcessPlacement(QTKEnum):
 
 @dataclass
 class QResources(QTKObject):
-    """Data defining resources for a given job (submitted or to be submitted).
-
-    Attributes
-    ----------
-    queue_name : str
-        Name of the queue (or partition) used to submit a job or to which a job has
-        been submitted.
-    memory : int
-        Maximum amount of memory requested for a job.
-    nodes : int
-        Number of nodes requested for a job.
-
-    """
+    """Data defining resources for a given job (submitted or to be submitted)."""
 
     queue_name: str | None = None
+    """Name of the queue to submit the job to."""
+
     job_name: str | None = None
+    """Name of the job."""
+
     memory_per_thread: int | None = None
+    """Memory per thread in MB."""
+
     nodes: int | None = None
+    """Number of nodes."""
+
     processes: int | None = None
+    """Number of processes."""
+
     processes_per_node: int | None = None
+    """Number of processes per node."""
+
     threads_per_process: int | None = None
+    """Number of threads per process."""
+
     gpus_per_job: int | None = None
+    """Number of GPUs per job."""
+
     time_limit: int | timedelta | None = None
+    """Time limit for the job."""
+
     account: str | None = None
+    """Account to charge the job to."""
+
     qos: str | None = None
+    """Quality of service."""
+
     priority: int | str | None = None
+    """Priority of the job."""
+
     output_filepath: str | Path | None = None
+    """Filepath for the standard output."""
+
     error_filepath: str | Path | None = None
+    """Filepath for the standard error."""
+
     process_placement: ProcessPlacement | None = None
+    """Process placement."""
+
     email_address: str | None = None
+    """Email address to send notifications to."""
+
     rerunnable: bool | None = None
+    """Whether the job is rerunnable."""
 
     project: str | None = None
-    njobs: int | None = None  # for job arrays
+    """Project to charge the job to."""
+
+    njobs: int | None = None
+    """Number of jobs in a job array."""
 
     kwargs: dict | None = None
+    """Additional keyword arguments to be passed to the queue manager."""
 
     def __post_init__(self):
         if self.process_placement is None:
@@ -240,22 +275,50 @@ class QResources(QTKObject):
 
 @dataclass
 class QJobInfo(QTKObject):
-    memory: int | None = None  # in Kb
-    memory_per_cpu: int | None = None  # in Kb
+    memory: int | None = None
+    """Job memory in Kb."""
+
+    memory_per_cpu: int | None = None
+    """Job memory per CPU in Kb."""
+
     nodes: int | None = None
+    """Number of nodes."""
+
     cpus: int | None = None
+    """Number of CPUs."""
+
     threads_per_process: int | None = None
+    """Number of threads per process."""
+
     time_limit: int | None = None
+    """Time limit in seconds."""
 
 
 @dataclass
 class QJob(QTKObject):
     name: str | None = None
+    """Job name."""
+
     job_id: str | None = None
+    """Job ID."""
+
     exit_status: int | None = None
-    state: QState | None = None  # Standard
+    """Shell exit status."""
+
+    state: QState | None = None
+    """Standardized job state."""
+
     sub_state: QSubState | None = None
+    """Standardized job substate."""
+
     info: QJobInfo | None = None
+    """Job info."""
+
     account: str | None = None
+    """Job execution account name."""
+
     runtime: int | None = None
+    """Job runtime in seconds."""
+
     queue_name: str | None = None
+    """Job execution queue name."""

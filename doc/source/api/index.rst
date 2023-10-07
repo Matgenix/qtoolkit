@@ -4,6 +4,6 @@
 API Reference
 #############
 
-This is the API reference
+This is the API reference.
 
-.. include:: qtoolkit.rst
+.. include:: modules.rst
