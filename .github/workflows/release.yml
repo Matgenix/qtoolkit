@@ -6,7 +6,7 @@ on:
     - published
 
 env:
-  PUBLISH_UPDATE_BRANCH: main
+  PUBLISH_UPDATE_BRANCH: develop
   GIT_USER_NAME: Matgenix
   GIT_USER_EMAIL: "dev@matgenix.com"
 
