@@ -38,12 +38,7 @@ class QTemplate(Template):
 
 
 class BaseSchedulerIO(QTKObject, abc.ABC):
-    """Base class for job queues.
-
-    Attributes
-    ----------
-
-    """
+    """Base class for job queues."""
 
     header_template: str
 
@@ -80,6 +75,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     # config_name = None,
 
     """ABIPY
+
     Args:
         qname: Name of the queue.
         qparams: Dictionary with the parameters used in the template.
@@ -106,6 +102,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         timelimit_hard: hard limelimit for this queue
         priority: Priority level, integer number > 0
         condition: Condition object (dictionary)
+
     """
 
     def get_submission_script(

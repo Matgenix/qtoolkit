@@ -11,7 +11,6 @@ QToolKit documentation
    User Guide <user/index>
    API reference <api/index>
    Development <dev/index>
-   release
 
 
 **Version**: |version|
@@ -55,7 +54,7 @@ SLURM, PBS, ...
 
         +++
 
-        .. button-ref:: user
+        .. button-ref:: user_guide
             :expand:
             :color: secondary
             :click-parent:

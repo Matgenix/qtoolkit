@@ -103,17 +103,17 @@ html_theme = 'pydata_sphinx_theme'
 # documentation.
 #
 html_theme_options = {
-    # "logo": {
-    #       "image_light": "index-image/api.svg",
-    #       "image_dark": "index-image/contributor.svg",
-    #   },
+    "logo": {
+          "image_light": "qtoolkit_logo_horizontal.svg",
+          "image_dark": "qtoolkit_logo_horizontal.svg",
+          "alt_text": "QToolKit",
+    },
     "collapse_navigation": True,
     'announcement': (
         "<p>"
         "QToolKit is still in beta phase. The API may change at any time."
         "</p>"
     ),
-    # "announcement": "<p>This is still in development</p>",
     # "navbar_end": ["theme-switcher", "navbar-icon-links"],
     # "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],
 }
@@ -121,7 +121,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+html_static_path = ["_static", "../img"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -205,7 +205,7 @@ htmlhelp_basename = "qtoolkitdoc"
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {"https://docs.python.org/": None}
+# intersphinx_mapping = {"https://docs.python.org/": None}
 
 # -- Options for todo extension ----------------------------------------------
 
