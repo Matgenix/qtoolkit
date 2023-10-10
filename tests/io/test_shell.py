@@ -134,35 +134,35 @@ class TestShellIO:
 
     def test_get_job_cmd(self, shell_io):
         get_job_cmd = shell_io.get_job_cmd(123)
-        assert get_job_cmd == "ps -o pid,user,etimes,state,comm -p 123"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 123"
         get_job_cmd = shell_io.get_job_cmd(456)
-        assert get_job_cmd == "ps -o pid,user,etimes,state,comm -p 456"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 456"
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
-        assert get_job_cmd == "ps -o pid,user,etimes,state,comm -p 789"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 789"
 
     def test_get_jobs_list_cmd(self, shell_io):
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
-        assert get_jobs_list_cmd == "ps -o pid,user,etimes,state,comm -p 125,126,127"
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
 
     def test_parse_jobs_list_output(self, shell_io):
         joblist = shell_io.parse_jobs_list_output(
             exit_code=0,
-            stdout="    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     465 S bash\n  18112 davidwa+     461 S bash\n",
+            stdout="    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 S bash\n",
             stderr="",
         )
         assert joblist == [
             QJob(
                 job_id="18092",
-                runtime=465,
+                runtime=292,
                 name="bash",
                 state=QState.RUNNING,
                 sub_state=ShellState.INTERRUPTIBLE_SLEEP,
             ),
             QJob(
                 job_id="18112",
-                runtime=461,
+                runtime=72,
                 name="bash",
                 state=QState.RUNNING,
                 sub_state=ShellState.INTERRUPTIBLE_SLEEP,
@@ -181,7 +181,7 @@ class TestShellIO:
         ):
             shell_io.parse_jobs_list_output(
                 exit_code=0,
-                stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     465 S bash\n  18112 davidwa+     461 K bash\n",
+                stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 K bash\n",
                 stderr=b"",
             )
 
