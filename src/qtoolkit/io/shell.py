@@ -158,6 +158,21 @@ $${qverbatim}
         return cmd
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+        """Parse the output of the ps command and return the corresponding QJob object.
+
+        If the ps command returns multiple shell jobs, only the first corresponding
+        QJob is returned.
+        #TODO: should we check that there is only one job here ?
+
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the ps command.
+        stdout : str
+            Standard output of the ps command.
+        stderr : str
+            Standard error of the ps command.
+        """
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
             return out[0]
@@ -242,7 +257,7 @@ $${qverbatim}
         header of the submission script.
         Not implemented for ShellIO
         """
-        raise UnsupportedResourcesError
+        raise UnsupportedResourcesError  # pragma: no cover
 
     @property
     def supported_qresources_keys(self) -> list:
