@@ -283,7 +283,7 @@ $${qverbatim}"""
             parsed_output = self._parse_scontrol_cmd_output(stdout=stdout)
         elif self.get_job_executable == "sacct":  # pragma: no cover
             raise NotImplementedError("sacct for get_job not yet implemented.")
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
