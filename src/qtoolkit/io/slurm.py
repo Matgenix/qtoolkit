@@ -261,7 +261,7 @@ $${qverbatim}"""
         if self.get_job_executable == "scontrol":
             # -o is to get the output as a one-liner
             cmd = f"SLURM_TIME_FORMAT='standard' scontrol show job -o {job_id}"
-        elif self.get_job_executable == "sacct":
+        elif self.get_job_executable == "sacct":  # pragma: no cover
             raise NotImplementedError("sacct for get_job not yet implemented.")
         else:
             raise RuntimeError(
@@ -296,27 +296,27 @@ $${qverbatim}"""
 
         try:
             memory_per_cpu = self._convert_memory_str(parsed_output["MinMemoryCPU"])
-        except OutputParsingError:
+        except (OutputParsingError, KeyError):
             memory_per_cpu = None
 
         try:
             nodes = int(parsed_output["NumNodes"])
-        except ValueError:
+        except (ValueError, KeyError):
             nodes = None
 
         try:
             cpus = int(parsed_output["NumCPUs"])
-        except ValueError:
+        except (ValueError, KeyError):
             cpus = None
 
         try:
             cpus_task = int(parsed_output["CPUs/Task"])
-        except ValueError:
+        except (ValueError, KeyError):
             cpus_task = None
 
         try:
             time_limit = self._convert_str_to_time(parsed_output["TimeLimit"])
-        except OutputParsingError:
+        except (OutputParsingError, KeyError):
             time_limit = None
 
         info = QJobInfo(
