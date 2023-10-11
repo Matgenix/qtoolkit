@@ -5,7 +5,7 @@ import pytest
 from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
-from qtoolkit.core.exceptions import OutputParsingError
+from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.slurm import SlurmIO, SlurmState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -191,7 +191,7 @@ class TestSlurmIO:
         )
         assert time_str == "15-21:19:32"
 
-    def test_convert_qresources(self, slurm_io):
+    def test_check_convert_qresources(self, slurm_io):
         res = QResources(
             queue_name="myqueue",
             job_name="myjob",
@@ -210,7 +210,7 @@ class TestSlurmIO:
             email_address="john.doe@submit.qtk",
             kwargs={"tata": "toto", "titi": "tutu"},
         )
-        header_dict = slurm_io._convert_qresources(resources=res)
+        header_dict = slurm_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "partition": "myqueue",
             "job_name": "myjob",
@@ -230,3 +230,33 @@ class TestSlurmIO:
             "tata": "toto",
             "titi": "tutu",
         }
+
+        res = QResources(
+            time_limit=298273,
+            processes=24,
+        )
+        header_dict = slurm_io.check_convert_qresources(resources=res)
+        assert header_dict == {
+            "time": "3-10:51:13",
+            "ntasks": 24,
+        }
+
+        res = QResources(
+            njobs=1,
+            processes=24,
+            gpus_per_job=4,
+        )
+        header_dict = slurm_io.check_convert_qresources(resources=res)
+        assert header_dict == {
+            "ntasks": 24,
+            "gres": "gpu:4",
+        }
+
+        res = QResources(
+            processes=5,
+            rerunnable=True,
+        )
+        with pytest.raises(
+            UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
+        ):
+            slurm_io.check_convert_qresources(res)
