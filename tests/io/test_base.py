@@ -1,16 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.io.base import BaseSchedulerIO, QTemplate
-
-TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
-ref_file = TEST_DIR / "io" / "slurm" / "parse_submit_cmd_inout.yaml"
-in_out_ref_list = loadfn(ref_file)
 
 
 def test_qtemplate():
