@@ -123,4 +123,4 @@ mylist.append(a)
 
 
 with open("parse_submit_output_inout.yaml", "w") as f:
-    yaml.dump(mylist, f)
+    yaml.dump(mylist, f, sort_keys=False)

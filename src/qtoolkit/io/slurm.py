@@ -237,6 +237,8 @@ $${qverbatim}"""
         status = (
             CancelStatus("SUCCESSFUL") if job_id else CancelStatus("JOB_ID_UNKNOWN")
         )
+        # TODO: when cancelling a job already completed or cancelled, exit_code is 0
+        #  should we set the CancelStatus to FAILED ? Same if the job does not exist.
         return CancelResult(
             job_id=job_id,
             exit_code=exit_code,
