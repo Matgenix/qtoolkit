@@ -110,12 +110,23 @@ class TestSlurmIO:
         ):
             slurm_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
         cmd = slurm_io._get_jobs_list_cmd(user="johndoe")
-        assert (
-            cmd
-            == "SLURM_TIME_FORMAT='standard' squeue --noheader -o '%i<><> %t<><> %r<><> %j<><> %u<><> %P<><> %l<><> %D<><> %C<><> %M<><> %m' -u johndoe"
+        assert cmd == (
+            "SLURM_TIME_FORMAT='standard' "
+            "squeue --noheader -o '%i<><> %t<><> %r<><> "
+            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
+            "%M<><> %m' -u johndoe"
         )
         cmd = slurm_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        assert (
-            cmd
-            == "SLURM_TIME_FORMAT='standard' squeue --noheader -o '%i<><> %t<><> %r<><> %j<><> %u<><> %P<><> %l<><> %D<><> %C<><> %M<><> %m' --jobs=1,3,56,15"
+        assert cmd == (
+            "SLURM_TIME_FORMAT='standard' "
+            "squeue --noheader -o '%i<><> %t<><> %r<><> "
+            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
+            "%M<><> %m' --jobs=1,3,56,15"
+        )
+        cmd = slurm_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == (
+            "SLURM_TIME_FORMAT='standard' "
+            "squeue --noheader -o '%i<><> %t<><> %r<><> "
+            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
+            "%M<><> %m' --jobs=1,1"
         )
