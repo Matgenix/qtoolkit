@@ -30,7 +30,7 @@ class QTemplate(Template):
                 named is None
                 and mo.group("invalid") is None
                 and mo.group("escaped") is None
-            ):
+            ):  # pragma: no cover - no complex patterns, part of python stdlib 3.11
                 # If all the groups are None, there must be
                 # another group we're not expecting
                 raise ValueError("Unrecognized named group in pattern", self.pattern)
