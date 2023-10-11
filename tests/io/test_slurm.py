@@ -1,9 +1,11 @@
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from monty.serialization import loadfn
 
-from qtoolkit.core.data_objects import QState
+from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
+from qtoolkit.core.exceptions import OutputParsingError
 from qtoolkit.io.slurm import SlurmIO, SlurmState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -130,3 +132,101 @@ class TestSlurmIO:
             "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
             "%M<><> %m' --jobs=1,1"
         )
+
+    def test_convert_str_to_time(self, slurm_io):
+        time_seconds = slurm_io._convert_str_to_time(None)
+        assert time_seconds is None
+        time_seconds = slurm_io._convert_str_to_time("UNLIMITED")
+        assert time_seconds is None
+        time_seconds = slurm_io._convert_str_to_time("NOT_SET")
+        assert time_seconds is None
+
+        time_seconds = slurm_io._convert_str_to_time("3-10:51:13")
+        assert time_seconds == 298273
+        time_seconds = slurm_io._convert_str_to_time("2:10:02")
+        assert time_seconds == 7802
+        time_seconds = slurm_io._convert_str_to_time("10:02")
+        assert time_seconds == 602
+        time_seconds = slurm_io._convert_str_to_time("45")
+        assert time_seconds == 2700
+
+        with pytest.raises(OutputParsingError):
+            slurm_io._convert_str_to_time("2:10:02:10")
+
+        with pytest.raises(OutputParsingError):
+            slurm_io._convert_str_to_time("2:10:a")
+
+    def test_convert_memory_str(self, slurm_io):
+        memory_kb = slurm_io._convert_memory_str(None)
+        assert memory_kb is None
+        memory_kb = slurm_io._convert_memory_str("")
+        assert memory_kb is None
+
+        memory_kb = slurm_io._convert_memory_str("12M")
+        assert memory_kb == 12288
+        memory_kb = slurm_io._convert_memory_str("13K")
+        assert memory_kb == 13
+        memory_kb = slurm_io._convert_memory_str("5G")
+        assert memory_kb == 5242880
+        memory_kb = slurm_io._convert_memory_str("1T")
+        assert memory_kb == 1073741824
+
+        with pytest.raises(OutputParsingError):
+            slurm_io._convert_memory_str("aT")
+
+    def test_convert_time_to_str(self, slurm_io):
+        time_str = slurm_io._convert_time_to_str(10)
+        assert time_str == "0-0:0:10"
+        time_str = slurm_io._convert_time_to_str(298273)
+        assert time_str == "3-10:51:13"
+        time_str = slurm_io._convert_time_to_str(7802)
+        assert time_str == "0-2:10:2"
+        time_str = slurm_io._convert_time_to_str(602)
+        assert time_str == "0-0:10:2"
+
+        time_str = slurm_io._convert_time_to_str(timedelta(seconds=298273))
+        assert time_str == "3-10:51:13"
+        time_str = slurm_io._convert_time_to_str(
+            timedelta(days=15, hours=21, minutes=19, seconds=32)
+        )
+        assert time_str == "15-21:19:32"
+
+    def test_convert_qresources(self, slurm_io):
+        res = QResources(
+            queue_name="myqueue",
+            job_name="myjob",
+            memory_per_thread=2048,
+            account="myaccount",
+            qos="myqos",
+            output_filepath="someoutputpath",
+            error_filepath="someerrorpath",
+            njobs=4,
+            time_limit=298273,
+            process_placement=ProcessPlacement.EVENLY_DISTRIBUTED,
+            nodes=4,
+            processes_per_node=3,
+            threads_per_process=2,
+            gpus_per_job=4,
+            email_address="john.doe@submit.qtk",
+            kwargs={"tata": "toto", "titi": "tutu"},
+        )
+        header_dict = slurm_io._convert_qresources(resources=res)
+        assert header_dict == {
+            "partition": "myqueue",
+            "job_name": "myjob",
+            "mem-per-cpu": 2048,
+            "account": "myaccount",
+            "qos": "myqos",
+            "qout_path": "someoutputpath",
+            "qerr_path": "someerrorpath",
+            "array": "1-4",
+            "time": "3-10:51:13",
+            "ntasks_per_node": 3,
+            "nodes": 4,
+            "cpus_per_task": 2,
+            "gres": "gpu:4",
+            "mail_user": "john.doe@submit.qtk",
+            "mail_type": "ALL",
+            "tata": "toto",
+            "titi": "tutu",
+        }

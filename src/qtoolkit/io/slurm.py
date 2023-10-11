@@ -499,6 +499,9 @@ $${qverbatim}"""
         if not memory:
             return None
 
+        # TODO: @GP not sure I get what is this line here
+        #  Shouldn't it be all(u not in memory for u in ("K", "M", "G", "T"))?
+        #  Or not any(u in memory for u in ("K", "M", "G", "T"))?
         if all(u in memory for u in ("K", "M", "G", "T")):
             # assume Mb
             units = "M"
