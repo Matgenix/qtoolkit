@@ -57,7 +57,10 @@ class TestBaseScheduler:
         class MyScheduler(BaseSchedulerIO):
             header_template = """#SPECCMD --option1=$${option1}
 #SPECCMD --option2=$${option2}
-#SPECCMD --option3=$${option3}"""
+#SPECCMD --option3=$${option3}
+#SPECCMD --processes=$${processes}
+#SPECCMD --processes_per_node=$${processes_per_node}
+#SPECCMD --nodes=$${nodes}"""
 
             SUBMIT_CMD = "mysubmit"
             CANCEL_CMD = "mycancel"
@@ -77,11 +80,34 @@ class TestBaseScheduler:
                 pass
 
             def _convert_qresources(self, resources: QResources) -> dict:
-                pass
+                header_dict = {}
+
+                (
+                    nodes,
+                    processes,
+                    processes_per_node,
+                ) = resources.get_processes_distribution()
+                if processes:
+                    header_dict["processes"] = processes
+                if processes_per_node:
+                    header_dict["processes_per_node"] = processes_per_node
+                if nodes:
+                    header_dict["nodes"] = nodes
+
+                if resources.kwargs:
+                    header_dict.update(resources.kwargs)
+
+                return header_dict
 
             @property
             def supported_qresources_keys(self) -> list:
-                return []
+                return [
+                    "kwargs",
+                    "nodes",
+                    "processes_per_node",
+                    "process_placement",
+                    "processes",
+                ]
 
             def _get_jobs_list_cmd(
                 self, job_ids: list[str] | None = None, user: str | None = None
@@ -103,6 +129,27 @@ class TestBaseScheduler:
     def test_generate_header(self, scheduler):
         header = scheduler.generate_header({"option2": "value_option2"})
         assert header == """#SPECCMD --option2=value_option2"""
+
+        res = QResources(processes=8)
+        header = scheduler.generate_header(res)
+        assert header == """#SPECCMD --processes=8"""
+        res = QResources(nodes=4, processes_per_node=16, kwargs={"option2": "myopt2"})
+        header = scheduler.generate_header(res)
+        assert (
+            header
+            == """#SPECCMD --option2=myopt2
+#SPECCMD --processes_per_node=16
+#SPECCMD --nodes=4"""
+        )
+
+        with pytest.raises(
+            ValueError,
+            match=r"The following keys are not present in the template: tata, titi",
+        ):
+            res = QResources(
+                nodes=4, processes_per_node=16, kwargs={"tata": "tata", "titi": "titi"}
+            )
+            scheduler.generate_header(res)
 
     def test_generate_ids_list(self, scheduler):
         ids_list = scheduler.generate_ids_list(
@@ -128,6 +175,14 @@ class TestBaseScheduler:
 
         with pytest.raises(
             ValueError,
-            match=r"The id of the job to be cancelled should be defined. Received: None",
+            match=r"The id of the job to be cancelled should be defined. "
+            r"Received: None",
         ):
             scheduler.get_cancel_cmd(job=None)
+
+        with pytest.raises(
+            ValueError,
+            match=r"The id of the job to be cancelled should be defined. "
+            r"Received: '' \(empty string\)",
+        ):
+            scheduler.get_cancel_cmd(job="")

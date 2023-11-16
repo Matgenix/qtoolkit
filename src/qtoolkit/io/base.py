@@ -141,8 +141,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         """
         job_id = job.job_id if isinstance(job, QJob) else job
         if job_id is None or job_id == "":
+            received = None if job_id is None else "'' (empty string)"
             raise ValueError(
-                f"The id of the job to be cancelled should be defined. Received: {job_id}"
+                f"The id of the job to be cancelled should be defined. Received: {received}"
             )
         return f"{self.CANCEL_CMD} {job_id}"
 
