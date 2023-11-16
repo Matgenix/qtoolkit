@@ -91,14 +91,13 @@ filterwarnings = [
     "ignore:.*input structure.*:UserWarning",
     "ignore::DeprecationWarning",
 ]
-addopts = "--cov=src/qtoolkit"
 
 [tool.coverage.run]
 parallel = true
 branch = true
 
 [tool.coverage.paths]
-source = ["src/qtoolkit"]
+source = ["src/"]
 
 [tool.coverage.report]
 skip_covered = true
