@@ -83,7 +83,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         keys = set(options.keys())
         extra = keys.difference(template.get_identifiers())
         if extra:
-            msg = f"The following keys are not present in the template: {', '.join(extra)}"
+            msg = f"The following keys are not present in the template: {', '.join(sorted(extra))}"
             raise ValueError(msg)
 
         unclean_header = template.safe_substitute(options)
