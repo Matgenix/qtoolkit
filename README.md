@@ -15,8 +15,8 @@
 
 **[Full Documentation][docs]**
 
-> **Warning**:
-> :construction: This repository is still under construction. :construction:
+> [!WARNING]
+> 🚧 This repository is still under construction. 🚧
 
 ## Need help?
 
