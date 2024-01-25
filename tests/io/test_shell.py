@@ -5,7 +5,6 @@ try:
 except ModuleNotFoundError:
     monty = None
 
-
 from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
@@ -145,6 +144,16 @@ class TestShellIO:
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
         assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
+        get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -U johndoe"
+        with pytest.raises(
+            ValueError,
+            match=r"Cannot query by user and job\(s\) with ps, "
+            r"as the user option will override the ids list",
+        ):
+            shell_io.get_jobs_list_cmd(
+                jobs=[QJob(job_id=125), 126, "127"], user="johndoe"
+            )
 
     def test_parse_jobs_list_output(self, shell_io):
         joblist = shell_io.parse_jobs_list_output(
@@ -184,6 +193,12 @@ class TestShellIO:
                 stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 K bash\n",
                 stderr=b"",
             )
+        joblist = shell_io.parse_jobs_list_output(
+            exit_code=0,
+            stdout=b"    PID USER     ELAPSED S COMMAND\n\n",
+            stderr=b"",
+        )
+        assert joblist == []
 
     def test_check_convert_qresources(self, shell_io):
         qr = QResources(processes=1)
@@ -204,3 +219,29 @@ class TestShellIO:
         assert "exec > /some/file" in header
         assert "exec 2> /some/file" in header
         assert "NAME" in header
+
+    def test_parse_job_output(self, shell_io):
+        job = shell_io.parse_job_output(
+            exit_code=0,
+            stdout="    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 S bash\n",
+            stderr="",
+        )
+        assert isinstance(job, QJob)
+        assert job.job_id == "18092"
+        assert job.name == "bash"
+        assert job.runtime == 292
+        job = shell_io.parse_job_output(
+            exit_code=0,
+            stdout="    PID USER     ELAPSED S COMMAND\n",
+            stderr="",
+        )
+        assert job is None
+
+    def test_convert_str_to_time(self, shell_io):
+        assert shell_io._convert_str_to_time("") is None
+        assert shell_io._convert_str_to_time(None) is None
+        assert shell_io._convert_str_to_time("2-11:21:32") == 213692
+        with pytest.raises(OutputParsingError):
+            shell_io._convert_str_to_time("2-11:21:32:5")
+        with pytest.raises(OutputParsingError):
+            shell_io._convert_str_to_time("2-11:21:hello")

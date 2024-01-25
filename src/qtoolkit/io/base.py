@@ -30,7 +30,7 @@ class QTemplate(Template):
                 named is None
                 and mo.group("invalid") is None
                 and mo.group("escaped") is None
-            ):
+            ):  # pragma: no cover - no complex patterns, part of python stdlib 3.11
                 # If all the groups are None, there must be
                 # another group we're not expecting
                 raise ValueError("Unrecognized named group in pattern", self.pattern)
@@ -47,142 +47,12 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     shebang: str = "#!/bin/bash"
 
-    # config: QueueConfig = None
-
-    # scheduler = None,
-    # name = None,
-    # cores = None,
-    # memory = None,
-    # processes = None,
-    # nanny = True,
-    # protocol = None,
-    # security = None,
-    # interface = None,
-    # death_timeout = None,
-    # local_directory = None,
-    # extra = None,
-    # worker_extra_args = None,
-    # job_extra = None,
-    # job_extra_directives = None,
-    # env_extra = None,
-    # job_script_prologue = None,
-    # header_skip = None,
-    # job_directives_skip = None,
-    # log_directory = None,
-    # shebang = None,
-    # python = sys.executable,
-    # job_name = None,
-    # config_name = None,
-
-    """ABIPY
-
-    Args:
-        qname: Name of the queue.
-        qparams: Dictionary with the parameters used in the template.
-        setup: String or list of commands to execute during the initial setup.
-        modules: String or list of modules to load before running the application.
-        shell_env: Dictionary with the environment variables to export before
-            running the application.
-        omp_env: Dictionary with the OpenMP variables.
-        pre_run: String or list of commands to execute before launching the
-            calculation.
-        post_run: String or list of commands to execute once the calculation is
-            completed.
-        mpi_runner: Path to the MPI runner or :class:`MpiRunner` instance.
-            None if not used
-        mpi_runner_options: Optional string with options passed to the mpi_runner.
-        max_num_launches: Maximum number of submissions that can be done for a
-            specific task. Defaults to 5
-        qverbatim:
-        min_cores, max_cores, hint_cores: Minimum, maximum, and hint limits of
-            number of cores that can be used
-        min_mem_per_proc=Minimum memory per process in megabytes.
-        max_mem_per_proc=Maximum memory per process in megabytes.
-        timelimit: initial time limit in seconds
-        timelimit_hard: hard limelimit for this queue
-        priority: Priority level, integer number > 0
-        condition: Condition object (dictionary)
-
-    """
-
     def get_submission_script(
         self,
         commands: str | list[str],
         options: dict | QResources | None = None,
     ) -> str:
-        """
-        This is roughly what/how it is done in the existing solutions.
-
-        abipy: done with a str template (using $$ as a delimiter).
-            Remaining "$$" delimiters are then removed at the end.
-            It uses a ScriptEditor object to add/modify things to the templated script.
-        The different steps of "get_script_str(...)" in abipy are summarized here:
-            - _header, based on the str template (includes the shebang line and all
-                #SBATCH, #PBS, ... directives)
-            - change directory (added by the script editor)
-            - setup section, list of commands executed before running (added
-                by the script editor)
-            - load modules section, list of modules to be loaded before running
-                (added by the script editor)
-            - setting of openmp environment variables (added by the script editor)
-            - setting of shell environment variables (added by the script editor)
-            - prerun, i.e. commands to run before execution, again? (added by
-                the script editor)
-            - run line (added by the script editor)
-            - postrun (added by the script editor)
-
-        aiida: done with a class template (JobTemplate) that should contain
-            the required info to generate the job header. Other class templates
-            are also used inside the generation, e.g. JobTemplateCodesInfo, which
-            defines the command(s) to be run. The JobTemplate is only used as a
-            container of the information and the script is generated not using
-            templating but rather directly using python methods based on that
-            "JobTemplate" container. Actually this JobTemplate is based on the
-            DRMAA v2 specifications and many other objects are based on that too
-            (e.g. machine, slots, etc ...).
-        The different steps of "get_submit_script(...)" in aiida are summarized here:
-            - shebang line
-            - _header
-                - all #SBATCH, #PBS etc ... lines defining the resources and other
-                    info for the queuing system
-                - some custom lines if it is not dealt with by the template
-                - environment variables
-            - prepend_text (something to be written before the run lines)
-            - _run_line (defines the code execution(s) based on a CodeInfo object).
-                There can be several codes run.
-            - append_text (something to be written after the run lines)
-            - _footer (some post commands done after the run) [note this is only
-                done/needed for LSF in aiida]
-
-        fireworks: done with a str template. similar to abipy (actually abipy took
-            its initial concept from fireworks)
-
-        dask_jobqueue: quite obscure ... the job header is done in the init of a
-            given JobCluster (e.g. SLURMCluster) based on something in the actual
-            Job object itself. Dask is not really meant to be our use case anyway.
-
-        dpdispatcher: uses python's format() with 5 templates, combined into
-            another python's format "script" template.
-        Here are the steps:
-            - header (includes shebang and #SBATCH, #PBS, ... directives)
-            - custom directives
-            - script environment (modules, environment variables, source
-                somefiles, ...)
-            - run command
-            - append script lines
-        In the templates of the different steps, there are some dpdispatcher's
-            specific things (e.g. tag a job as finished by touching a file, ...)
-
-        jobqueues: Some queues are using pure python (PBS, LSF, ...), some are
-            using jinja2 templates (SLURM and SGE). Directly written to file.
-
-        myqueue: the job queue directives are directly passed to the submit
-            command (no #SBATCH, #PBS, ...).
-
-        troika: uses a generic generator with a list of directives as well
-            as a directive prefix. These directives are defined in specific
-            files for each type of job queue.
-        """
+        """Get the submission script for the given commands and options."""
         script_blocks = [self.shebang]
         if header := self.generate_header(options):
             script_blocks.append(header)
@@ -213,7 +83,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         keys = set(options.keys())
         extra = keys.difference(template.get_identifiers())
         if extra:
-            msg = f"The following keys are not present in the template: {', '.join(extra)}"
+            msg = f"The following keys are not present in the template: {', '.join(sorted(extra))}"
             raise ValueError(msg)
 
         unclean_header = template.safe_substitute(options)
@@ -271,8 +141,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         """
         job_id = job.job_id if isinstance(job, QJob) else job
         if job_id is None or job_id == "":
+            received = None if job_id is None else "'' (empty string)"
             raise ValueError(
-                f"The id of the job to be cancelled should be defined. Received: {job_id}"
+                f"The id of the job to be cancelled should be defined. Received: {received}"
             )
         return f"{self.CANCEL_CMD} {job_id}"
 

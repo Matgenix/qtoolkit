@@ -1,16 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.io.base import BaseSchedulerIO, QTemplate
-
-TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
-ref_file = TEST_DIR / "io" / "slurm" / "parse_submit_cmd_inout.yaml"
-in_out_ref_list = loadfn(ref_file)
 
 
 def test_qtemplate():
@@ -58,74 +51,138 @@ def test_qtemplate():
     )
 
 
-def test_base_scheduler():
-    class MyScheduler(BaseSchedulerIO):
-        pass
-
-    with pytest.raises(TypeError):
-        MyScheduler()
-
-    class MyScheduler(BaseSchedulerIO):
-        header_template = """#SPECCMD --option1=$${option1}
+class TestBaseScheduler:
+    @pytest.fixture(scope="module")
+    def scheduler(self):
+        class MyScheduler(BaseSchedulerIO):
+            header_template = """#SPECCMD --option1=$${option1}
 #SPECCMD --option2=$${option2}
-#SPECCMD --option3=$${option3}"""
+#SPECCMD --option3=$${option3}
+#SPECCMD --processes=$${processes}
+#SPECCMD --processes_per_node=$${processes_per_node}
+#SPECCMD --nodes=$${nodes}"""
 
-        SUBMIT_CMD = "mysubmit"
-        CANCEL_CMD = "mycancel"
+            SUBMIT_CMD = "mysubmit"
+            CANCEL_CMD = "mycancel"
 
-        def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
+            def parse_submit_output(
+                self, exit_code, stdout, stderr
+            ) -> SubmissionResult:
+                pass
+
+            def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
+                pass
+
+            def _get_job_cmd(self, job_id: str) -> str:
+                pass
+
+            def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+                pass
+
+            def _convert_qresources(self, resources: QResources) -> dict:
+                header_dict = {}
+
+                (
+                    nodes,
+                    processes,
+                    processes_per_node,
+                ) = resources.get_processes_distribution()
+                if processes:
+                    header_dict["processes"] = processes
+                if processes_per_node:
+                    header_dict["processes_per_node"] = processes_per_node
+                if nodes:
+                    header_dict["nodes"] = nodes
+
+                if resources.kwargs:
+                    header_dict.update(resources.kwargs)
+
+                return header_dict
+
+            @property
+            def supported_qresources_keys(self) -> list:
+                return [
+                    "kwargs",
+                    "nodes",
+                    "processes_per_node",
+                    "process_placement",
+                    "processes",
+                ]
+
+            def _get_jobs_list_cmd(
+                self, job_ids: list[str] | None = None, user: str | None = None
+            ) -> str:
+                pass
+
+            def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+                pass
+
+        return MyScheduler()
+
+    def test_subclass_base_scheduler(self, scheduler):
+        class MyScheduler(BaseSchedulerIO):
             pass
 
-        def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-            pass
+        with pytest.raises(TypeError):
+            MyScheduler()
 
-        def _get_job_cmd(self, job_id: str) -> str:
-            pass
+    def test_generate_header(self, scheduler):
+        header = scheduler.generate_header({"option2": "value_option2"})
+        assert header == """#SPECCMD --option2=value_option2"""
 
-        def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
-            pass
+        res = QResources(processes=8)
+        header = scheduler.generate_header(res)
+        assert header == """#SPECCMD --processes=8"""
+        res = QResources(nodes=4, processes_per_node=16, kwargs={"option2": "myopt2"})
+        header = scheduler.generate_header(res)
+        assert (
+            header
+            == """#SPECCMD --option2=myopt2
+#SPECCMD --processes_per_node=16
+#SPECCMD --nodes=4"""
+        )
 
-        def _convert_qresources(self, resources: QResources) -> dict:
-            pass
+        with pytest.raises(
+            ValueError,
+            match=r"The following keys are not present in the template: tata, titi",
+        ):
+            res = QResources(
+                nodes=4, processes_per_node=16, kwargs={"tata": "tata", "titi": "titi"}
+            )
+            scheduler.generate_header(res)
 
-        @property
-        def supported_qresources_keys(self) -> list:
-            return []
+    def test_generate_ids_list(self, scheduler):
+        ids_list = scheduler.generate_ids_list(
+            [QJob(job_id=4), QJob(job_id="job_id_abc1"), 215, "job12345"]
+        )
+        assert ids_list == ["4", "job_id_abc1", "215", "job12345"]
 
-        def _get_jobs_list_cmd(
-            self, job_ids: list[str] | None = None, user: str | None = None
-        ) -> str:
-            pass
+    def test_get_submit_cmd(self, scheduler):
+        submit_cmd = scheduler.get_submit_cmd()
+        assert submit_cmd == "mysubmit submit.script"
+        submit_cmd = scheduler.get_submit_cmd(script_file="sub.sh")
+        assert submit_cmd == "mysubmit sub.sh"
 
-        def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
-            pass
+    def test_get_cancel_cmd(self, scheduler):
+        cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id=5))
+        assert cancel_cmd == "mycancel 5"
+        cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id="abc1"))
+        assert cancel_cmd == "mycancel abc1"
+        cancel_cmd = scheduler.get_cancel_cmd("jobid2")
+        assert cancel_cmd == "mycancel jobid2"
+        cancel_cmd = scheduler.get_cancel_cmd(632)
+        assert cancel_cmd == "mycancel 632"
 
-    scheduler = MyScheduler()
+        with pytest.raises(
+            ValueError,
+            match=r"The id of the job to be cancelled should be defined. "
+            r"Received: None",
+        ):
+            scheduler.get_cancel_cmd(job=None)
 
-    header = scheduler.generate_header({"option2": "value_option2"})
-    assert header == """#SPECCMD --option2=value_option2"""
-
-    ids_list = scheduler.generate_ids_list(
-        [QJob(job_id=4), QJob(job_id="job_id_abc1"), 215, "job12345"]
-    )
-    assert ids_list == ["4", "job_id_abc1", "215", "job12345"]
-
-    submit_cmd = scheduler.get_submit_cmd()
-    assert submit_cmd == "mysubmit submit.script"
-    submit_cmd = scheduler.get_submit_cmd(script_file="sub.sh")
-    assert submit_cmd == "mysubmit sub.sh"
-
-    cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id=5))
-    assert cancel_cmd == "mycancel 5"
-    cancel_cmd = scheduler.get_cancel_cmd(QJob(job_id="abc1"))
-    assert cancel_cmd == "mycancel abc1"
-    cancel_cmd = scheduler.get_cancel_cmd("jobid2")
-    assert cancel_cmd == "mycancel jobid2"
-    cancel_cmd = scheduler.get_cancel_cmd(632)
-    assert cancel_cmd == "mycancel 632"
-
-    with pytest.raises(
-        ValueError,
-        match=r"The id of the job to be cancelled should be defined. Received: None",
-    ):
-        scheduler.get_cancel_cmd(job=None)
+        with pytest.raises(
+            ValueError,
+            match=r"The id of the job to be cancelled should be defined. "
+            r"Received: '' \(empty string\)",
+        ):
+            scheduler.get_cancel_cmd(job="")

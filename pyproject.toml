@@ -93,7 +93,6 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-include = ["src/*"]
 parallel = true
 branch = true
 
@@ -107,6 +106,7 @@ exclude_lines = [
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
     '^\s*@overload( |$)',
+    '# pragma: no cover',
 ]
 
 [tool.autoflake]
