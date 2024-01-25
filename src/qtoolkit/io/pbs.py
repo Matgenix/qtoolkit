@@ -457,6 +457,6 @@ $${qverbatim}"""
             "nodes",
             "threads_per_process",
             "email_address",
-            "kwargs",
+            "qkwargs",
         ]
         return supported

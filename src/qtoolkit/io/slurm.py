@@ -600,6 +600,6 @@ $${qverbatim}"""
             "threads_per_process",
             "gpus_per_job",
             "email_address",
-            "kwargs",
+            "qkwargs",
         ]
         return supported
