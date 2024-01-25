@@ -6,7 +6,7 @@
 
 <div align="center">
 
-[![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=main&label=tests)](https://github.com/matgenix/qtoolkit/actions/workflows/testing.yml)
+[![tests](https://img.shields.io/github/actions/workflow/status/matgenix/qtoolkit/testing.yml?branch=develop&label=tests)](https://github.com/matgenix/qtoolkit/actions/workflows/testing.yml)
 [![code coverage](https://img.shields.io/codecov/c/gh/matgenix/qtoolkit)](https://codecov.io/gh/matgenix/qtoolkit)
 [![pypi version](https://img.shields.io/pypi/v/qtoolkit?color=blue)](https://pypi.org/project/qtoolkit)
 ![supported python versions](https://img.shields.io/pypi/pyversions/qtoolkit)
@@ -15,8 +15,8 @@
 
 **[Full Documentation][docs]**
 
-> **Warning**:
-> :construction: This repository is still under construction. :construction:
+> [!WARNING]
+> 🚧 This repository is still under construction. 🚧
 
 ## Need help?
 
