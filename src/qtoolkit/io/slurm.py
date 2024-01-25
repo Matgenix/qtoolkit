@@ -237,6 +237,8 @@ $${qverbatim}"""
         status = (
             CancelStatus("SUCCESSFUL") if job_id else CancelStatus("JOB_ID_UNKNOWN")
         )
+        # TODO: when cancelling a job already completed or cancelled, exit_code is 0
+        #  should we set the CancelStatus to FAILED ? Same if the job does not exist.
         return CancelResult(
             job_id=job_id,
             exit_code=exit_code,
@@ -259,9 +261,9 @@ $${qverbatim}"""
         if self.get_job_executable == "scontrol":
             # -o is to get the output as a one-liner
             cmd = f"SLURM_TIME_FORMAT='standard' scontrol show job -o {job_id}"
-        elif self.get_job_executable == "sacct":
+        elif self.get_job_executable == "sacct":  # pragma: no cover
             raise NotImplementedError("sacct for get_job not yet implemented.")
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
@@ -279,9 +281,9 @@ $${qverbatim}"""
 
         if self.get_job_executable == "scontrol":
             parsed_output = self._parse_scontrol_cmd_output(stdout=stdout)
-        elif self.get_job_executable == "sacct":
+        elif self.get_job_executable == "sacct":  # pragma: no cover
             raise NotImplementedError("sacct for get_job not yet implemented.")
-        else:
+        else:  # pragma: no cover
             raise RuntimeError(
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
@@ -294,27 +296,27 @@ $${qverbatim}"""
 
         try:
             memory_per_cpu = self._convert_memory_str(parsed_output["MinMemoryCPU"])
-        except OutputParsingError:
+        except (OutputParsingError, KeyError):
             memory_per_cpu = None
 
         try:
             nodes = int(parsed_output["NumNodes"])
-        except ValueError:
+        except (ValueError, KeyError):
             nodes = None
 
         try:
             cpus = int(parsed_output["NumCPUs"])
-        except ValueError:
+        except (ValueError, KeyError):
             cpus = None
 
         try:
             cpus_task = int(parsed_output["CPUs/Task"])
-        except ValueError:
+        except (ValueError, KeyError):
             cpus_task = None
 
         try:
             time_limit = self._convert_str_to_time(parsed_output["TimeLimit"])
-        except OutputParsingError:
+        except (OutputParsingError, KeyError):
             time_limit = None
 
         info = QJobInfo(
@@ -497,6 +499,9 @@ $${qverbatim}"""
         if not memory:
             return None
 
+        # TODO: @GP not sure I get what is this line here
+        #  Shouldn't it be all(u not in memory for u in ("K", "M", "G", "T"))?
+        #  Or not any(u in memory for u in ("K", "M", "G", "T"))?
         if all(u in memory for u in ("K", "M", "G", "T")):
             # assume Mb
             units = "M"

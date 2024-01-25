@@ -100,7 +100,7 @@ class QSubState(QTKEnum):
     @property
     @abc.abstractmethod
     def qstate(self) -> QState:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class ProcessPlacement(QTKEnum):

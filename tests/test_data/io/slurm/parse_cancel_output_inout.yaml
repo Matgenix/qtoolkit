@@ -1,0 +1,42 @@
+- parse_cancel_kwargs: '{"exit_code": 0, "stdout": "", "stderr": "scancel: Terminating
+    job 267\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": "267", "step_id": null, "exit_code": 0, "stdout":
+    "", "stderr": "scancel: Terminating job 267\n", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "CancelStatus", "@version": "0.1.1", "value": "SUCCESSFUL"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "scancel: error:
+    No job identification provided\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": null, "step_id": null, "exit_code": 1, "stdout":
+    "", "stderr": "scancel: error: No job identification provided\n", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "CancelStatus", "@version": "0.1.1", "value":
+    "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 210, "stdout": "", "stderr": "scancel: error:
+    Kill job error on job id 1: Access/permission denied\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": null, "step_id": null, "exit_code": 210, "stdout":
+    "", "stderr": "scancel: error: Kill job error on job id 1: Access/permission denied\n",
+    "status": {"@module": "qtoolkit.core.data_objects", "@class": "CancelStatus",
+    "@version": "0.1.1", "value": "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "scancel: error:
+    Invalid job id a\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": null, "step_id": null, "exit_code": 1, "stdout":
+    "", "stderr": "scancel: error: Invalid job id a\n", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "CancelStatus", "@version": "0.1.1", "value": "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 0, "stdout": "", "stderr": "scancel: Terminating
+    job 269\nscancel: error: Kill job error on job id 269: Job/step already completing
+    or completed\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": "269", "step_id": null, "exit_code": 0, "stdout":
+    "", "stderr": "scancel: Terminating job 269\nscancel: error: Kill job error on
+    job id 269: Job/step already completing or completed\n", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "CancelStatus", "@version": "0.1.1", "value":
+    "SUCCESSFUL"}}'
+- parse_cancel_kwargs: '{"exit_code": 0, "stdout": "", "stderr": "scancel: Terminating
+    job 2675\nscancel: error: Kill job error on job id 2675: Invalid job id specified\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.1", "job_id": "2675", "step_id": null, "exit_code": 0, "stdout":
+    "", "stderr": "scancel: Terminating job 2675\nscancel: error: Kill job error on
+    job id 2675: Invalid job id specified\n", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "CancelStatus", "@version": "0.1.1", "value": "SUCCESSFUL"}}'
