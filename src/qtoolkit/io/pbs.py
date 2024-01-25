@@ -435,8 +435,8 @@ $${qverbatim}"""
             header_dict["mail_user"] = resources.email_address
             header_dict["mail_type"] = "abe"
 
-        if resources.kwargs:
-            header_dict.update(resources.kwargs)
+        if resources.qkwargs:
+            header_dict.update(resources.qkwargs)
 
         return header_dict
 

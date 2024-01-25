@@ -171,7 +171,7 @@ class QResources(QTKObject):
     njobs: int | None = None
     """Number of jobs in a job array."""
 
-    kwargs: dict | None = None
+    qkwargs: dict | None = None
     """Additional keyword arguments to be passed to the queue manager."""
 
     def __post_init__(self):
@@ -186,7 +186,7 @@ class QResources(QTKObject):
                     "plus processes_per_node or only processes"
                 )
                 raise UnsupportedResourcesError(msg)
-        self.kwargs = self.kwargs or {}
+        self.qkwargs = self.qkwargs or {}
 
     @classmethod
     def no_constraints(cls, processes, **kwargs):

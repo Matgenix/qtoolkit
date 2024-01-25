@@ -246,6 +246,7 @@ class TestQResources:
             memory_per_thread=1024,
             processes=16,
             time_limit=86400,
+            qkwargs={"a": "b"},
         )
         assert test_utils.is_msonable(qr1)
         qr2 = QResources.evenly_distributed(nodes=4, processes_per_node=8)
