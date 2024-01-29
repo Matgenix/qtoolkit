@@ -94,15 +94,15 @@ class TestBaseScheduler:
                 if nodes:
                     header_dict["nodes"] = nodes
 
-                if resources.qkwargs:
-                    header_dict.update(resources.qkwargs)
+                if resources.scheduler_kwargs:
+                    header_dict.update(resources.scheduler_kwargs)
 
                 return header_dict
 
             @property
             def supported_qresources_keys(self) -> list:
                 return [
-                    "qkwargs",
+                    "scheduler_kwargs",
                     "nodes",
                     "processes_per_node",
                     "process_placement",
@@ -133,7 +133,9 @@ class TestBaseScheduler:
         res = QResources(processes=8)
         header = scheduler.generate_header(res)
         assert header == """#SPECCMD --processes=8"""
-        res = QResources(nodes=4, processes_per_node=16, qkwargs={"option2": "myopt2"})
+        res = QResources(
+            nodes=4, processes_per_node=16, scheduler_kwargs={"option2": "myopt2"}
+        )
         header = scheduler.generate_header(res)
         assert (
             header
@@ -147,7 +149,9 @@ class TestBaseScheduler:
             match=r"The following keys are not present in the template: tata, titi",
         ):
             res = QResources(
-                nodes=4, processes_per_node=16, qkwargs={"tata": "tata", "titi": "titi"}
+                nodes=4,
+                processes_per_node=16,
+                scheduler_kwargs={"tata": "tata", "titi": "titi"},
             )
             scheduler.generate_header(res)
 
