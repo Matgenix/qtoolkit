@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from datetime import timedelta
 from pathlib import Path
 
 from qtoolkit.core.base import QTKEnum, QTKObject
@@ -138,8 +137,8 @@ class QResources(QTKObject):
     gpus_per_job: int | None = None
     """Number of GPUs per job."""
 
-    time_limit: int | timedelta | None = None
-    """Time limit for the job."""
+    time_limit: int | None = None
+    """Time limit for the job. In seconds"""
 
     account: str | None = None
     """Account to charge the job to."""
@@ -171,8 +170,8 @@ class QResources(QTKObject):
     njobs: int | None = None
     """Number of jobs in a job array."""
 
-    kwargs: dict | None = None
-    """Additional keyword arguments to be passed to the queue manager."""
+    scheduler_kwargs: dict | None = None
+    """Additional keyword arguments to be passed to the scheduler IO."""
 
     def __post_init__(self):
         if self.process_placement is None:
@@ -186,7 +185,7 @@ class QResources(QTKObject):
                     "plus processes_per_node or only processes"
                 )
                 raise UnsupportedResourcesError(msg)
-        self.kwargs = self.kwargs or {}
+        self.scheduler_kwargs = self.scheduler_kwargs or {}
 
     @classmethod
     def no_constraints(cls, processes, **kwargs):

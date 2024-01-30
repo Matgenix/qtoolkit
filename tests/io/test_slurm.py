@@ -208,7 +208,7 @@ class TestSlurmIO:
             threads_per_process=2,
             gpus_per_job=4,
             email_address="john.doe@submit.qtk",
-            kwargs={"tata": "toto", "titi": "tutu"},
+            scheduler_kwargs={"tata": "toto", "titi": "tutu"},
         )
         header_dict = slurm_io.check_convert_qresources(resources=res)
         assert header_dict == {

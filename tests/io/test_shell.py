@@ -204,7 +204,7 @@ class TestShellIO:
         qr = QResources(processes=1)
         with pytest.raises(
             UnsupportedResourcesError,
-            match=r"Keys not supported: kwargs, process_placement, processes",
+            match=r"Keys not supported: process_placement, processes, scheduler_kwargs",
         ):
             shell_io.check_convert_qresources(qr)
 
