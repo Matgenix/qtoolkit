@@ -49,12 +49,12 @@ QToolKit is developed and maintained by Matgenix SRL.
 
 A full list of all contributors can be found [here][contributors].
 
-[help-forum]: https://https://github.com/matgenix/qtoolkit/issues
-[issues]: https://https://github.com/matgenix/qtoolkit/issues
-[installation]: https://https://github.com/matgenix/qtoolkit/blob/main/INSTALL.md
-[contributing]: https://github.com/matgenix/qtoolkit/blob/main/CONTRIBUTING.md
-[codeofconduct]: https://github.com/matgenix/qtoolkit/blob/main/CODE_OF_CONDUCT.md
-[changelog]: https://https://github.com/matgenix/qtoolkit/blob/main/CHANGELOG.md
+[help-forum]: https://github.com/matgenix/qtoolkit/issues
+[issues]: https://github.com/matgenix/qtoolkit/issues
+[installation]: https://github.com/matgenix/qtoolkit/blob/develop/INSTALL.md
+[contributing]: https://github.com/matgenix/qtoolkit/blob/develop/CONTRIBUTING.md
+[codeofconduct]: https://github.com/matgenix/qtoolkit/blob/develop/CODE_OF_CONDUCT.md
+[changelog]: https://github.com/matgenix/qtoolkit/blob/develop/CHANGELOG.md
 [contributors]: https://matgenix.github.io/qtoolkit/graphs/contributors
-[license]: https://raw.githubusercontent.com/matgenix/qtoolkit/main/LICENSE
+[license]: https://raw.githubusercontent.com/matgenix/qtoolkit/develop/LICENSE
 [docs]: https://matgenix.github.io/qtoolkit/
