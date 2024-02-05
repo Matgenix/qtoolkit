@@ -58,7 +58,7 @@ msonable = ["monty>=2022.9.9",]
 homepage = "https://matgenix.github.io/qtoolkit/"
 repository = "https://github.com/matgenix/qtoolkit"
 documentation = "https://matgenix.github.io/qtoolkit/"
-changelog = "https://github.com/matgenix/qtoolkit/CHANGELOG.md"
+changelog = "https://matgenix.github.io/qtoolkit/changelog"
 
 [tool.setuptools.package-data]
 qtoolkit = ["py.typed"]
