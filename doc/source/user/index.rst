@@ -16,13 +16,6 @@ details are found in :ref:`api`.
    quickstart
 
 .. toctree::
-   :caption: Advanced usage and interoperability
-   :maxdepth: 1
-
-   building
-
-
-.. toctree::
    :hidden:
    :caption: Extras
 

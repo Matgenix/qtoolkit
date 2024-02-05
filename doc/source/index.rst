@@ -11,16 +11,12 @@ QToolKit documentation
    User Guide <user/index>
    API reference <api/index>
    Development <dev/index>
+   Changelog <changelog>
 
 
 **Version**: |version|
 
-**Useful links**:
-TO BE ADDED
-
-QToolKit is an interface to most Distributed Resource Management systems, e.g.
-SLURM, PBS, ...
-
+QToolKit is an interface to Distributed Resource Management (DRM) systems, e.g. SLURM and PBS, with the aim to enable programmatic control of queuing systems.
 
 
 .. grid:: 1 2 2 2
