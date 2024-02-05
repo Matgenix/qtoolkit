@@ -72,18 +72,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_PAT_BOT }}
 
-    - name: Build source distribution
-      run: |
-        pip install -U build
-        python -m build
-
-    - name: Publish package to Test PyPI first
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.TEST_PYPI_PASSWORD }}
-        repository-url: https://test.pypi.org/legacy/
-
     - name: Install docs dependencies
       run: |
         # Required to generate rst files from markdown
@@ -107,6 +95,25 @@ jobs:
       uses: actions/upload-pages-artifact@v2
       with:
         path: ./doc/build/html
+
+    - name: Build source distribution
+      run: |
+        pip install -U build
+        python -m build
+
+    - name: Publish package to Test PyPI first
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.TEST_PYPI_PASSWORD }}
+        repository-url: https://test.pypi.org/legacy/
+
+
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_PASSWORD }}
 
   deploy_docs:
     if: github.repository == 'matgenix/qtoolkit' && startsWith(github.ref, 'refs/tags/v')
