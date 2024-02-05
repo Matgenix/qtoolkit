@@ -1,6 +1,6 @@
 # Installation
 
-QToolKit is available on PyPI as [`qtoolkit`](https://pypi.org/project/qtoolkit) and can be installed with `pip`:
+QToolKit is available on [PyPI](https://pypi.org/project/qtoolkit) and can be installed with `pip`:
 
 ```shell
 pip install qtoolkit
