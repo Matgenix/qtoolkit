@@ -75,7 +75,8 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         options = options or {}
 
         if isinstance(options, QResources):
-            options = self.check_convert_qresources(options)
+            if not options.check_empty():
+                options = self.check_convert_qresources(options)
 
         template = QTemplate(self.header_template)
 
