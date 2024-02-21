@@ -58,6 +58,20 @@ class QState(QTKEnum):
     queue manager (e.g. PBS, SLURM, ...) needs to be
     defined.
 
+    UNDETERMINED: The job status cannot be determined. This is a permanent
+        issue, not being solvable by asking again for the job state.
+    QUEUED: The job is queued for being scheduled and executed.
+    QUEUED HELD: The job has been placed on hold by the system, the
+        administrator, or the submitting user.
+    RUNNING: The job is running on an execution host.
+    SUSPENDED: The job has been suspended by the user, the system or the
+        administrator.
+    REQUEUED: The job was re-queued by the DRM system, and is eligible to run.
+    REQUEUED HELD: The job was re-queued by the DRM system, and is currently
+        placed on hold by the system, the administrator, or the submitting user.
+    DONE: The job finished without an error.
+    FAILED: The job exited abnormally before finishing.
+
     Note that not all these standardized states are available in the
     actual queue manager implementations.
     """
