@@ -241,7 +241,8 @@ class TestQResources:
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"When process_placement is None either define only nodes "
-            r"plus processes_per_node or only processes",
+            r"plus processes_per_node or only processes to get a default value. "
+            r"Otherwise all the fields must be empty.",
         ):
             QResources(project="xxx")
 
