@@ -258,7 +258,9 @@ $${qverbatim}
         Only an empty QResources is accepted in ShellIO.
         """
         if not resources.check_empty():
-            raise UnsupportedResourcesError  # pragma: no cover
+            raise UnsupportedResourcesError(
+                "Only empty QResources is supported"
+            )  # pragma: no cover
         return {}
 
     @property
