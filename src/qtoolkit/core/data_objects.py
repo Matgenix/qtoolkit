@@ -197,7 +197,7 @@ class QResources(QTKObject):
                 msg = (
                     "When process_placement is None either define only nodes "
                     "plus processes_per_node or only processes to get a default value. "
-                    "Otherwise all the fields must be empty"
+                    "Otherwise all the fields must be empty."
                 )
                 raise UnsupportedResourcesError(msg)
         self.scheduler_kwargs = self.scheduler_kwargs or {}
