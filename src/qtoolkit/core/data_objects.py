@@ -204,7 +204,7 @@ class QResources(QTKObject):
 
     def _check_no_values(self) -> bool:
         """
-        Check if all the attributes are None or empty
+        Check if all the attributes are None or empty.
         """
         for f in fields(self):
             if self.__getattribute__(f.name):
