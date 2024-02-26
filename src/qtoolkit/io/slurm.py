@@ -131,8 +131,8 @@ _STATUS_MAPPING = {
     SlurmState.PENDING: QState.QUEUED,
     SlurmState.PREEMPTED: QState.FAILED,
     SlurmState.RESV_DEL_HOLD: QState.QUEUED_HELD,
-    SlurmState.REQUEUE_FED: QState.QUEUED,
-    SlurmState.REQUEUE_HOLD: QState.QUEUED,
+    SlurmState.REQUEUE_FED: QState.REQUEUED,  # ambiguous conversion. Could also be QUEUED,
+    SlurmState.REQUEUE_HOLD: QState.REQUEUED,  # QUEUED_HELD or SUSPENDED
     SlurmState.RESIZING: QState.RUNNING,
     SlurmState.REVOKED: QState.FAILED,
     SlurmState.RUNNING: QState.RUNNING,
