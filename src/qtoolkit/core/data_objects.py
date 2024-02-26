@@ -59,16 +59,16 @@ class QState(QTKEnum):
     defined.
 
     UNDETERMINED: The job status cannot be determined. This is a permanent
-        issue, not being solvable by asking again for the job state.
+    issue, not being solvable by asking again for the job state.
     QUEUED: The job is queued for being scheduled and executed.
     QUEUED HELD: The job has been placed on hold by the system, the
-        administrator, or the submitting user.
+    administrator, or the submitting user.
     RUNNING: The job is running on an execution host.
     SUSPENDED: The job has been suspended by the user, the system or the
-        administrator.
+    administrator.
     REQUEUED: The job was re-queued by the DRM system, and is eligible to run.
     REQUEUED HELD: The job was re-queued by the DRM system, and is currently
-        placed on hold by the system, the administrator, or the submitting user.
+    placed on hold by the system, the administrator, or the submitting user.
     DONE: The job finished without an error.
     FAILED: The job exited abnormally before finishing.
 
