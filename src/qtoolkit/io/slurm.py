@@ -88,6 +88,7 @@ from qtoolkit.io.base import BaseSchedulerIO
 
 
 class SlurmState(QSubState):
+    BOOT_FAIL = "BOOT_FAIL", "BF"
     CANCELLED = "CANCELLED", "CA"
     COMPLETING = "COMPLETING", "CG"
     COMPLETED = "COMPLETED", "CD"
@@ -97,7 +98,17 @@ class SlurmState(QSubState):
     NODE_FAIL = "NODE_FAIL", "NF"
     OUT_OF_MEMORY = "OUT_OF_MEMORY", "OOM"
     PENDING = "PENDING", "PD"
+    PREEMPTED = "PREEMPTED", "PR"
+    RESV_DEL_HOLD = "RESV_DEL_HOLD", "RD"
+    REQUEUE_FED = "REQUEUE_FED", "RF"
+    REQUEUE_HOLD = "REQUEUE_HOLD", "RH"
+    RESIZING = "RESIZING", "RS"
+    REVOKED = "REVOKED", "RV"
     RUNNING = "RUNNING", "R"
+    SIGNALING = "SIGNALING", "SI"
+    SPECIAL_EXIT = "SPECIAL_EXIT", "SE"
+    STAGE_OUT = "STAGE_OUT", "SO"
+    STOPPED = "STOPPED", "ST"
     SUSPENDED = "SUSPENDED", "S"
     TIMEOUT = "TIMEOUT", "TO"
 
@@ -108,7 +119,8 @@ class SlurmState(QSubState):
 
 
 _STATUS_MAPPING = {
-    SlurmState.CANCELLED: QState.SUSPENDED,  # Should this be failed ?
+    SlurmState.BOOT_FAIL: QState.FAILED,
+    SlurmState.CANCELLED: QState.FAILED,
     SlurmState.COMPLETING: QState.RUNNING,
     SlurmState.COMPLETED: QState.DONE,
     SlurmState.CONFIGURING: QState.QUEUED,
@@ -117,7 +129,17 @@ _STATUS_MAPPING = {
     SlurmState.NODE_FAIL: QState.FAILED,
     SlurmState.OUT_OF_MEMORY: QState.FAILED,
     SlurmState.PENDING: QState.QUEUED,
+    SlurmState.PREEMPTED: QState.FAILED,
+    SlurmState.RESV_DEL_HOLD: QState.QUEUED_HELD,
+    SlurmState.REQUEUE_FED: QState.REQUEUED,  # ambiguous conversion. Could also be QUEUED,
+    SlurmState.REQUEUE_HOLD: QState.REQUEUED,  # QUEUED_HELD or SUSPENDED
+    SlurmState.RESIZING: QState.RUNNING,
+    SlurmState.REVOKED: QState.FAILED,
     SlurmState.RUNNING: QState.RUNNING,
+    SlurmState.SIGNALING: QState.RUNNING,
+    SlurmState.SPECIAL_EXIT: QState.FAILED,
+    SlurmState.STAGE_OUT: QState.RUNNING,
+    SlurmState.STOPPED: QState.RUNNING,
     SlurmState.SUSPENDED: QState.SUSPENDED,
     SlurmState.TIMEOUT: QState.FAILED,
 }

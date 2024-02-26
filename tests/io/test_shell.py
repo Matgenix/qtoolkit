@@ -204,9 +204,23 @@ class TestShellIO:
         qr = QResources(processes=1)
         with pytest.raises(
             UnsupportedResourcesError,
-            match=r"Keys not supported: process_placement, processes, scheduler_kwargs",
+            match=r"Keys not supported: process_placement, processes",
         ):
             shell_io.check_convert_qresources(qr)
+
+        qr = QResources()
+        assert shell_io.check_convert_qresources(qr) == {}
+
+    def test_convert_qresources(self, shell_io):
+        qr = QResources(processes=1)
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"Only empty QResources is supported",
+        ):
+            shell_io._convert_qresources(qr)
+
+        qr = QResources()
+        assert shell_io._convert_qresources(qr) == {}
 
     def test_header(self, shell_io):
         # check that the required elements are properly handled in header template

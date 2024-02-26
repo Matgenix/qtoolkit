@@ -255,9 +255,13 @@ $${qverbatim}
         """
         Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
-        Not implemented for ShellIO
+        Only an empty QResources is accepted in ShellIO.
         """
-        raise UnsupportedResourcesError  # pragma: no cover
+        if not resources.check_empty():
+            raise UnsupportedResourcesError(
+                "Only empty QResources is supported"
+            )  # pragma: no cover
+        return {}
 
     @property
     def supported_qresources_keys(self) -> list:

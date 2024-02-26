@@ -238,6 +238,17 @@ class TestQResources:
         ):
             QResources(processes=8, processes_per_node=2)
 
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"When process_placement is None either define only nodes "
+            r"plus processes_per_node or only processes to get a default value. "
+            r"Otherwise all the fields must be empty.",
+        ):
+            QResources(project="xxx")
+
+        # This is acceptable for empty process placement and no details passed
+        assert QResources()
+
     @pytest.mark.skipif(monty is None, reason="monty is not installed")
     def test_msonable(self, test_utils):
         qr1 = QResources(
@@ -534,6 +545,25 @@ class TestQResources:
         )
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == ["a", "b", "c"]
+        qr = QResources(
+            process_placement=None,
+        )
+        proc_distr = qr.get_processes_distribution()
+        assert proc_distr == [None, None, None]
+
+    def test_is_empty(self):
+        qr = QResources()
+        assert qr.check_empty()
+
+        qr = QResources(process_placement=ProcessPlacement.NO_CONSTRAINTS, processes=10)
+        assert not qr.check_empty()
+
+        qr = QResources(process_placement=None)
+        qr.processes = 10
+        with pytest.raises(
+            ValueError, match="process_placement is None, but some values are set"
+        ):
+            qr.check_empty()
 
 
 class TestQJobInfo:

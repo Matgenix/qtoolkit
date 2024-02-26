@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 from qtoolkit.core.base import QTKEnum, QTKObject
@@ -57,6 +57,20 @@ class QState(QTKEnum):
     A mapping between the actual job states in a given
     queue manager (e.g. PBS, SLURM, ...) needs to be
     defined.
+
+    UNDETERMINED: The job status cannot be determined. This is a permanent
+    issue, not being solvable by asking again for the job state.
+    QUEUED: The job is queued for being scheduled and executed.
+    QUEUED HELD: The job has been placed on hold by the system, the
+    administrator, or the submitting user.
+    RUNNING: The job is running on an execution host.
+    SUSPENDED: The job has been suspended by the user, the system or the
+    administrator.
+    REQUEUED: The job was re-queued by the DRM system, and is eligible to run.
+    REQUEUED HELD: The job was re-queued by the DRM system, and is currently
+    placed on hold by the system, the administrator, or the submitting user.
+    DONE: The job finished without an error.
+    FAILED: The job exited abnormally before finishing.
 
     Note that not all these standardized states are available in the
     actual queue manager implementations.
@@ -179,13 +193,35 @@ class QResources(QTKObject):
                 self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QTKEnum
             elif self.nodes and self.processes_per_node and not self.processes:
                 self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
-            else:
+            elif not self._check_no_values():
                 msg = (
                     "When process_placement is None either define only nodes "
-                    "plus processes_per_node or only processes"
+                    "plus processes_per_node or only processes to get a default value. "
+                    "Otherwise all the fields must be empty."
                 )
                 raise UnsupportedResourcesError(msg)
         self.scheduler_kwargs = self.scheduler_kwargs or {}
+
+    def _check_no_values(self) -> bool:
+        """
+        Check if all the attributes are None or empty.
+        """
+        for f in fields(self):
+            if self.__getattribute__(f.name):
+                return False
+
+        return True
+
+    def check_empty(self) -> bool:
+        """
+        Check if the QResouces is empty and its content is coherent.
+        Raises an error if process_placement is None, but some attributes are set.
+        """
+        if self.process_placement is not None:
+            return False
+        if not self._check_no_values():
+            raise ValueError("process_placement is None, but some values are set")
+        return True
 
     @classmethod
     def no_constraints(cls, processes, **kwargs):

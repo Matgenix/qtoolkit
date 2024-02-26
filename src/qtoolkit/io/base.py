@@ -75,7 +75,8 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         options = options or {}
 
         if isinstance(options, QResources):
-            options = self.check_convert_qresources(options)
+            if not options.check_empty():
+                options = self.check_convert_qresources(options)
 
         template = QTemplate(self.header_template)
 
@@ -171,12 +172,12 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         Also checks that passed values are declared to be handled by the corresponding
         subclass.
         """
-        not_none = set()
+        not_empty = set()
         for field in fields(resources):
-            if getattr(resources, field.name) is not None:
-                not_none.add(field.name)
+            if getattr(resources, field.name):
+                not_empty.add(field.name)
 
-        unsupported_options = not_none.difference(self.supported_qresources_keys)
+        unsupported_options = not_empty.difference(self.supported_qresources_keys)
 
         if unsupported_options:
             msg = f"Keys not supported: {', '.join(sorted(unsupported_options))}"
