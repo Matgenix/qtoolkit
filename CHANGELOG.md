@@ -4,17 +4,17 @@
 
 [Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.4...HEAD)
 
-**Closed issues:**
-
-- Issue with SLURM RD state  [\#37](https://github.com/Matgenix/qtoolkit/issues/37)
-
-## [v0.1.4](https://github.com/Matgenix/qtoolkit/tree/v0.1.4) (2024-02-26)
-
-[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.3...v0.1.4)
-
 **Merged pull requests:**
 
 - Slurm and QResources updates [\#38](https://github.com/Matgenix/qtoolkit/pull/38) ([gpetretto](https://github.com/gpetretto))
+
+## [v0.1.4](https://github.com/Matgenix/qtoolkit/tree/v0.1.4) (2024-03-19)
+
+[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.3...v0.1.4)
+
+**Closed issues:**
+
+- Issue with SLURM RD state  [\#37](https://github.com/Matgenix/qtoolkit/issues/37)
 
 ## [v0.1.3](https://github.com/Matgenix/qtoolkit/tree/v0.1.3) (2024-02-05)
 
