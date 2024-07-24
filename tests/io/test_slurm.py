@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 from monty.serialization import loadfn
-
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.slurm import SlurmIO, SlurmState
@@ -190,6 +189,14 @@ class TestSlurmIO:
             timedelta(days=15, hours=21, minutes=19, seconds=32)
         )
         assert time_str == "15-21:19:32"
+
+        # test float
+        time_str = slurm_io._convert_time_to_str(602.0)
+        assert time_str == "0-0:10:2"
+
+        # test negative
+        time_str = slurm_io._convert_time_to_str(-10)
+        assert time_str == "-1-23:59:50"
 
     def test_check_convert_qresources(self, slurm_io):
         res = QResources(
