@@ -540,7 +540,7 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_time_to_str(time: int | timedelta) -> str:
-        if isinstance(time, int):
+        if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
         days = time.days
