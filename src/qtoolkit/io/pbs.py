@@ -156,7 +156,6 @@ $${qverbatim}"""
         )
 
     def _get_job_cmd(self, job_id: str):
-
         cmd = f"qstat -f {job_id}"
 
         return cmd
@@ -170,7 +169,6 @@ $${qverbatim}"""
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-
         if user and job_ids:
             raise ValueError("Cannot query by user and job(s) in PBS")
 
@@ -183,13 +181,11 @@ $${qverbatim}"""
             command.append(f"-u {user}")
 
         if job_ids:
-
             command.append(" ".join(job_ids))
 
         return " ".join(command)
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
-
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -358,7 +354,7 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_time_to_str(time: int | timedelta) -> str:
-        if isinstance(time, int):
+        if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
         hours, remainder = divmod(int(time.total_seconds()), 3600)
