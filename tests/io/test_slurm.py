@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from monty.serialization import loadfn
+
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.slurm import SlurmIO, SlurmState
