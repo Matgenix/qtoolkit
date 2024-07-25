@@ -196,6 +196,8 @@ class TestSlurmIO:
         assert time_str == "0-0:10:2"
 
         # test negative
+        # negative time makes no sense and should not be passed. this test is just to be alerted
+        # if the output for negative numbers changes
         time_str = slurm_io._convert_time_to_str(-10)
         assert time_str == "-1-23:59:50"
 
