@@ -353,7 +353,7 @@ $${qverbatim}"""
     }
 
     @staticmethod
-    def _convert_time_to_str(time: int | timedelta) -> str:
+    def _convert_time_to_str(time: int | float | timedelta) -> str:
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
