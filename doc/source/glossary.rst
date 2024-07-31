@@ -11,4 +11,3 @@ Glossary
 
    QResources
        The description of the resources for a job.
-
