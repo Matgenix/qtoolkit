@@ -92,7 +92,7 @@ $${qverbatim}
         script_file = script_file or ""
 
         # nohup and the redirection of the outputs is needed when running through fabric
-        # see https://www.fabfile.org/faq.html#why-can-t-i-run-programs-in-the-background-with-it-makes-fabric-hang  # noqa
+        # see https://www.fabfile.org/faq.html#why-can-t-i-run-programs-in-the-background-with-it-makes-fabric-hang
         command = f"bash {script_file} > {self.stdout_path} 2> {self.stderr_path}"
         if not self.blocking:
             command = f"nohup {command} & echo $!"
@@ -148,7 +148,6 @@ $${qverbatim}
         )
 
     def _get_job_cmd(self, job_id: str):
-
         cmd = self._get_jobs_list_cmd(job_ids=[job_id])
 
         return cmd
@@ -177,7 +176,6 @@ $${qverbatim}
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-
         if user and job_ids:
             msg = (
                 "Cannot query by user and job(s) with ps, "
