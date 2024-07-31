@@ -378,37 +378,37 @@ class TestQResources:
         )
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == [3, 3, 1]
+        qr = QResources(
+            process_placement=ProcessPlacement.SCATTERED, nodes=3, processes=4
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.SCATTERED is incompatible "
             r"with different values of nodes and processes",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.SCATTERED, nodes=3, processes=4
-            )
             qr.get_processes_distribution()
         qr = QResources(
             process_placement=ProcessPlacement.SCATTERED, nodes=None, processes=None
         )
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == [1, 1, 1]
+        qr = QResources(
+            process_placement=ProcessPlacement.SCATTERED,
+            nodes=4,
+            processes=4,
+            processes_per_node=2,
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.SCATTERED is incompatible "
             r"with 2 processes_per_node",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.SCATTERED,
-                nodes=4,
-                processes=4,
-                processes_per_node=2,
-            )
             qr.get_processes_distribution()
+        qr = QResources(process_placement=ProcessPlacement.SAME_NODE, nodes=4)
         with pytest.raises(
             UnsupportedResourcesError,
-            match=r"ProcessPlacement.SAME_NODE is incompatible " r"with 4 nodes",
+            match=r"ProcessPlacement.SAME_NODE is incompatible with 4 nodes",
         ):
-            qr = QResources(process_placement=ProcessPlacement.SAME_NODE, nodes=4)
             qr.get_processes_distribution()
         qr = QResources(
             process_placement=ProcessPlacement.SAME_NODE,
@@ -426,17 +426,17 @@ class TestQResources:
         )
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == [1, 6, 6]
+        qr = QResources(
+            process_placement=ProcessPlacement.SAME_NODE,
+            nodes=1,
+            processes=2,
+            processes_per_node=6,
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.SAME_NODE is incompatible with "
             r"different values of nodes and processes",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.SAME_NODE,
-                nodes=1,
-                processes=2,
-                processes_per_node=6,
-            )
             qr.get_processes_distribution()
         qr = QResources(
             process_placement=ProcessPlacement.SAME_NODE,
@@ -486,41 +486,41 @@ class TestQResources:
         )
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == [4, None, 1]
+        qr = QResources(
+            process_placement=ProcessPlacement.EVENLY_DISTRIBUTED,
+            nodes=1,
+            processes=2,
+            processes_per_node=6,
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.EVENLY_DISTRIBUTED "
             r"is incompatible with processes attribute",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.EVENLY_DISTRIBUTED,
-                nodes=1,
-                processes=2,
-                processes_per_node=6,
-            )
             qr.get_processes_distribution()
+        qr = QResources(
+            process_placement=ProcessPlacement.NO_CONSTRAINTS,
+            nodes=1,
+            processes=2,
+            processes_per_node=None,
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.NO_CONSTRAINTS is incompatible "
             r"with processes_per_node and nodes attribute",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.NO_CONSTRAINTS,
-                nodes=1,
-                processes=2,
-                processes_per_node=None,
-            )
             qr.get_processes_distribution()
+        qr = QResources(
+            process_placement=ProcessPlacement.NO_CONSTRAINTS,
+            nodes=None,
+            processes=2,
+            processes_per_node=2,
+        )
         with pytest.raises(
             UnsupportedResourcesError,
             match=r"ProcessPlacement.NO_CONSTRAINTS is incompatible "
             r"with processes_per_node and nodes attribute",
         ):
-            qr = QResources(
-                process_placement=ProcessPlacement.NO_CONSTRAINTS,
-                nodes=None,
-                processes=2,
-                processes_per_node=2,
-            )
             qr.get_processes_distribution()
         qr = QResources(
             process_placement=ProcessPlacement.NO_CONSTRAINTS,

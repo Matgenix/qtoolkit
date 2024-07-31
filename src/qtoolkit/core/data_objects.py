@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, fields
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKEnum, QTKObject
 from qtoolkit.core.exceptions import UnsupportedResourcesError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class SubmissionStatus(QTKEnum):
@@ -190,7 +193,7 @@ class QResources(QTKObject):
     def __post_init__(self):
         if self.process_placement is None:
             if self.processes and not self.processes_per_node and not self.nodes:
-                self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QTKEnum
+                self.process_placement = ProcessPlacement.NO_CONSTRAINTS
             elif self.nodes and self.processes_per_node and not self.processes:
                 self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
             elif not self._check_no_values():
