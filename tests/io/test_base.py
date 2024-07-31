@@ -146,16 +146,16 @@ class TestBaseScheduler:
 
         # check that the error message contains the expected error, but should not match
         # the possible replacements, as they are too different
+        res = QResources(
+            nodes=4,
+            processes_per_node=16,
+            scheduler_kwargs={"tata": "tata", "titi": "titi"},
+        )
         with pytest.raises(
             ValueError,
             match=r"The following keys are not present in the template: tata, titi. Check "
             r"the template in .*MyScheduler.header_template(?!.*instead of 'titi')",
         ):
-            res = QResources(
-                nodes=4,
-                processes_per_node=16,
-                scheduler_kwargs={"tata": "tata", "titi": "titi"},
-            )
             scheduler.generate_header(res)
 
         with pytest.raises(

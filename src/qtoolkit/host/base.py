@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass
@@ -30,7 +33,7 @@ class BaseHost(QTKObject):
         # stdout=None,
         # stderr=None,
     ):
-        """Execute the given command on the host
+        """Execute the given command on the host.
 
         Parameters
         ----------

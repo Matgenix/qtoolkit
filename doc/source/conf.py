@@ -1,4 +1,4 @@
-#
+#  # noqa: INP001
 # Configuration file for the Sphinx documentation builder.
 #
 # This file does only contain a selection of the most common options. For a
@@ -23,7 +23,7 @@ import qtoolkit
 # -- Project information -----------------------------------------------------
 
 project = "QToolKit"
-copyright = "2023, Matgenix SRL"
+copyright = "2023, Matgenix SRL"  # noqa: A001
 author = "Guido Petretto, David Waroquiers"
 
 
@@ -109,7 +109,7 @@ html_theme_options = {
     },
     "collapse_navigation": True,
     "announcement": (
-        "<p>" "QToolKit is still in beta phase. The API may change at any time." "</p>"
+        "<p>QToolKit is still in beta phase. The API may change at any time.</p>"
     ),
     # "navbar_end": ["theme-switcher", "navbar-icon-links"],
     # "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],

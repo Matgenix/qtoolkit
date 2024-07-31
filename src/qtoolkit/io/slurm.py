@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import timedelta
+from typing import ClassVar
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -72,7 +73,7 @@ from qtoolkit.io.base import BaseSchedulerIO
 #        SI  SIGNALING       Job is being signaled.
 #
 #        SE  SPECIAL_EXIT    The job was requeued in a special state. This state
-#                            can be set by users, typically in Epi‐
+#                            can be set by users, typically in Epi-
 #                            logSlurmctld, if the job has terminated with a particular
 #                            exit value.
 #
@@ -180,7 +181,7 @@ $${qverbatim}"""
         "scancel -v"  # The -v is needed as the default is to report nothing
     )
 
-    squeue_fields = [
+    squeue_fields: ClassVar = [
         ("%i", "job_id"),  # job or job step id
         ("%t", "state_raw"),  # job state in compact form
         ("%r", "annotation"),  # reason for the job being in its current state
@@ -212,11 +213,11 @@ $${qverbatim}"""
                 stderr=stderr,
                 status=SubmissionStatus("FAILED"),
             )
-        _SLURM_SUBMITTED_REGEXP = re.compile(
+        _slurm_submitted_regexp = re.compile(
             r"(.*:\s*)?([Gg]ranted job allocation|"
             r"[Ss]ubmitted batch job)\s+(?P<jobid>\d+)"
         )
-        match = _SLURM_SUBMITTED_REGEXP.match(stdout.strip())
+        match = _slurm_submitted_regexp.match(stdout.strip())
         job_id = match.group("jobid") if match else None
         status = (
             SubmissionStatus("SUCCESSFUL")
@@ -251,10 +252,10 @@ $${qverbatim}"""
                 stderr=stderr,
                 status=CancelStatus("FAILED"),
             )
-        _SLURM_CANCELLED_REGEXP = re.compile(
+        _slurm_cancelled_regexp = re.compile(
             r"(.*:\s*)?(Terminating job)\s+(?P<jobid>\d+)"
         )
-        match = _SLURM_CANCELLED_REGEXP.match(stderr.strip())
+        match = _slurm_cancelled_regexp.match(stderr.strip())
         job_id = match.group("jobid") if match else None
         status = (
             CancelStatus("SUCCESSFUL") if job_id else CancelStatus("JOB_ID_UNKNOWN")
@@ -432,9 +433,9 @@ $${qverbatim}"""
 
             try:
                 slurm_job_state = SlurmState(job_state_string)
-            except ValueError:
+            except ValueError as exc:
                 msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
-                raise OutputParsingError(msg)
+                raise OutputParsingError(msg) from exc
             qjob.sub_state = slurm_job_state
             qjob.state = slurm_job_state.qstate
 
@@ -482,10 +483,7 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None) -> int | None:
-        """
-        Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds.
-        """
-
+        """Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds."""
         if not time_str:
             return None
 
@@ -509,10 +507,10 @@ $${qverbatim}"""
             elif len(time_split) == 1:
                 minutes = int(time_split[0])
             else:
-                raise OutputParsingError()
+                raise OutputParsingError
 
-        except ValueError:
-            raise OutputParsingError()
+        except ValueError as exc:
+            raise OutputParsingError from exc
 
         return days * 86400 + hours * 3600 + minutes * 60 + seconds
 
@@ -532,14 +530,14 @@ $${qverbatim}"""
             memory = memory[:-1]
         try:
             v = int(memory)
-        except ValueError:
-            raise OutputParsingError
+        except ValueError as exc:
+            raise OutputParsingError from exc
         power_labels = {"K": 0, "M": 1, "G": 2, "T": 3}
 
         return v * (1024 ** power_labels[units])
 
     @staticmethod
-    def _convert_time_to_str(time: int | float | timedelta) -> str:
+    def _convert_time_to_str(time: int | float | timedelta) -> str:  # noqa: PYI041
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
@@ -547,12 +545,11 @@ $${qverbatim}"""
         hours, remainder = divmod(time.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        time_str = f"{days}-{hours}:{minutes}:{seconds}"
-        return time_str
+        return f"{days}-{hours}:{minutes}:{seconds}"
 
     # helper attribute to match the values defined in QResources and
     # the dictionary that should be passed to the template
-    _qresources_mapping = {
+    _qresources_mapping: ClassVar = {
         "queue_name": "partition",
         "job_name": "job_name",
         "memory_per_thread": "mem_per_cpu",
@@ -568,7 +565,6 @@ $${qverbatim}"""
         Converts a Qresources instance to a dict that will be used to fill in the
         header of the submission script.
         """
-
         header_dict = {}
         for qr_field, slurm_field in self._qresources_mapping.items():
             val = getattr(resources, qr_field)

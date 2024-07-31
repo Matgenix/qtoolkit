@@ -4,12 +4,15 @@ import abc
 import difflib
 import shlex
 from dataclasses import fields
-from pathlib import Path
 from string import Template
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.core.exceptions import UnsupportedResourcesError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class QTemplate(Template):
@@ -110,10 +113,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         options = self.sanitize_options(options)
         unclean_header = template.safe_substitute(options)
         # Remove lines with leftover $$.
-        clean_header = []
-        for line in unclean_header.split("\n"):
-            if "$$" not in line:
-                clean_header.append(line)
+        clean_header = [line for line in unclean_header.split("\n") if "$$" not in line]
 
         return "\n".join(clean_header)
 
