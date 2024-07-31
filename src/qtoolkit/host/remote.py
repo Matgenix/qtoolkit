@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import fabric
 
 from qtoolkit.host.base import BaseHost, HostConfig
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # from fabric import Connection, Config
 
@@ -128,7 +131,7 @@ passed in, that password will be used to attempt to unlock the key.
 class RemoteHost(BaseHost):
     """
     Execute commands on a remote host.
-    For some commands assumes the remote can run unix
+    For some commands assumes the remote can run unix.
     """
 
     def __init__(self, config: RemoteConfig):
@@ -143,7 +146,7 @@ class RemoteHost(BaseHost):
         return self._connection
 
     def execute(self, command: str | list[str], workdir: str | Path | None = None):
-        """Execute the given command on the host
+        """Execute the given command on the host.
 
         Parameters
         ----------
@@ -161,7 +164,6 @@ class RemoteHost(BaseHost):
         exit_code : int
             Exit code of the command.
         """
-
         if isinstance(command, (list, tuple)):
             command = " ".join(command)
 
@@ -169,10 +171,7 @@ class RemoteHost(BaseHost):
         #  connection from outside (not through a config) and we want to keep it alive ?
 
         # TODO: check if this works:
-        if not workdir:
-            workdir = "."
-        else:
-            workdir = str(workdir)
+        workdir = str(workdir) if workdir else "."
         with self.connection.cd(workdir):
             out = self.connection.run(command, hide=True, warn=True)
 
@@ -185,10 +184,11 @@ class RemoteHost(BaseHost):
             command += "-p "
         command += str(directory)
         try:
-            stdout, stderr, returncode = self.execute(command)
-            return returncode == 0
+            _stdout, _stderr, returncode = self.execute(command)
         except Exception:
             return False
+        else:
+            return returncode == 0
 
     def write_text_file(self, filepath, content):
         """Write content to a file on the host."""

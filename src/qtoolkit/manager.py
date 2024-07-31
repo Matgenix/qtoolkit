@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
-from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
-from qtoolkit.host.base import BaseHost
 from qtoolkit.host.local import LocalHost
-from qtoolkit.io.base import BaseSchedulerIO
+
+if TYPE_CHECKING:
+    from qtoolkit.core.data_objects import (
+        CancelResult,
+        QJob,
+        QResources,
+        SubmissionResult,
+    )
+    from qtoolkit.host.base import BaseHost
+    from qtoolkit.io.base import BaseSchedulerIO
 
 
 class QueueManager(QTKObject):
@@ -69,12 +77,12 @@ class QueueManager(QTKObject):
         if env_config:
             env_setup = []
             if "modules" in env_config:
-                env_setup.append("module purge")
-                for mod in env_config["modules"]:
-                    env_setup.append(f"module load {mod}")
+                env_setup += [f"module load {mod}" for mod in env_config["modules"]]
             if "source_files" in env_config:
-                for source_file in env_config["source_files"]:
-                    env_setup.append(f"source {source_file}")
+                env_setup += [
+                    f"source {source_file}"
+                    for source_file in env_config["source_files"]
+                ]
             if "conda_environment" in env_config:
                 env_setup.append(f'conda activate {env_config["conda_environment"]}')
             if "environ" in env_config:
@@ -102,10 +110,9 @@ class QueueManager(QTKObject):
     def get_run_commands(self, commands) -> str:
         if isinstance(commands, str):
             return commands
-        elif isinstance(commands, list):
+        if isinstance(commands, list):
             return "\n".join(commands)
-        else:
-            raise ValueError("commands should be a str or a list of str.")
+        raise ValueError("commands should be a str or a list of str.")
 
     def get_post_run(self, post_run) -> str:
         pass

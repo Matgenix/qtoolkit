@@ -25,8 +25,8 @@ class QTKEnum(*enum_superclses):  # type: ignore
         """
         try:
             super()._validate_monty(__input_value)
-        except ValueError as e:
+        except ValueError as exc:
             try:
                 return cls(__input_value)
             except Exception:
-                raise e
+                raise exc  # noqa: B904

@@ -11,7 +11,7 @@ class LocalHost(BaseHost):
     # def __init__(self, config):
     #     self.config = config
     def execute(self, command: str | list[str], workdir: str | Path | None = None):
-        """Execute the given command on the host
+        """Execute the given command on the host.
 
         Note that the command is executed with shell=True, so commands can
         be exposed to command injection. Consider whether to escape part of

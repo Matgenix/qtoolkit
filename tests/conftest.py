@@ -49,7 +49,7 @@ def clean_dir(debug_mode):
 
 @pytest.fixture()
 def tmp_dir():
-    """Same as clean_dir but is fresh for every test"""
+    """Same as clean_dir but is fresh for every test."""
     import os
     import shutil
     import tempfile

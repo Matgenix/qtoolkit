@@ -23,7 +23,7 @@ def slurm_io():
 
 
 class TestSlurmState:
-    @pytest.mark.parametrize("slurm_state", [s for s in SlurmState])
+    @pytest.mark.parametrize("slurm_state", list(SlurmState))
     def test_qstate(self, slurm_state):
         assert isinstance(slurm_state.qstate, QState)
         assert SlurmState("CA") == SlurmState.CANCELLED

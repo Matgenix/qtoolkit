@@ -144,15 +144,15 @@ class TestBaseScheduler:
 #SPECCMD --nodes=4"""
         )
 
+        res = QResources(
+            nodes=4,
+            processes_per_node=16,
+            scheduler_kwargs={"tata": "tata", "titi": "titi"},
+        )
         with pytest.raises(
             ValueError,
             match=r"The following keys are not present in the template: tata, titi",
         ):
-            res = QResources(
-                nodes=4,
-                processes_per_node=16,
-                scheduler_kwargs={"tata": "tata", "titi": "titi"},
-            )
             scheduler.generate_header(res)
 
     def test_generate_ids_list(self, scheduler):
