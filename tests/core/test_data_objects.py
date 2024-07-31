@@ -1,4 +1,5 @@
 """Unit tests for the core.data_objects module of QToolKit."""
+
 import pytest
 
 from qtoolkit.core.data_objects import (

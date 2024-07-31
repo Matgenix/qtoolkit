@@ -1,4 +1,5 @@
 """Unit tests for the core.base module of QToolKit."""
+
 import enum
 import importlib
 import sys
@@ -12,7 +13,7 @@ except ModuleNotFoundError:
     monty = None
 
 
-@pytest.fixture
+@pytest.fixture()
 def qtk_core_base_mocked_monty_not_found(mocker):
     # Note:
     #     Here we use importlib to dynamically import the qtoolkit.core.base module.

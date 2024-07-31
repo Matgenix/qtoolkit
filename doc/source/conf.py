@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -19,6 +18,7 @@ import sys
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 )
+import qtoolkit
 
 # -- Project information -----------------------------------------------------
 
@@ -27,7 +27,6 @@ copyright = "2023, Matgenix SRL"
 author = "Guido Petretto, David Waroquiers"
 
 
-import qtoolkit
 # The short X.Y version
 version = qtoolkit.__version__
 # The full version, including alpha/beta/rc tags
@@ -49,16 +48,16 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",  # For Google Python Style Guide
-    'sphinx.ext.coverage',
-    'sphinx.ext.doctest',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.graphviz',
-    'sphinx.ext.ifconfig',
-    'matplotlib.sphinxext.plot_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'IPython.sphinxext.ipython_directive',
-    'sphinx.ext.mathjax',
-    'sphinx_design',
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.ifconfig",
+    "matplotlib.sphinxext.plot_directive",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "IPython.sphinxext.ipython_directive",
+    "sphinx.ext.mathjax",
+    "sphinx_design",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -78,7 +77,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = 'en'
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -95,8 +94,8 @@ pygments_style = "sphinx"
 # a list of builtin themes.
 #
 # html_theme = 'sphinx_book_theme'
-html_theme = 'pydata_sphinx_theme'
-html_favicon = '../img/qtoolkit_icon.svg'
+html_theme = "pydata_sphinx_theme"
+html_favicon = "../img/qtoolkit_icon.svg"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -104,15 +103,13 @@ html_favicon = '../img/qtoolkit_icon.svg'
 #
 html_theme_options = {
     "logo": {
-          "image_light": "qtoolkit_logo_horizontal.svg",
-          "image_dark": "qtoolkit_logo_horizontal.svg",
-          "alt_text": "QToolKit",
+        "image_light": "qtoolkit_logo_horizontal.svg",
+        "image_dark": "qtoolkit_logo_horizontal.svg",
+        "alt_text": "QToolKit",
     },
     "collapse_navigation": True,
-    'announcement': (
-        "<p>"
-        "QToolKit is still in beta phase. The API may change at any time."
-        "</p>"
+    "announcement": (
+        "<p>" "QToolKit is still in beta phase. The API may change at any time." "</p>"
     ),
     # "navbar_end": ["theme-switcher", "navbar-icon-links"],
     # "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],
@@ -137,14 +134,14 @@ html_static_path = ["_static", "../img"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 html_css_files = ["qtoolkit.css"]
-html_title = "%s v%s Manual" % (project, version)
-html_last_updated_fmt = '%b %d, %Y'
+html_title = f"{project} v{version} Manual"
+html_last_updated_fmt = "%b %d, %Y"
 # html_css_files = ["numpy.css"]
 html_context = {"default_mode": "light"}
 html_use_modindex = True
 html_copy_source = False
 html_domain_indices = False
-html_file_suffix = '.html'
+html_file_suffix = ".html"
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = "qtoolkitdoc"

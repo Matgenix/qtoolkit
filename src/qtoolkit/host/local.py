@@ -33,12 +33,9 @@ class LocalHost(BaseHost):
         """
         if isinstance(command, (list, tuple)):
             command = " ".join(command)
-        if not workdir:
-            workdir = Path.cwd()
-        else:
-            workdir = str(workdir)
+        workdir = str(workdir) if workdir else Path.cwd()
         with cd(workdir):
-            proc = subprocess.run(command, capture_output=True, shell=True)
+            proc = subprocess.run(command, capture_output=True, shell=True, check=False)
         return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
 
     def mkdir(self, directory, recursive=True, exist_ok=True) -> bool:
