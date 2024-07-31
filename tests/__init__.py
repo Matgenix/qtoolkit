@@ -1,6 +1,5 @@
 """Tests for QToolKit."""
 
-
 from pathlib import Path
 
 module_dir = Path(__file__).resolve().parent
