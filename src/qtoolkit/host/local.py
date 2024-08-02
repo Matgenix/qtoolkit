@@ -35,7 +35,7 @@ class LocalHost(BaseHost):
             command = " ".join(command)
         workdir = str(workdir) if workdir else Path.cwd()
         with cd(workdir):
-            proc = subprocess.run(command, capture_output=True, shell=True, check=False)
+            proc = subprocess.run(command, capture_output=True, shell=True, check=False)  # noqa: S602
         return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
 
     def mkdir(self, directory, recursive=True, exist_ok=True) -> bool:

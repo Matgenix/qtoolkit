@@ -73,7 +73,6 @@ ignore = [
     "ANN",     # TODO fix all ANN errors
     "ARG",     # TODO fix unused method argument
     "BLE001",
-    "C408",    # Unnecessary (dict/list/tuple) call - remove call
     "C901",    # function too complex
     "COM812",  # trailing comma missing
     "D",
@@ -89,10 +88,8 @@ ignore = [
     "G004",    # logging uses fstring
     "ISC001",
     "N802",    # TODO maybe fix these
-    "PD011",   # pandas-use-of-dot-values
     "PERF203", # try-except-in-loop
     "PGH003",
-    "PLR0911", # too many returns
     "PLR0912", # too many branches
     "PLR0913", # too many arguments
     "PLR0915", # too many statements
@@ -102,14 +99,7 @@ ignore = [
     "PT013",   # pytest-incorrect-pytest-import
     "PTH",     # prefer Pathlib to os.path
     "RUF013",  # implicit-optional
-    "S106",
-    "S110",
-    "S311",
-    "S324",    # use of insecure hash function
-    "S507",    # paramiko auto trust
-    "S602",
     "SIM105",  # contextlib.suppress(Exception) instead of try-except
-    "SLF",     # private member accessed outside class
     "T201",    # print statement
     "TD",      # TODOs
     "TRY003",  # long message outside exception class

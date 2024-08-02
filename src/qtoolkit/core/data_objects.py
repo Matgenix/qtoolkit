@@ -103,12 +103,12 @@ class QSubState(QTKEnum):
         obj._value_ = values[0]
         for other_value in values[1:]:
             cls._value2member_map_[other_value] = obj
-        obj._all_values = values
+        obj._all_values = values  # noqa: SLF001
         return obj
 
     def __repr__(self):
         return "<{}.{}: {}>".format(
-            self.__class__.__name__,
+            type(self).__name__,
             self._name_,
             ", ".join([repr(v) for v in self._all_values]),
         )
