@@ -5,49 +5,47 @@ description = "QToolKit is a python wrapper interfacing with job queues (e.g. PB
 readme = "README.md"
 keywords = []
 license = { text = "modified BSD" }
-authors = [{ name = "David Waroquiers", email = "david.waroquiers@matgenix.com" }]
+authors = [
+    { name = "David Waroquiers", email = "david.waroquiers@matgenix.com" },
+]
 dynamic = ["version"]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "Intended Audience :: System Administrators",
-    "Intended Audience :: Information Technology",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Other/Nonlisted Topic",
     "Topic :: Scientific/Engineering",
 ]
 requires-python = ">=3.9"
-dependencies =[]
+dependencies = []
 
 [project.optional-dependencies]
-dev = [
-    "pre-commit>=3.0.0",
-]
+dev = ["pre-commit>=3.0.0"]
 tests = [
-    "pytest==7.2.1",
+    "monty>=2022.9.9",
     "pytest-cov==4.0.0",
     "pytest-mock==3.10.0",
-    "monty>=2022.9.9",
+    "pytest==7.2.1",
     "ruamel.yaml",
-    ]
-maintain = [
-    "git-changelog>=0.6",
 ]
+maintain = ["git-changelog>=0.6"]
 docs = [
+    "ipython!=8.1.0",
+    "matplotlib",
+    "pydata-sphinx-theme",
+    "qtoolkit[remote,msonable]",
     "sphinx",
     "sphinx_design",
-    "pydata-sphinx-theme",
-    "matplotlib",
-    "ipython!=8.1.0",
-    "qtoolkit[remote,msonable]",
 ]
 strict = []
 remote = ["fabric>=3.0.0"]
-msonable = ["monty>=2022.9.9",]
+msonable = ["monty>=2022.9.9"]
 
 [project.urls]
 homepage = "https://matgenix.github.io/qtoolkit/"
@@ -152,8 +150,8 @@ source = ["src/"]
 skip_covered = true
 show_missing = true
 exclude_lines = [
+    '# pragma: no cover',
+    '^\s*@overload( |$)',
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
-    '^\s*@overload( |$)',
-    '# pragma: no cover',
 ]
