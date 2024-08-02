@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import xml.dom.minidom
+import xml.parsers.expat
 from datetime import timedelta
 
 from qtoolkit.core.data_objects import (
@@ -18,45 +20,79 @@ from qtoolkit.core.data_objects import (
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.base import BaseSchedulerIO
 
-# States in PBS from qstat's man.
-# B  Array job: at least one subjob has started.
+# 'http://www.loni.ucla.edu/twiki/bin/view/Infrastructure/GridComputing?skin=plain':
+# Jobs Status:
+#     'qw' - Queued and waiting,
+#     'w' - Job waiting,
+#     's' - Job suspended,
+#     't' - Job transferring and about to start,
+#     'r' - Job running,
+#     'h' - Job hold,
+#     'R' - Job restarted,
+#     'd' - Job has been marked for deletion,
+#     'Eqw' - An error occurred with the job.
 #
-# E  Job is exiting after having run.
+# 'http://confluence.rcs.griffith.edu.au:8080/display/v20zCluster/
+# Sun+Grid+Engine+SGE+state+letter+symbol+codes+meanings':
 #
-# F  Job is finished.
-#
-# H  Job is held.
-#
-# M  Job was moved to another server.
-#
-# Q  Job is queued.
-#
-# R  Job is running.
-#
-# S  Job is suspended.
-#
-# T  Job is being moved to new location.
-#
-# U  Cycle-harvesting job is suspended due to keyboard activity.
-#
-# W  Job is waiting for its submitter-assigned start time to be reached.
-#
-# X  Subjob has completed execution or has been deleted.
+# Category     State     SGE Letter Code
+# Pending:     pending     qw
+# Pending:     pending, user hold     qw
+# Pending:     pending, system hold     hqw
+# Pending:     pending, user and system hold     hqw
+# Pending:     pending, user hold, re-queue     hRwq
+# Pending:     pending, system hold, re-queue     hRwq
+# Pending:     pending, user and system hold, re-queue     hRwq
+# Pending:     pending, user hold     qw
+# Pending:     pending, user hold     qw
+# Running     running     r
+# Running     transferring     t
+# Running     running, re-submit     Rr
+# Running     transferring, re-submit     Rt
+# Suspended     job suspended     s, ts
+# Suspended     queue suspended     S, tS
+# Suspended     queue suspended by alarm     T, tT
+# Suspended     all suspended with re-submit     Rs, Rts, RS, RtS, RT, RtT
+# Error     all pending states with error     Eqw, Ehqw, EhRqw
+# Deleted     all running and suspended states with deletion     dr, dt, dRr, dRt,
+#                                                                ds, dS, dT, dRs,
+#                                                                dRS, dRT
 
 
-class PBSState(QSubState):
-    ARRAY_RUNNING = "B"
-    EXITING = "E"
-    FINISHED = "F"
-    HELD = "H"
-    MOVED = "M"
-    QUEUED = "Q"
-    RUNNING = "R"
-    SUSPENDED = "S"
-    TRANSITING = "T"
-    SUSPENDED_KEYBOARD = "U"
-    WAITING = "W"
-    ARRAY_FINISHED = "X"
+class SGEState(QSubState):
+    # Queue states
+    UNKNOWN = "u"
+    ALARM = "a"
+    SUSPEND_THRESHOLD = "A"
+    SUSPENDED_BY_USER_ADMIN = "s"
+    DISABLED_BY_USER_ADMIN = "d"
+    SUSPENDED_BY_CALENDAR = "C"
+    DISABLED_BY_CALENDAR = "D"
+    SUSPENDED_BY_SUBORDINATION = "S"
+    ERROR = "E"
+
+    # Job states
+    QUEUED_WAITING = "qw"
+    WAITING = "w"
+    JOB_SUSPENDED = "s"
+    TRANSFERRING = "t"
+    RUNNING = "r"
+    HOLD = "h"
+    RESTARTED = "R"
+    DELETION = "d"
+    ERROR_PENDING = "Eqw"
+    ERROR_PENDING_HOLD = "Ehqw"
+    ERROR_PENDING_HOLD_REQUEUE = "EhRqw"
+    DELETION_RUNNING = "dr"
+    DELETION_TRANSFERRING = "dt"
+    DELETION_RUNNING_RESUBMIT = "dRr"
+    DELETION_TRANSFERRING_RESUBMIT = "dRt"
+    DELETION_SUSPENDED_JOB = "ds"
+    DELETION_SUSPENDED_QUEUE = "dS"
+    DELETION_SUSPENDED_ALARM = "dT"
+    DELETION_SUSPENDED_RESUBMIT_JOB = "dRs"
+    DELETION_SUSPENDED_RESUBMIT_QUEUE = "dRS"
+    DELETION_SUSPENDED_RESUBMIT_ALARM = "dRT"
 
     @property
     def qstate(self) -> QState:
@@ -64,38 +100,53 @@ class PBSState(QSubState):
 
 
 _STATUS_MAPPING = {
-    PBSState.ARRAY_RUNNING: QState.RUNNING,
-    PBSState.EXITING: QState.RUNNING,
-    PBSState.FINISHED: QState.DONE,
-    PBSState.HELD: QState.QUEUED_HELD,
-    PBSState.MOVED: QState.REQUEUED,
-    PBSState.QUEUED: QState.QUEUED,
-    PBSState.RUNNING: QState.RUNNING,
-    PBSState.SUSPENDED: QState.SUSPENDED,
-    PBSState.TRANSITING: QState.REQUEUED,
-    PBSState.SUSPENDED_KEYBOARD: QState.SUSPENDED,
-    PBSState.WAITING: QState.QUEUED,
-    PBSState.ARRAY_FINISHED: QState.DONE,
+    SGEState.QUEUED_WAITING: QState.QUEUED,
+    SGEState.WAITING: QState.QUEUED,
+    SGEState.HOLD: QState.QUEUED_HELD,
+    SGEState.ERROR_PENDING: QState.FAILED,
+    SGEState.ERROR_PENDING_HOLD: QState.FAILED,
+    SGEState.ERROR_PENDING_HOLD_REQUEUE: QState.FAILED,
+    SGEState.RUNNING: QState.RUNNING,
+    SGEState.TRANSFERRING: QState.RUNNING,
+    SGEState.RESTARTED: QState.RUNNING,
+    SGEState.JOB_SUSPENDED: QState.SUSPENDED,
+    SGEState.SUSPENDED_BY_USER_ADMIN: QState.SUSPENDED,
+    SGEState.SUSPENDED_BY_SUBORDINATION: QState.SUSPENDED,
+    SGEState.ALARM: QState.SUSPENDED,
+    SGEState.ERROR: QState.FAILED,
+    SGEState.DELETION: QState.DONE,
+    SGEState.DELETION_RUNNING: QState.DONE,
+    SGEState.DELETION_TRANSFERRING: QState.DONE,
+    SGEState.DELETION_RUNNING_RESUBMIT: QState.DONE,
+    SGEState.DELETION_TRANSFERRING_RESUBMIT: QState.DONE,
+    SGEState.DELETION_SUSPENDED_JOB: QState.DONE,
+    SGEState.DELETION_SUSPENDED_QUEUE: QState.DONE,
+    SGEState.DELETION_SUSPENDED_ALARM: QState.DONE,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_JOB: QState.DONE,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_QUEUE: QState.DONE,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_ALARM: QState.DONE,
 }
 
 
-class PBSIO(BaseSchedulerIO):
+class SGEIO(BaseSchedulerIO):
     header_template: str = """
-#PBS -q $${queue}
-#PBS -N $${job_name}
-#PBS -A $${account}
-#PBS -l $${select}
-#PBS -l walltime=$${walltime}
-#PBS -l model=$${model}
-#PBS -l place=$${place}
-#PBS -W group_list=$${group_list}
-#PBS -M $${mail_user}
-#PBS -m $${mail_type}
-#PBS -o $${qout_path}
-#PBS -e $${qerr_path}
-#PBS -p $${priority}
-#PBS -r $${rerunnable}
-#PBS -J $${array}
+#$ -cwd
+#$ -q $${queue}
+#$ -N $${job_name}
+#$ -P $${account}
+#$ -l $${select}
+#$ -l h_rt=$${walltime}
+#$ -l s_rt=$${soft_walltime}
+#$ -pe $${model}
+#$ -binding $${place}
+#$ -W group_list=$${group_list}
+#$ -M $${mail_user}
+#$ -m $${mail_type}
+#$ -o $${qout_path}
+#$ -e $${qerr_path}
+#$ -p $${priority}
+#$ -r $${rerunnable}
+#$ -t $${array}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "qsub"
@@ -128,11 +179,7 @@ $${qverbatim}"""
         )
 
     def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        """Parse the output of the scancel command."""
-        # Possible error messages:
-        # qdel: Unknown Job Id 100
-        # qdel: Job has finished 1004
-        # Correct execution: no output
+        """Parse the output of the qdel command."""
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -145,7 +192,6 @@ $${qverbatim}"""
                 status=CancelStatus("FAILED"),
             )
 
-        # PBS does not return the job id if the job is successfully deleted
         status = CancelStatus("SUCCESSFUL")
         return CancelResult(
             job_id=None,
@@ -156,166 +202,155 @@ $${qverbatim}"""
         )
 
     def _get_job_cmd(self, job_id: str):
-        cmd = f"qstat -f {job_id}"
-
+        cmd = f"qstat -j {job_id}"
         return cmd
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
-        out = self.parse_jobs_list_output(exit_code, stdout, stderr)
-        if out:
-            return out[0]
-        return None
-
-    def _get_jobs_list_cmd(
-        self, job_ids: list[str] | None = None, user: str | None = None
-    ) -> str:
-        if user and job_ids:
-            raise ValueError("Cannot query by user and job(s) in PBS")
-
-        command = [
-            "qstat",
-            "-f",
-        ]
-
-        if user:
-            command.append(f"-u {user}")
-
-        if job_ids:
-            command.append(" ".join(job_ids))
-
-        return " ".join(command)
-
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+        if exit_code != 0:
+            raise OutputParsingError(f"Error in job output parsing: {stderr}")
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
             stderr = stderr.decode()
 
-        # if some jobs of the list do not exist the exit code is not zero, but
-        # the data for other jobs is still present. Some the exit code is ignored here
+        try:
+            xmldata = xml.dom.minidom.parseString(stdout)
+        except xml.parsers.expat.ExpatError:
+            raise OutputParsingError("XML parsing of stdout failed")
 
-        # The error messages are included in the stderr and could be of the form:
-        # qstat: Unknown Job Id 10000.c2cf5fbe1102
-        # qstat: 1008.c2cf5fbe1102 Job has finished, use -x or -H to
-        #   obtain historical job information
-        # TODO raise if these two kinds of error are not present and exit_code != 0?
+        job_list = xmldata.getElementsByTagName("job_list")
+        if not job_list:
+            return None
 
-        # Split by the beginning of "Job Id:" and iterate on the different chunks.
-        # Matching the beginning of the line to avoid problems in case the "Job Id"
-        # string is present elsewhere.
-        jobs_chunks = re.split(r"^\s*Job Id: ", stdout, flags=re.MULTILINE)
+        job_element = job_list[0]
 
-        # regex to split the key-values pairs separated by " = "
-        # Explanation:
-        #  - \s*([A-Za-z_.]+)\s+=\s+ matches the key in the key-value pair,
-        #       allowing for leading and trailing whitespace before and after the
-        #       equals sign, and allowing for a dot in the key.
-        #  - ([\s\S]*?) matches the value in the key-value pair, allowing for any
-        #       character including newlines.
-        #  - (?=\n\s*[A-Za-z_.]+\s+=|\Z) is a positive lookahead that matches a
-        #       newline followed by a key with optional leading and trailing
-        #       whitespace and an equals sign or the end of the string,
-        #       without including the lookahead match in the result.
-        # The key_pattern is separated in case needs to be updated.
-        key_pattern = r"[A-Za-z_.]+"
-        values_regex = re.compile(
-            rf"\s*({key_pattern})\s+=\s+([\s\S]*?)(?=\n\s*{key_pattern}\s+=|\Z)"
-        )
+        qjob = QJob()
+        qjob.job_id = self._get_element_text(job_element, "JB_job_number")
+        job_state_string = self._get_element_text(job_element, "state")
 
-        jobs_list = []
-        for chunk in jobs_chunks:
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-
-            # first line is the id:
-            job_id, chunk_data = chunk.split("\n", 1)
-            job_id = job_id.strip()
-            results = values_regex.findall(chunk_data)
-            if not results:
-                continue
-            data = dict(results)
-
-            qjob = QJob()
-            qjob.job_id = job_id
-
-            job_state_string = data["job_state"]
-
-            try:
-                pbs_job_state = PBSState(job_state_string)
-            except ValueError:
-                msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
-                raise OutputParsingError(msg)
-            qjob.sub_state = pbs_job_state
-            qjob.state = pbs_job_state.qstate
-
-            qjob.username = data["Job_Owner"]
-
-            info = QJobInfo()
-
-            try:
-                info.nodes = int(data.get("Resource_List.nodect"))
-            except ValueError:
-                info.nodes = None
-
-            try:
-                info.cpus = int(data.get("Resource_List.ncpus"))
-            except ValueError:
-                info.cpus = None
-
-            try:
-                info.memory_per_cpu = self._convert_memory_str(
-                    data.get("Resource_List.mem")
-                )
-            except OutputParsingError:
-                info.memory_per_cpu = None
-
-            info.partition = data["queue"]
-
-            # TODO here _convert_time_str can raise. If parsing errors are accepted
-            # handle differently
-            info.time_limit = self._convert_str_to_time(
-                data.get("Resource_List.walltime")
+        try:
+            sge_job_state = SGEState(job_state_string)
+        except ValueError:
+            raise OutputParsingError(
+                f"Unknown job state {job_state_string} for job id {qjob.job_id}"
             )
 
-            try:
-                runtime_str = data.get("resources_used.walltime")
-                if runtime_str:
-                    qjob.runtime = self._convert_str_to_time(runtime_str)
-            except OutputParsingError:
-                qjob.runtime = None
+        qjob.sub_state = sge_job_state
+        qjob.state = sge_job_state.qstate
+        qjob.username = self._get_element_text(job_element, "JB_owner")
+        qjob.name = self._get_element_text(job_element, "JB_name")
 
-            qjob.name = data.get("Job_Name")
+        info = QJobInfo()
+        info.nodes = self._safe_int(self._get_element_text(job_element, "num_nodes"))
+        info.cpus = self._safe_int(self._get_element_text(job_element, "num_proc"))
+        info.memory_per_cpu = self._convert_memory_str(
+            self._get_element_text(job_element, "hard resource_list.mem_free")
+        )
+        info.partition = self._get_element_text(job_element, "queue_name")
+        info.time_limit = self._convert_str_to_time(
+            self._get_element_text(job_element, "hard resource_list.h_rt")
+        )
+
+        qjob.info = info
+
+        return qjob
+
+    def _get_element_text(self, parent, tag_name):
+        elements = parent.getElementsByTagName(tag_name)
+        if elements:
+            return elements[0].childNodes[0].data.strip()
+        return None
+
+    def _safe_int(self, value: str | None) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
+    def _get_jobs_list_cmd(
+        self, job_ids: list[str] | None = None, user: str | None = None
+    ) -> str:
+        if job_ids:
+            raise UnsupportedResourcesError("Cannot query by job id in SGE")
+
+        command = "qstat -ext -urg -xml "
+
+        if user:
+            command += f"-u {user!s}"
+        else:
+            command += "-u '*'"
+
+        return command
+
+    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+        if exit_code != 0:
+            raise OutputParsingError(f"Error in jobs list output parsing: {stderr}")
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode()
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode()
+
+        try:
+            xmldata = xml.dom.minidom.parseString(stdout)
+        except xml.parsers.expat.ExpatError:
+            raise OutputParsingError("XML parsing of stdout failed")
+
+        job_elements = xmldata.getElementsByTagName("job_list")
+        jobs_list = []
+
+        for job_element in job_elements:
+            qjob = QJob()
+            qjob.job_id = self._get_element_text(job_element, "JB_job_number")
+            job_state_string = self._get_element_text(job_element, "state")
+
+            try:
+                sge_job_state = SGEState(job_state_string)
+            except ValueError:
+                raise OutputParsingError(
+                    f"Unknown job state {job_state_string} for job id {qjob.job_id}"
+                )
+
+            qjob.sub_state = sge_job_state
+            qjob.state = sge_job_state.qstate
+            qjob.username = self._get_element_text(job_element, "JB_owner")
+            qjob.name = self._get_element_text(job_element, "JB_name")
+
+            info = QJobInfo()
+            info.nodes = self._safe_int(
+                self._get_element_text(job_element, "num_nodes")
+            )
+            info.cpus = self._safe_int(self._get_element_text(job_element, "num_proc"))
+            info.memory_per_cpu = self._convert_memory_str(
+                self._get_element_text(job_element, "hard resource_list.mem_free")
+            )
+            info.partition = self._get_element_text(job_element, "queue_name")
+            info.time_limit = self._convert_str_to_time(
+                self._get_element_text(job_element, "hard resource_list.h_rt")
+            )
+
             qjob.info = info
 
-            # I append to the list of jobs to return
             jobs_list.append(qjob)
 
         return jobs_list
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None):
-        """
-        Convert a string in the format used by PBS DD:HH:MM:SS to a number of seconds.
-        It may contain only H:M:S, only M:S or only S.
-        """
-
         if not time_str:
             return None
 
         time_split = time_str.split(":")
-
-        # array containing seconds, minutes, hours and days
-        time = [0] * 4
+        time = [0] * 3
 
         try:
             for i, v in enumerate(reversed(time_split)):
                 time[i] = int(v)
-
         except ValueError:
             raise OutputParsingError()
 
-        return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
+        return time[2] * 3600 + time[1] * 60 + time[0]
 
     @staticmethod
     def _convert_memory_str(memory: str | None) -> int | None:
@@ -327,10 +362,10 @@ $${qverbatim}"""
             raise OutputParsingError("No numbers and units parsed")
         memory, units = match.groups()
 
-        power_labels = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
+        power_labels = {"k": 0, "m": 1, "g": 2, "t": 3}
 
         if not units:
-            units = "mb"
+            units = "m"
         elif units not in power_labels:
             raise OutputParsingError(f"Unknown units {units}")
         try:
@@ -340,8 +375,6 @@ $${qverbatim}"""
 
         return v * (1024 ** power_labels[units])
 
-    # helper attribute to match the values defined in QResources and
-    # the dictionary that should be passed to the template
     _qresources_mapping = {
         "queue_name": "queue",
         "job_name": "job_name",
@@ -364,22 +397,20 @@ $${qverbatim}"""
         return time_str
 
     def _convert_qresources(self, resources: QResources) -> dict:
-        """
-        Converts a QResources instance to a dict that will be used to fill in the
-        header of the submission script.
-        """
-
         header_dict = {}
-        for qr_field, pbs_field in self._qresources_mapping.items():
+        for qr_field, sge_field in self._qresources_mapping.items():
             val = getattr(resources, qr_field)
             if val is not None:
-                header_dict[pbs_field] = val
+                header_dict[sge_field] = val
 
         if resources.njobs and resources.njobs > 1:
             header_dict["array"] = f"1-{resources.njobs}"
 
         if resources.time_limit:
             header_dict["walltime"] = self._convert_time_to_str(resources.time_limit)
+            header_dict["soft_walltime"] = self._convert_time_to_str(
+                resources.time_limit * 0.9
+            )
 
         if resources.rerunnable is not None:
             header_dict["rerunnable"] = "y" if resources.rerunnable else "n"
@@ -422,7 +453,7 @@ $${qverbatim}"""
             elif resources.process_placement == ProcessPlacement.SAME_NODE:
                 header_dict["place"] = "pack"
         else:
-            msg = f"process placement {resources.process_placement} is not supported for PBS"
+            msg = f"process placement {resources.process_placement} is not supported for SGE"
             raise UnsupportedResourcesError(msg)
 
         header_dict["select"] = select
@@ -438,11 +469,6 @@ $${qverbatim}"""
 
     @property
     def supported_qresources_keys(self) -> list:
-        """
-        List of attributes of QResources that are correctly handled by the
-        _convert_qresources method. It is used to validate that the user
-        does not pass an unsupported value, expecting to have an effect.
-        """
         supported = list(self._qresources_mapping.keys())
         supported += [
             "njobs",
