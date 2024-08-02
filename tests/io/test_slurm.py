@@ -1,3 +1,5 @@
+# ruff: noqa: SLF001
+
 from datetime import timedelta
 from pathlib import Path
 
