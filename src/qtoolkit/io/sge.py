@@ -61,13 +61,9 @@ from qtoolkit.io.base import BaseSchedulerIO
 
 class SGEState(QSubState):
     # Queue states
-    UNKNOWN = "u"
     ALARM = "a"
-    SUSPEND_THRESHOLD = "A"
     SUSPENDED_BY_USER_ADMIN = "s"
     DISABLED_BY_USER_ADMIN = "d"
-    SUSPENDED_BY_CALENDAR = "C"
-    DISABLED_BY_CALENDAR = "D"
     SUSPENDED_BY_SUBORDINATION = "S"
     ERROR = "E"
 
@@ -77,7 +73,7 @@ class SGEState(QSubState):
     JOB_SUSPENDED = "s"
     TRANSFERRING = "t"
     RUNNING = "r"
-    HOLD = "h"
+    HOLD = "hqw"
     RESTARTED = "R"
     DELETION = "d"
     ERROR_PENDING = "Eqw"
@@ -164,7 +160,10 @@ $${qverbatim}"""
                 stderr=stderr,
                 status=SubmissionStatus("FAILED"),
             )
-        job_id = stdout.strip()
+        match = re.search(r'Your job (\d+) \(".*?"\) has been submitted', stdout)
+        if not match:
+            raise OutputParsingError("Failed to parse job ID from stdout")
+        job_id = match.group(1)
         status = (
             SubmissionStatus("SUCCESSFUL")
             if job_id
@@ -191,10 +190,13 @@ $${qverbatim}"""
                 stderr=stderr,
                 status=CancelStatus("FAILED"),
             )
-
+        match = re.search(r"qdel: job (\d+) deleted", stderr)
+        if not match:
+            raise OutputParsingError("Failed to parse job ID from stdout")
+        job_id = match.group(1)
         status = CancelStatus("SUCCESSFUL")
         return CancelResult(
-            job_id=None,
+            job_id=job_id,
             exit_code=exit_code,
             stdout=stdout,
             stderr=stderr,
@@ -205,7 +207,7 @@ $${qverbatim}"""
         cmd = f"qstat -j {job_id}"
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
         if exit_code != 0:
             raise OutputParsingError(f"Error in job output parsing: {stderr}")
         if isinstance(stdout, bytes):
@@ -338,19 +340,27 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None):
+        """
+        Convert a string in the format used by SGE DD:HH:MM:SS to a number of seconds.
+        It may contain only H:M:S, only M:S or only S.
+        """
+
         if not time_str:
             return None
 
         time_split = time_str.split(":")
-        time = [0] * 3
+
+        # array containing seconds, minutes, hours and days
+        time = [0] * 4
 
         try:
             for i, v in enumerate(reversed(time_split)):
                 time[i] = int(v)
+
         except ValueError:
             raise OutputParsingError()
 
-        return time[2] * 3600 + time[1] * 60 + time[0]
+        return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
 
     @staticmethod
     def _convert_memory_str(memory: str | None) -> int | None:
@@ -362,10 +372,10 @@ $${qverbatim}"""
             raise OutputParsingError("No numbers and units parsed")
         memory, units = match.groups()
 
-        power_labels = {"k": 0, "m": 1, "g": 2, "t": 3}
+        power_labels = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
 
         if not units:
-            units = "m"
+            units = "mb"
         elif units not in power_labels:
             raise OutputParsingError(f"Unknown units {units}")
         try:

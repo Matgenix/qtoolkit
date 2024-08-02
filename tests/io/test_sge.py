@@ -6,54 +6,47 @@ from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
-from qtoolkit.io.slurm import SlurmIO, SlurmState
+from qtoolkit.io.sge import SGEIO, SGEState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
-submit_ref_file = TEST_DIR / "io" / "slurm" / "parse_submit_output_inout.yaml"
+submit_ref_file = TEST_DIR / "io" / "sge" / "parse_submit_output_inout.yaml"
 in_out_submit_ref_list = loadfn(submit_ref_file)
-cancel_ref_file = TEST_DIR / "io" / "slurm" / "parse_cancel_output_inout.yaml"
+cancel_ref_file = TEST_DIR / "io" / "sge" / "parse_cancel_output_inout.yaml"
 in_out_cancel_ref_list = loadfn(cancel_ref_file)
-job_ref_file = TEST_DIR / "io" / "slurm" / "parse_job_output_inout.yaml"
+job_ref_file = TEST_DIR / "io" / "sge" / "parse_job_output_inout.yaml"
 in_out_job_ref_list = loadfn(job_ref_file)
 
 
 @pytest.fixture(scope="module")
-def slurm_io():
-    return SlurmIO()
+def sge_io():
+    return SGEIO()
 
 
-class TestSlurmState:
-    @pytest.mark.parametrize("slurm_state", [s for s in SlurmState])
-    def test_qstate(self, slurm_state):
-        assert isinstance(slurm_state.qstate, QState)
-        assert SlurmState("CA") == SlurmState.CANCELLED
-        assert SlurmState("CG") == SlurmState.COMPLETING
-        assert SlurmState("CD") == SlurmState.COMPLETED
-        assert SlurmState("CF") == SlurmState.CONFIGURING
-        assert SlurmState("DL") == SlurmState.DEADLINE
-        assert SlurmState("F") == SlurmState.FAILED
-        assert SlurmState("OOM") == SlurmState.OUT_OF_MEMORY
-        assert SlurmState("PD") == SlurmState.PENDING
-        assert SlurmState("R") == SlurmState.RUNNING
-        assert SlurmState("S") == SlurmState.SUSPENDED
-        assert SlurmState("TO") == SlurmState.TIMEOUT
+class TestSGEState:
+    @pytest.mark.parametrize("sge_state", [s for s in SGEState])
+    def test_qstate(self, sge_state):
+        assert isinstance(sge_state.qstate, QState)
+        assert SGEState("hqw") == SGEState.HOLD
+        assert SGEState("r") == SGEState.RUNNING
+        assert SGEState("Eqw") == SGEState.ERROR_PENDING
+        assert SGEState("dr") == SGEState.DELETION_RUNNING
 
 
-class TestSlurmIO:
+class TestSGEIO:
     @pytest.mark.parametrize("in_out_ref", in_out_submit_ref_list)
-    def test_parse_submit_output(self, slurm_io, in_out_ref, test_utils):
+    def test_parse_submit_output(self, sge_io, in_out_ref, test_utils):
         parse_cmd_output, sr_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_submit_kwargs", outkey="submission_result_ref"
         )
-        sr = slurm_io.parse_submit_output(**parse_cmd_output)
+        sr = sge_io.parse_submit_output(**parse_cmd_output)
         assert sr == sr_ref
-        sr = slurm_io.parse_submit_output(
+        sr = sge_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert sr == sr_ref
-        sr = slurm_io.parse_submit_output(
+        sr = sge_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
@@ -61,19 +54,19 @@ class TestSlurmIO:
         assert sr == sr_ref
 
     @pytest.mark.parametrize("in_out_ref", in_out_cancel_ref_list)
-    def test_parse_cancel_output(self, slurm_io, in_out_ref, test_utils):
+    def test_parse_cancel_output(self, sge_io, in_out_ref, test_utils):
         parse_cmd_output, cr_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_cancel_kwargs", outkey="cancel_result_ref"
         )
-        cr = slurm_io.parse_cancel_output(**parse_cmd_output)
+        cr = sge_io.parse_cancel_output(**parse_cmd_output)
         assert cr == cr_ref
-        cr = slurm_io.parse_cancel_output(
+        cr = sge_io.parse_cancel_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert cr == cr_ref
-        cr = slurm_io.parse_cancel_output(
+        cr = sge_io.parse_cancel_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
@@ -81,174 +74,155 @@ class TestSlurmIO:
         assert cr == cr_ref
 
     @pytest.mark.parametrize("in_out_ref", in_out_job_ref_list)
-    def test_parse_job_output(self, slurm_io, in_out_ref, test_utils):
+    def test_parse_job_output(self, sge_io, in_out_ref, test_utils):
         parse_cmd_output, job_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_job_kwargs", outkey="job_ref"
         )
-        job = slurm_io.parse_job_output(**parse_cmd_output)
+        if "stderr" not in parse_cmd_output:
+            parse_cmd_output["stderr"] = ""
+        job = sge_io.parse_job_output(**parse_cmd_output)
         assert job == job_ref
-        job = slurm_io.parse_job_output(
+        job = sge_io.parse_job_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert job == job_ref
-        job = slurm_io.parse_job_output(
+        job = sge_io.parse_job_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
         )
         assert job == job_ref
 
-    def test_get_job_cmd(self, slurm_io):
-        cmd = slurm_io._get_job_cmd(3)
-        assert cmd == "SLURM_TIME_FORMAT='standard' scontrol show job -o 3"
-        cmd = slurm_io._get_job_cmd("56")
-        assert cmd == "SLURM_TIME_FORMAT='standard' scontrol show job -o 56"
+    def test_get_job_cmd(self, sge_io):
+        cmd = sge_io._get_job_cmd(3)
+        assert cmd == "qstat -j 3"
+        cmd = sge_io._get_job_cmd("56")
+        assert cmd == "qstat -j 56"
 
-    def test_get_jobs_list_cmd(self, slurm_io):
+    def test_get_jobs_list_cmd(self, sge_io):
         with pytest.raises(
-            ValueError, match=r"Cannot query by user and job\(s\) in SLURM"
+            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
         ):
-            slurm_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
-        cmd = slurm_io._get_jobs_list_cmd(user="johndoe")
-        assert cmd == (
-            "SLURM_TIME_FORMAT='standard' "
-            "squeue --noheader -o '%i<><> %t<><> %r<><> "
-            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
-            "%M<><> %m' -u johndoe"
-        )
-        cmd = slurm_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        assert cmd == (
-            "SLURM_TIME_FORMAT='standard' "
-            "squeue --noheader -o '%i<><> %t<><> %r<><> "
-            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
-            "%M<><> %m' --jobs=1,3,56,15"
-        )
-        cmd = slurm_io._get_jobs_list_cmd(job_ids=["1"])
-        assert cmd == (
-            "SLURM_TIME_FORMAT='standard' "
-            "squeue --noheader -o '%i<><> %t<><> %r<><> "
-            "%j<><> %u<><> %P<><> %l<><> %D<><> %C<><> "
-            "%M<><> %m' --jobs=1,1"
-        )
+            sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
+        cmd = sge_io._get_jobs_list_cmd(user="johndoe")
+        assert cmd == ("qstat -ext -urg -xml -u johndoe")
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
+        assert cmd == ("qstat -ext -urg -xml -u '*'")
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == ("qstat -ext -urg -xml -u '*'")
 
-    def test_convert_str_to_time(self, slurm_io):
-        time_seconds = slurm_io._convert_str_to_time(None)
-        assert time_seconds is None
-        time_seconds = slurm_io._convert_str_to_time("UNLIMITED")
-        assert time_seconds is None
-        time_seconds = slurm_io._convert_str_to_time("NOT_SET")
+    def test_convert_str_to_time(self, sge_io):
+        time_seconds = sge_io._convert_str_to_time(None)
         assert time_seconds is None
 
-        time_seconds = slurm_io._convert_str_to_time("3-10:51:13")
-        assert time_seconds == 298273
-        time_seconds = slurm_io._convert_str_to_time("2:10:02")
+        time_seconds = sge_io._convert_str_to_time("10:51:13")
+        assert time_seconds == 39073
+        time_seconds = sge_io._convert_str_to_time("02:10:02")
         assert time_seconds == 7802
-        time_seconds = slurm_io._convert_str_to_time("10:02")
+        time_seconds = sge_io._convert_str_to_time("10:02")
         assert time_seconds == 602
-        time_seconds = slurm_io._convert_str_to_time("45")
+        time_seconds = sge_io._convert_str_to_time("45")
         assert time_seconds == 2700
 
         with pytest.raises(OutputParsingError):
-            slurm_io._convert_str_to_time("2:10:02:10")
+            sge_io._convert_str_to_time("2:10:02:10")
 
         with pytest.raises(OutputParsingError):
-            slurm_io._convert_str_to_time("2:10:a")
+            sge_io._convert_str_to_time("2:10:a")
 
-    def test_convert_memory_str(self, slurm_io):
-        memory_kb = slurm_io._convert_memory_str(None)
+    def test_convert_memory_str(self, sge_io):
+        memory_kb = sge_io._convert_memory_str(None)
         assert memory_kb is None
-        memory_kb = slurm_io._convert_memory_str("")
+        memory_kb = sge_io._convert_memory_str("")
         assert memory_kb is None
 
-        memory_kb = slurm_io._convert_memory_str("12M")
+        memory_kb = sge_io._convert_memory_str("12M")
         assert memory_kb == 12288
-        memory_kb = slurm_io._convert_memory_str("13K")
+        memory_kb = sge_io._convert_memory_str("13K")
         assert memory_kb == 13
-        memory_kb = slurm_io._convert_memory_str("5G")
+        memory_kb = sge_io._convert_memory_str("5G")
         assert memory_kb == 5242880
-        memory_kb = slurm_io._convert_memory_str("1T")
+        memory_kb = sge_io._convert_memory_str("1T")
         assert memory_kb == 1073741824
 
         with pytest.raises(OutputParsingError):
-            slurm_io._convert_memory_str("aT")
+            sge_io._convert_memory_str("aT")
 
-    def test_convert_time_to_str(self, slurm_io):
-        time_str = slurm_io._convert_time_to_str(10)
-        assert time_str == "0-0:0:10"
-        time_str = slurm_io._convert_time_to_str(298273)
-        assert time_str == "3-10:51:13"
-        time_str = slurm_io._convert_time_to_str(7802)
-        assert time_str == "0-2:10:2"
-        time_str = slurm_io._convert_time_to_str(602)
-        assert time_str == "0-0:10:2"
+    def test_convert_time_to_str(self, sge_io):
+        time_str = sge_io._convert_time_to_str(10)
+        assert time_str == "0:0:10"
+        time_str = sge_io._convert_time_to_str(39073)
+        assert time_str == "10:51:13"
+        time_str = sge_io._convert_time_to_str(7802)
+        assert time_str == "2:10:2"
+        time_str = sge_io._convert_time_to_str(602)
+        assert time_str == "0:10:2"
 
-        time_str = slurm_io._convert_time_to_str(timedelta(seconds=298273))
-        assert time_str == "3-10:51:13"
-        time_str = slurm_io._convert_time_to_str(
-            timedelta(days=15, hours=21, minutes=19, seconds=32)
+        time_str = sge_io._convert_time_to_str(timedelta(seconds=39073))
+        assert time_str == "10:51:13"
+        time_str = sge_io._convert_time_to_str(
+            timedelta(hours=15, minutes=19, seconds=32)
         )
-        assert time_str == "15-21:19:32"
+        assert time_str == "15:19:32"
 
         # test float
-        time_str = slurm_io._convert_time_to_str(602.0)
-        assert time_str == "0-0:10:2"
+        time_str = sge_io._convert_time_to_str(602.0)
+        assert time_str == "0:10:2"
 
         # test negative
         # negative time makes no sense and should not be passed. this test is just to be alerted
         # if the output for negative numbers changes
-        time_str = slurm_io._convert_time_to_str(-10)
-        assert time_str == "-1-23:59:50"
+        time_str = sge_io._convert_time_to_str(-10)
+        assert time_str == "-1:59:50"
 
-    def test_check_convert_qresources(self, slurm_io):
+    def test_check_convert_qresources(self, sge_io):
         res = QResources(
             queue_name="myqueue",
             job_name="myjob",
             memory_per_thread=2048,
             account="myaccount",
-            qos="myqos",
+            priority=1,
             output_filepath="someoutputpath",
             error_filepath="someerrorpath",
             njobs=4,
-            time_limit=298273,
+            time_limit=39073,
             process_placement=ProcessPlacement.EVENLY_DISTRIBUTED,
             nodes=4,
             processes_per_node=3,
             threads_per_process=2,
-            gpus_per_job=4,
             email_address="john.doe@submit.qtk",
             scheduler_kwargs={"tata": "toto", "titi": "tutu"},
         )
-        header_dict = slurm_io.check_convert_qresources(resources=res)
+        header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
-            "partition": "myqueue",
+            "queue": "myqueue",
             "job_name": "myjob",
-            "mem-per-cpu": 2048,
+            "mem": 2048,
             "account": "myaccount",
-            "qos": "myqos",
+            "priority": 1,
             "qout_path": "someoutputpath",
             "qerr_path": "someerrorpath",
             "array": "1-4",
-            "time": "3-10:51:13",
-            "ntasks_per_node": 3,
-            "nodes": 4,
-            "cpus_per_task": 2,
-            "gres": "gpu:4",
+            "walltime": "10:51:13",
+            "soft_walltime": "9:46:1",
+            "select": "select=4:ncpus=6:ompthreads=2:mpiprocs=3:mem=24576mb",
             "mail_user": "john.doe@submit.qtk",
-            "mail_type": "ALL",
+            "mail_type": "abe",
             "tata": "toto",
             "titi": "tutu",
         }
 
         res = QResources(
-            time_limit=298273,
+            time_limit=39073,
             processes=24,
         )
-        header_dict = slurm_io.check_convert_qresources(resources=res)
+        header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
-            "time": "3-10:51:13",
-            "ntasks": 24,
+            "walltime": "10:51:13",
+            "soft_walltime": "9:46:1",
+            "select": "select=24:ncpus=1:ompthreads=1:mem=24mb",
         }
 
         res = QResources(
@@ -256,10 +230,10 @@ class TestSlurmIO:
             processes=24,
             gpus_per_job=4,
         )
-        header_dict = slurm_io.check_convert_qresources(resources=res)
+        header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
-            "ntasks": 24,
-            "gres": "gpu:4",
+            "select": "select=24:ncpus=1:ompthreads=1:mem=24mb",
+            "array": "1-1",
         }
 
         res = QResources(
@@ -269,4 +243,4 @@ class TestSlurmIO:
         with pytest.raises(
             UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
         ):
-            slurm_io.check_convert_qresources(res)
+            sge_io.check_convert_qresources(res)
