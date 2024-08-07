@@ -117,3 +117,30 @@ class TestUtils:
 @pytest.fixture(scope="session")
 def test_utils():
     return TestUtils
+
+
+@pytest.fixture(scope="session")
+def maximalist_qresources():
+    """A set of QResources options that try to make use of most features"""
+    from qtoolkit.core.data_objects import QResources
+    return QResources(
+        queue_name="test_queue",
+        job_name="test_job",
+        memory_per_thread=1000,
+        nodes=1,
+        processes=1,
+        processes_per_node=1,
+        threads_per_process=1,
+        gpus_per_job=1,
+        time_limit=100,
+        account="test_account",
+        qos="test_qos",
+        priority=1,
+        output_filepath="test_output_filepath",
+        error_filepath="test_error_filepath",
+        process_placement="no_constraints",
+        email_address="test_email_address@email.address",
+        rerunnable=True,
+        project="test_project",
+        njobs=1,
+    )

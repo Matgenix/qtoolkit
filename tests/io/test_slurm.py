@@ -270,3 +270,13 @@ class TestSlurmIO:
             UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
         ):
             slurm_io.check_convert_qresources(res)
+
+    def test_submission_script(self, slurm_io, maximalist_qresources):
+        # only `rerunnable` and `project` are unsupported by SlurmIO
+        maximalist_qresources.rerunnable = None
+        maximalist_qresources.project = None
+
+        script_qresources = slurm_io.get_submission_script(
+            commands=["ls -l"], options=maximalist_qresources
+        )
+        assert script_qresources
