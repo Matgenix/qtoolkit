@@ -224,7 +224,7 @@ class TestSlurmIO:
         assert header_dict == {
             "partition": "myqueue",
             "job_name": "myjob",
-            "mem-per-cpu": 2048,
+            "mem_per_cpu": 2048,
             "account": "myaccount",
             "qos": "myqos",
             "qout_path": "someoutputpath",
