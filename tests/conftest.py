@@ -123,6 +123,7 @@ def test_utils():
 def maximalist_qresources():
     """A set of QResources options that try to make use of most features"""
     from qtoolkit.core.data_objects import QResources
+
     return QResources(
         queue_name="test_queue",
         job_name="test_job",

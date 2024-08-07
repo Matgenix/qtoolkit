@@ -279,4 +279,8 @@ class TestSlurmIO:
         script_qresources = slurm_io.get_submission_script(
             commands=["ls -l"], options=maximalist_qresources
         )
-        assert script_qresources
+        assert script_qresources.split(
+            "\n"
+        ) == "#!/bin/bash\n\n#SBATCH --partition=test_queue\n#SBATCH --job-name=test_job\n#SBATCH --nodes=1\n#SBATCH --ntasks=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem-per-cpu=1000\n#SBATCH --time=0-0:1:40\n#SBATCH --account=test_account\n#SBATCH --mail-user=test_email_address@email.address\n#SBATCH --mail-type=ALL\n#SBATCH --gres=gpu:1\n#SBATCH --output=test_output_filepath\n#SBATCH --error=test_error_filepath\n#SBATCH --qos=test_qos\n#SBATCH --priority=1\nls -l".split(
+            "\n"
+        )
