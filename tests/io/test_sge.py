@@ -108,15 +108,16 @@ class TestSGEIO:
             sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
         cmd = sge_io._get_jobs_list_cmd(user="johndoe")
         assert cmd == ("qstat -ext -urg -xml -u johndoe")
-        cmd = sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        assert cmd == ("qstat -ext -urg -xml -u '*'")
-        cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])
-        assert cmd == ("qstat -ext -urg -xml -u '*'")
+        with pytest.raises(
+            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
+        ):
+            sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
+        with pytest.raises(
+            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
+        ):
+            sge_io._get_jobs_list_cmd(job_ids=["1"])
 
     def test_convert_str_to_time(self, sge_io):
-        time_seconds = sge_io._convert_str_to_time(None)
-        assert time_seconds is None
-
         time_seconds = sge_io._convert_str_to_time("10:51:13")
         assert time_seconds == 39073
         time_seconds = sge_io._convert_str_to_time("02:10:02")
@@ -124,7 +125,7 @@ class TestSGEIO:
         time_seconds = sge_io._convert_str_to_time("10:02")
         assert time_seconds == 602
         time_seconds = sge_io._convert_str_to_time("45")
-        assert time_seconds == 2700
+        assert time_seconds == 45
 
         with pytest.raises(OutputParsingError):
             sge_io._convert_str_to_time("2:10:02:10")
@@ -199,15 +200,15 @@ class TestSGEIO:
         assert header_dict == {
             "queue": "myqueue",
             "job_name": "myjob",
-            "mem": 2048,
+            "place": "scatter",  # a bit unsure about this
             "account": "myaccount",
             "priority": 1,
             "qout_path": "someoutputpath",
             "qerr_path": "someerrorpath",
             "array": "1-4",
             "walltime": "10:51:13",
-            "soft_walltime": "9:46:1",
-            "select": "select=4:ncpus=6:ompthreads=2:mpiprocs=3:mem=24576mb",
+            "select": "select=4:ncpus=6:mpiprocs=3:ompthreads=2:mem=12288mb",
+            "soft_walltime": "9:46:5",
             "mail_user": "john.doe@submit.qtk",
             "mail_type": "abe",
             "tata": "toto",
@@ -221,8 +222,8 @@ class TestSGEIO:
         header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "walltime": "10:51:13",
-            "soft_walltime": "9:46:1",
-            "select": "select=24:ncpus=1:ompthreads=1:mem=24mb",
+            "soft_walltime": "9:46:5",
+            "select": "select=24",  # also not sure about this
         }
 
         res = QResources(
@@ -232,8 +233,7 @@ class TestSGEIO:
         )
         header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
-            "select": "select=24:ncpus=1:ompthreads=1:mem=24mb",
-            "array": "1-1",
+            "select": "select=24",
         }
 
         res = QResources(

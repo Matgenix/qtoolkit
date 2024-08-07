@@ -126,10 +126,10 @@ _STATUS_MAPPING = {
 
 class SGEIO(BaseSchedulerIO):
     header_template: str = """
-#$ -cwd
+#$ -cwd $${cwd}
 #$ -q $${queue}
 #$ -N $${job_name}
-#$ -P $${account}
+#$ -P $${device}
 #$ -l $${select}
 #$ -l h_rt=$${walltime}
 #$ -l s_rt=$${soft_walltime}
@@ -215,47 +215,87 @@ $${qverbatim}"""
         if isinstance(stderr, bytes):
             stderr = stderr.decode()
 
-        try:
-            xmldata = xml.dom.minidom.parseString(stdout)
-        except xml.parsers.expat.ExpatError:
-            raise OutputParsingError("XML parsing of stdout failed")
+        # Check for specific error messages in stderr or stdout
+        error_patterns = [
+            re.compile(
+                r"Primary job\s+terminated normally, but\s+(\d+)\s+process returned a non-zero exit code",
+                re.IGNORECASE,
+            ),
+            re.compile(
+                r"mpiexec detected that one or more processes exited with non-zero status",
+                re.IGNORECASE,
+            ),
+            re.compile(r"An error occurred in MPI_Allreduce", re.IGNORECASE),
+            re.compile(
+                r"Error: mca_pml_ucx_send_nbr failed: -25, Connection reset by remote peer",
+                re.IGNORECASE,
+            ),
+            re.compile(r"mpi_errors_are_fatal", re.IGNORECASE),
+        ]
 
-        job_list = xmldata.getElementsByTagName("job_list")
-        if not job_list:
+        for pattern in error_patterns:
+            if pattern.search(stderr) or pattern.search(stdout):
+                raise OutputParsingError(
+                    "Job terminated due to a non-zero exit code from one or more processes or MPI errors"
+                )
+
+        if not stdout.strip():
             return None
 
-        job_element = job_list[0]
-
-        qjob = QJob()
-        qjob.job_id = self._get_element_text(job_element, "JB_job_number")
-        job_state_string = self._get_element_text(job_element, "state")
-
+        # Check if stdout is in XML format
         try:
-            sge_job_state = SGEState(job_state_string)
-        except ValueError:
-            raise OutputParsingError(
-                f"Unknown job state {job_state_string} for job id {qjob.job_id}"
+            xmldata = xml.dom.minidom.parseString(stdout)
+            job_info = xmldata.getElementsByTagName("job_list")[0]
+            job_id = job_info.getElementsByTagName("JB_job_number")[
+                0
+            ].firstChild.nodeValue
+            job_name = job_info.getElementsByTagName("JB_name")[0].firstChild.nodeValue
+            owner = job_info.getElementsByTagName("JB_owner")[0].firstChild.nodeValue
+            state = job_info.getElementsByTagName("state")[0].firstChild.nodeValue
+            queue_name = job_info.getElementsByTagName("queue_name")[
+                0
+            ].firstChild.nodeValue
+            slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue
+
+            try:
+                cpus = int(slots)
+            except ValueError:
+                cpus = 1
+
+            return QJob(
+                name=job_name,
+                job_id=job_id,
+                state=QState("DONE"),
+                sub_state=SGEState(state),
+                account=owner,
+                queue_name=queue_name,
+                info=QJobInfo(nodes=1, cpus=cpus, threads_per_process=1),
             )
+        except Exception:
+            # Not XML, fallback to plain text
+            job_info = {}
+            for line in stdout.split("\n"):
+                if ":" in line:
+                    key, value = line.split(":", 1)
+                    job_info[key.strip()] = value.strip()
 
-        qjob.sub_state = sge_job_state
-        qjob.state = sge_job_state.qstate
-        qjob.username = self._get_element_text(job_element, "JB_owner")
-        qjob.name = self._get_element_text(job_element, "JB_name")
+            try:
+                cpus = int(job_info.get("slots", 1))
+            except ValueError:
+                cpus = 1
 
-        info = QJobInfo()
-        info.nodes = self._safe_int(self._get_element_text(job_element, "num_nodes"))
-        info.cpus = self._safe_int(self._get_element_text(job_element, "num_proc"))
-        info.memory_per_cpu = self._convert_memory_str(
-            self._get_element_text(job_element, "hard resource_list.mem_free")
-        )
-        info.partition = self._get_element_text(job_element, "queue_name")
-        info.time_limit = self._convert_str_to_time(
-            self._get_element_text(job_element, "hard resource_list.h_rt")
-        )
+            state_str = job_info.get("state")
+            state = SGEState(state_str) if state_str else None
 
-        qjob.info = info
-
-        return qjob
+            return QJob(
+                name=job_info.get("job_name"),
+                job_id=job_info.get("job_id"),
+                state=QState("DONE"),
+                sub_state=state,
+                account=job_info.get("owner"),
+                queue_name=job_info.get("queue_name"),
+                info=QJobInfo(nodes=1, cpus=cpus, threads_per_process=1),
+            )
 
     def _get_element_text(self, parent, tag_name):
         elements = parent.getElementsByTagName(tag_name)
@@ -276,15 +316,8 @@ $${qverbatim}"""
     ) -> str:
         if job_ids:
             raise UnsupportedResourcesError("Cannot query by job id in SGE")
-
-        command = "qstat -ext -urg -xml "
-
-        if user:
-            command += f"-u {user!s}"
-        else:
-            command += "-u '*'"
-
-        return command
+        user = user if user else "*"
+        return f"qstat -ext -urg -xml -u {user}"
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if exit_code != 0:
@@ -339,28 +372,25 @@ $${qverbatim}"""
         return jobs_list
 
     @staticmethod
-    def _convert_str_to_time(time_str: str | None):
-        """
-        Convert a string in the format used by SGE DD:HH:MM:SS to a number of seconds.
-        It may contain only H:M:S, only M:S or only S.
-        """
-
-        if not time_str:
+    def _convert_str_to_time(time_str: str | None) -> int | None:
+        if time_str is None:
             return None
 
-        time_split = time_str.split(":")
-
-        # array containing seconds, minutes, hours and days
-        time = [0] * 4
+        parts = time_str.split(":")
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+        elif len(parts) == 2:
+            hours, minutes = "0", parts[0]
+            seconds = parts[1]
+        elif len(parts) == 1:
+            hours, minutes, seconds = "0", "0", parts[0]
+        else:
+            raise OutputParsingError(f"Invalid time format: {time_str}")
 
         try:
-            for i, v in enumerate(reversed(time_split)):
-                time[i] = int(v)
-
+            return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
         except ValueError:
-            raise OutputParsingError()
-
-        return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
+            raise OutputParsingError(f"Invalid time format: {time_str}")
 
     @staticmethod
     def _convert_memory_str(memory: str | None) -> int | None:
@@ -372,10 +402,10 @@ $${qverbatim}"""
             raise OutputParsingError("No numbers and units parsed")
         memory, units = match.groups()
 
-        power_labels = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
+        power_labels = {"K": 0, "M": 1, "G": 2, "T": 3}
 
         if not units:
-            units = "mb"
+            units = "M"
         elif units not in power_labels:
             raise OutputParsingError(f"Unknown units {units}")
         try:
@@ -383,7 +413,7 @@ $${qverbatim}"""
         except ValueError:
             raise OutputParsingError
 
-        return v * (1024 ** power_labels[units])
+        return v * (1024 ** power_labels[units.upper()])
 
     _qresources_mapping = {
         "queue_name": "queue",
@@ -482,6 +512,7 @@ $${qverbatim}"""
         supported = list(self._qresources_mapping.keys())
         supported += [
             "njobs",
+            "memory_per_thread",
             "time_limit",
             "processes",
             "processes_per_node",
@@ -490,5 +521,6 @@ $${qverbatim}"""
             "threads_per_process",
             "email_address",
             "scheduler_kwargs",
+            "gpus_per_job",
         ]
         return supported

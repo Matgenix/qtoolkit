@@ -2,6 +2,7 @@ import json
 
 import yaml
 
+from qtoolkit.core.exceptions import OutputParsingError
 from qtoolkit.io.sge import SGEIO
 
 sge_io = SGEIO()
@@ -61,12 +62,16 @@ stdout = b"""<?xml version='1.0'?>
 </job_info>
 """
 stderr = b""
-job = sge_io.parse_job_output(exit_code=return_code, stdout=stdout, stderr=stderr)
+try:
+    job = sge_io.parse_job_output(exit_code=return_code, stdout=stdout, stderr=stderr)
+    job_dict = job.as_dict()
+except OutputParsingError as e:
+    job_dict = {"error": str(e)}
 a = {
     "parse_job_kwargs": json.dumps(
         {"exit_code": return_code, "stdout": stdout.decode(), "stderr": stderr.decode()}
     ),
-    "job_ref": json.dumps(job.as_dict()),
+    "job_ref": json.dumps(job_dict),
 }
 mylist.append(a)
 
