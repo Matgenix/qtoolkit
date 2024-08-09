@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import timedelta
+from typing import ClassVar
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -156,9 +157,7 @@ $${qverbatim}"""
         )
 
     def _get_job_cmd(self, job_id: str):
-        cmd = f"qstat -f {job_id}"
-
-        return cmd
+        return f"qstat -f {job_id}"
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
@@ -224,7 +223,7 @@ $${qverbatim}"""
 
         jobs_list = []
         for chunk in jobs_chunks:
-            chunk = chunk.strip()
+            chunk = chunk.strip()  # noqa: PLW2901
             if not chunk:
                 continue
 
@@ -243,9 +242,9 @@ $${qverbatim}"""
 
             try:
                 pbs_job_state = PBSState(job_state_string)
-            except ValueError:
+            except ValueError as exc:
                 msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
-                raise OutputParsingError(msg)
+                raise OutputParsingError(msg) from exc
             qjob.sub_state = pbs_job_state
             qjob.state = pbs_job_state.qstate
 
@@ -299,7 +298,6 @@ $${qverbatim}"""
         Convert a string in the format used by PBS DD:HH:MM:SS to a number of seconds.
         It may contain only H:M:S, only M:S or only S.
         """
-
         if not time_str:
             return None
 
@@ -312,8 +310,8 @@ $${qverbatim}"""
             for i, v in enumerate(reversed(time_split)):
                 time[i] = int(v)
 
-        except ValueError:
-            raise OutputParsingError()
+        except ValueError as exc:
+            raise OutputParsingError from exc
 
         return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
 
@@ -335,14 +333,14 @@ $${qverbatim}"""
             raise OutputParsingError(f"Unknown units {units}")
         try:
             v = int(memory)
-        except ValueError:
-            raise OutputParsingError
+        except ValueError as exc:
+            raise OutputParsingError from exc
 
         return v * (1024 ** power_labels[units])
 
     # helper attribute to match the values defined in QResources and
     # the dictionary that should be passed to the template
-    _qresources_mapping = {
+    _qresources_mapping: ClassVar = {
         "queue_name": "queue",
         "job_name": "job_name",
         "account": "account",
@@ -353,22 +351,20 @@ $${qverbatim}"""
     }
 
     @staticmethod
-    def _convert_time_to_str(time: int | float | timedelta) -> str:
+    def _convert_time_to_str(time: int | float | timedelta) -> str:  # noqa: PYI041
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
         hours, remainder = divmod(int(time.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        time_str = f"{hours}:{minutes}:{seconds}"
-        return time_str
+        return f"{hours}:{minutes}:{seconds}"
 
     def _convert_qresources(self, resources: QResources) -> dict:
         """
         Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
         """
-
         header_dict = {}
         for qr_field, pbs_field in self._qresources_mapping.items():
             val = getattr(resources, qr_field)

@@ -11,7 +11,7 @@ class LocalHost(BaseHost):
     # def __init__(self, config):
     #     self.config = config
     def execute(self, command: str | list[str], workdir: str | Path | None = None):
-        """Execute the given command on the host
+        """Execute the given command on the host.
 
         Note that the command is executed with shell=True, so commands can
         be exposed to command injection. Consider whether to escape part of
@@ -33,12 +33,9 @@ class LocalHost(BaseHost):
         """
         if isinstance(command, (list, tuple)):
             command = " ".join(command)
-        if not workdir:
-            workdir = Path.cwd()
-        else:
-            workdir = str(workdir)
+        workdir = str(workdir) if workdir else Path.cwd()
         with cd(workdir):
-            proc = subprocess.run(command, capture_output=True, shell=True)
+            proc = subprocess.run(command, capture_output=True, shell=True, check=False)  # noqa: S602
         return proc.stdout.decode(), proc.stderr.decode(), proc.returncode
 
     def mkdir(self, directory, recursive=True, exist_ok=True) -> bool:

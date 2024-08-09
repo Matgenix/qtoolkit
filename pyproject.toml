@@ -1,6 +1,3 @@
-[build-system]
-requires = ["setuptools >= 42", "versioningit ~= 1.0", "wheel"]
-build-backend = "setuptools.build_meta"
 
 [project]
 name = "qtoolkit"
@@ -8,51 +5,47 @@ description = "QToolKit is a python wrapper interfacing with job queues (e.g. PB
 readme = "README.md"
 keywords = []
 license = { text = "modified BSD" }
-authors = [{ name = "David Waroquiers", email = "david.waroquiers@matgenix.com" }]
+authors = [
+    { name = "David Waroquiers", email = "david.waroquiers@matgenix.com" },
+]
 dynamic = ["version"]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Information Technology",
     "Intended Audience :: Science/Research",
     "Intended Audience :: System Administrators",
-    "Intended Audience :: Information Technology",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Other/Nonlisted Topic",
     "Topic :: Scientific/Engineering",
 ]
 requires-python = ">=3.9"
-dependencies =[]
+dependencies = []
 
 [project.optional-dependencies]
-dev = [
-    "pre-commit>=3.0.0",
-]
+dev = ["pre-commit>=3.0.0"]
 tests = [
-    "pytest==7.2.1",
+    "monty>=2022.9.9",
     "pytest-cov==4.0.0",
     "pytest-mock==3.10.0",
-    "monty>=2022.9.9",
+    "pytest==7.2.1",
     "ruamel.yaml",
-    ]
-maintain = [
-    "git-changelog>=0.6",
 ]
+maintain = ["git-changelog>=0.6"]
 docs = [
+    "ipython!=8.1.0",
+    "matplotlib",
+    "pydata-sphinx-theme",
+    "qtoolkit[remote,msonable]",
     "sphinx",
     "sphinx_design",
-    "pydata-sphinx-theme",
-    "matplotlib",
-    "ipython!=8.1.0",
-    "qtoolkit[remote,msonable]",
 ]
 strict = []
 remote = ["fabric>=3.0.0"]
-msonable = ["monty>=2022.9.9",]
-
-[project.scripts]
+msonable = ["monty>=2022.9.9"]
 
 [project.urls]
 homepage = "https://matgenix.github.io/qtoolkit/"
@@ -63,21 +56,64 @@ changelog = "https://matgenix.github.io/qtoolkit/changelog"
 [tool.setuptools.package-data]
 qtoolkit = ["py.typed"]
 
+[build-system]
+requires = ["setuptools >= 42", "versioningit  ~=  1.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.versioningit.vcs]
 method = "git"
 default-tag = "0.0.1"
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+target-version = "py39"
 
-[tool.flake8]
-max-line-length = 88
-max-doc-length = 88
-select = "C, E, F, W, B"
-extend-ignore = "E203, W503, E501, F401, RST21"
-min-python-version = "3.9.0"
-docstring-convention = "numpy"
-rst-roles = "class, func, ref, obj"
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN",     # TODO fix all ANN errors
+    "ARG",     # TODO fix unused method argument
+    "BLE001",
+    "C901",    # function too complex
+    "COM812",  # trailing comma missing
+    "D",
+    "D205",
+    "DTZ",     # datetime-tz-now
+    "E501",    # TODO fix line too long
+    "EM",      # exception message must not use f-string literal
+    "ERA001",  # found commented out code
+    "FA100",   # TODO fix FA errors
+    "FBT001",
+    "FBT002",
+    "FIX002",
+    "G004",    # logging uses fstring
+    "ISC001",
+    "N802",    # TODO maybe fix these
+    "PERF203", # try-except-in-loop
+    "PGH003",
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "PLR0915", # too many statements
+    "PLR2004", # magic value used in comparison
+    "PT004",   # pytest-missing-fixture-name-underscore
+    "PT006",   # pytest-parametrize-names-wrong-type
+    "PT013",   # pytest-incorrect-pytest-import
+    "PTH",     # prefer Pathlib to os.path
+    "RUF013",  # implicit-optional
+    "SIM105",  # contextlib.suppress(Exception) instead of try-except
+    "T201",    # print statement
+    "TD",      # TODOs
+    "TRY003",  # long message outside exception class
+]
+pydocstyle.convention = "numpy"
+isort.known-first-party = ["qtoolkit"]
+isort.split-on-trailing-comma = false
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"**/tests/*" = ["INP001", "S101"]
 
 [tool.mypy]
 ignore_missing_imports = true
@@ -86,13 +122,14 @@ no_strict_optional = true
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:.*POTCAR.*:UserWarning",
-    "ignore:.*magmom.*:UserWarning",
-    "ignore:.*is not gzipped.*:UserWarning",
     "ignore:.*input structure.*:UserWarning",
+    "ignore:.*is not gzipped.*:UserWarning",
+    "ignore:.*magmom.*:UserWarning",
     "ignore::DeprecationWarning",
 ]
 
 [tool.coverage.run]
+include = ["src/*"]
 parallel = true
 branch = true
 
@@ -103,15 +140,8 @@ source = ["src/"]
 skip_covered = true
 show_missing = true
 exclude_lines = [
+    '# pragma: no cover',
+    '^\s*@overload( |$)',
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
-    '^\s*@overload( |$)',
-    '# pragma: no cover',
 ]
-
-[tool.autoflake]
-in-place = true
-remove-all-unused-imports = true
-remove-unused-variables = true
-ignore-init-module-imports = true
-expand-star-imports = true

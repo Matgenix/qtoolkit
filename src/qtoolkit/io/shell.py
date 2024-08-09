@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -18,6 +18,9 @@ from qtoolkit.core.exceptions import (
     UnsupportedResourcesError,
 )
 from qtoolkit.io.base import BaseSchedulerIO
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # States in from ps command, extracted from man ps.
 # D    uninterruptible sleep (usually IO)
@@ -96,7 +99,7 @@ $${qverbatim}
         script_file = script_file or ""
 
         # nohup and the redirection of the outputs is needed when running through fabric
-        # see https://www.fabfile.org/faq.html#why-can-t-i-run-programs-in-the-background-with-it-makes-fabric-hang  # noqa
+        # see https://www.fabfile.org/faq.html#why-can-t-i-run-programs-in-the-background-with-it-makes-fabric-hang
         command = f"bash {script_file} > {self.stdout_path} 2> {self.stderr_path}"
         if not self.blocking:
             command = f"nohup {command} & echo $!"
@@ -152,10 +155,7 @@ $${qverbatim}
         )
 
     def _get_job_cmd(self, job_id: str):
-
-        cmd = self._get_jobs_list_cmd(job_ids=[job_id])
-
-        return cmd
+        return self._get_jobs_list_cmd(job_ids=[job_id])
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
         """Parse the output of the ps command and return the corresponding QJob object.
@@ -181,7 +181,6 @@ $${qverbatim}
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-
         if user and job_ids:
             msg = (
                 "Cannot query by user and job(s) with ps, "
@@ -241,9 +240,9 @@ $${qverbatim}
 
             try:
                 shell_job_state = ShellState(data[3][0])
-            except ValueError:
+            except ValueError as exc:
                 msg = f"Unknown job state {data[3]} for job id {qjob.job_id}"
-                raise OutputParsingError(msg)
+                raise OutputParsingError(msg) from exc
             qjob.sub_state = shell_job_state
             qjob.state = shell_job_state.qstate
 
@@ -278,7 +277,6 @@ $${qverbatim}
         Convert a string in the format used in etime [[DD-]hh:]mm:ss to a
         number of seconds.
         """
-
         if not time_str:
             return None
 
@@ -297,9 +295,9 @@ $${qverbatim}
             elif len(time_split) == 2:
                 minutes, seconds = (int(v) for v in time_split)
             else:
-                raise OutputParsingError()
+                raise OutputParsingError
 
-        except ValueError:
-            raise OutputParsingError()
+        except ValueError as exc:
+            raise OutputParsingError from exc
 
         return days * 86400 + hours * 3600 + minutes * 60 + seconds

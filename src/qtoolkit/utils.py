@@ -10,7 +10,7 @@ def cd(path: str | Path):
     """
     A Fabric-inspired cd context that temporarily changes directory for
     performing some tasks, and returns to the original working directory
-    afterwards. e.g.,
+    afterwards. e.g.
 
         with cd("/my/path/"):
             do_something()

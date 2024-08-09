@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, fields
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKEnum, QTKObject
 from qtoolkit.core.exceptions import UnsupportedResourcesError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class SubmissionStatus(QTKEnum):
@@ -100,12 +103,12 @@ class QSubState(QTKEnum):
         obj._value_ = values[0]
         for other_value in values[1:]:
             cls._value2member_map_[other_value] = obj
-        obj._all_values = values
+        obj._all_values = values  # noqa: SLF001
         return obj
 
     def __repr__(self):
         return "<{}.{}: {}>".format(
-            self.__class__.__name__,
+            type(self).__name__,
             self._name_,
             ", ".join([repr(v) for v in self._all_values]),
         )
@@ -190,7 +193,7 @@ class QResources(QTKObject):
     def __post_init__(self):
         if self.process_placement is None:
             if self.processes and not self.processes_per_node and not self.nodes:
-                self.process_placement = ProcessPlacement.NO_CONSTRAINTS  # type: ignore # due to QTKEnum
+                self.process_placement = ProcessPlacement.NO_CONSTRAINTS
             elif self.nodes and self.processes_per_node and not self.processes:
                 self.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
             elif not self._check_no_values():
@@ -203,18 +206,12 @@ class QResources(QTKObject):
         self.scheduler_kwargs = self.scheduler_kwargs or {}
 
     def _check_no_values(self) -> bool:
-        """
-        Check if all the attributes are None or empty.
-        """
-        for f in fields(self):
-            if self.__getattribute__(f.name):
-                return False
-
-        return True
+        """Check if all the attributes are None or empty."""
+        return all(not self.__getattribute__(f.name) for f in fields(self))
 
     def check_empty(self) -> bool:
         """
-        Check if the QResouces is empty and its content is coherent.
+        Check if the QResources is empty and its content is coherent.
         Raises an error if process_placement is None, but some attributes are set.
         """
         if self.process_placement is not None:

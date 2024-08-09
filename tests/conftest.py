@@ -47,9 +47,9 @@ def clean_dir(debug_mode):
         shutil.rmtree(newpath)
 
 
-@pytest.fixture
+@pytest.fixture()
 def tmp_dir():
-    """Same as clean_dir but is fresh for every test"""
+    """Same as clean_dir but is fresh for every test."""
     import os
     import shutil
     import tempfile
@@ -72,9 +72,7 @@ def is_msonable(obj):
 
     if not isinstance(obj, MSONable):
         return False
-    if not obj.as_dict() == obj.__class__.from_dict(obj.as_dict()).as_dict():
-        return False
-    return True
+    return obj.as_dict() == obj.__class__.from_dict(obj.as_dict()).as_dict()
 
 
 class TestUtils:
@@ -88,7 +86,7 @@ class TestUtils:
         if not isinstance(obj, cls.MSONable):
             return False
         obj_dict = obj.as_dict()
-        if not obj_dict == obj.__class__.from_dict(obj_dict).as_dict():
+        if obj_dict != obj.__class__.from_dict(obj_dict).as_dict():
             return False
         json_string = cls.json.dumps(obj_dict, cls=cls.MontyEncoder)
         obj_from_json = cls.json.loads(json_string, cls=cls.MontyDecoder)
