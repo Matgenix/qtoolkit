@@ -1,12 +1,15 @@
 # Changelog
 
-## [Unreleased](https://github.com/Matgenix/qtoolkit/tree/HEAD)
+## [v0.1.5](https://github.com/Matgenix/qtoolkit/tree/v0.1.5) (2024-08-07)
 
-[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.4...HEAD)
+[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.4...v0.1.5)
 
 **Merged pull requests:**
 
-- Slurm and QResources updates [\#38](https://github.com/Matgenix/qtoolkit/pull/38) ([gpetretto](https://github.com/gpetretto))
+- Fix codecov upload in CI [\#46](https://github.com/Matgenix/qtoolkit/pull/46) ([ml-evs](https://github.com/ml-evs))
+- Add simple test for QResources -\> slurm submission script  [\#45](https://github.com/Matgenix/qtoolkit/pull/45) ([ml-evs](https://github.com/ml-evs))
+- Fix `mem_per_cpu` in `SlurmIO` not being passed as snake\_case [\#44](https://github.com/Matgenix/qtoolkit/pull/44) ([janosh](https://github.com/janosh))
+- Correctly handle `float` in `(Slurm|PBS)IO._convert_time_to_str` [\#41](https://github.com/Matgenix/qtoolkit/pull/41) ([janosh](https://github.com/janosh))
 
 ## [v0.1.4](https://github.com/Matgenix/qtoolkit/tree/v0.1.4) (2024-03-19)
 
@@ -15,6 +18,10 @@
 **Closed issues:**
 
 - Issue with SLURM RD state  [\#37](https://github.com/Matgenix/qtoolkit/issues/37)
+
+**Merged pull requests:**
+
+- Slurm and QResources updates [\#38](https://github.com/Matgenix/qtoolkit/pull/38) ([gpetretto](https://github.com/gpetretto))
 
 ## [v0.1.3](https://github.com/Matgenix/qtoolkit/tree/v0.1.3) (2024-02-05)
 
