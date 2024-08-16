@@ -236,7 +236,7 @@ $${qverbatim}"""
         for pattern in error_patterns:
             if pattern.search(stderr) or pattern.search(stdout):
                 raise OutputParsingError(
-                    "Job terminated due to a non-zero exit code from one or more processes or MPI errors"
+                    "Job terminated due to a non-zero exit code from one or more processes or MPI errors: {stderr}"
                 )
 
         if not stdout.strip():
