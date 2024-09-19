@@ -224,7 +224,7 @@ class TestSlurmIO:
         assert header_dict == {
             "partition": "myqueue",
             "job_name": "myjob",
-            "mem-per-cpu": 2048,
+            "mem_per_cpu": 2048,
             "account": "myaccount",
             "qos": "myqos",
             "qout_path": "someoutputpath",
@@ -270,3 +270,17 @@ class TestSlurmIO:
             UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
         ):
             slurm_io.check_convert_qresources(res)
+
+    def test_submission_script(self, slurm_io, maximalist_qresources):
+        # only `rerunnable` and `project` are unsupported by SlurmIO
+        maximalist_qresources.rerunnable = None
+        maximalist_qresources.project = None
+
+        script_qresources = slurm_io.get_submission_script(
+            commands=["ls -l"], options=maximalist_qresources
+        )
+        assert script_qresources.split(
+            "\n"
+        ) == "#!/bin/bash\n\n#SBATCH --partition=test_queue\n#SBATCH --job-name=test_job\n#SBATCH --nodes=1\n#SBATCH --ntasks=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem-per-cpu=1000\n#SBATCH --time=0-0:1:40\n#SBATCH --account=test_account\n#SBATCH --mail-user=test_email_address@email.address\n#SBATCH --mail-type=ALL\n#SBATCH --gres=gpu:1\n#SBATCH --output=test_output_filepath\n#SBATCH --error=test_error_filepath\n#SBATCH --qos=test_qos\n#SBATCH --priority=1\nls -l".split(
+            "\n"
+        )

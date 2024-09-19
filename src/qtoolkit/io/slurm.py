@@ -555,7 +555,7 @@ $${qverbatim}"""
     _qresources_mapping = {
         "queue_name": "partition",
         "job_name": "job_name",
-        "memory_per_thread": "mem-per-cpu",
+        "memory_per_thread": "mem_per_cpu",
         "account": "account",
         "qos": "qos",
         "priority": "priority",
