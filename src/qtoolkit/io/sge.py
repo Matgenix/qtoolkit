@@ -17,7 +17,11 @@ from qtoolkit.core.data_objects import (
     SubmissionResult,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
+from qtoolkit.core.exceptions import (
+    CommandFailedError,
+    OutputParsingError,
+    UnsupportedResourcesError,
+)
 from qtoolkit.io.base import BaseSchedulerIO
 
 # https://wiki.nikhil.io/Ancient_Sysadmin_Stuff/Sun_Grid_Engine_States/
@@ -199,7 +203,8 @@ $${qverbatim}"""
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
         if exit_code != 0:
-            raise OutputParsingError(f"Error in job output parsing: {stderr}")
+            msg = f"command {self.get_job_executable} failed: {stderr}"
+            raise CommandFailedError(msg)
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -225,9 +230,8 @@ $${qverbatim}"""
 
         for pattern in error_patterns:
             if pattern.search(stderr) or pattern.search(stdout):
-                raise OutputParsingError(
-                    "Job terminated due to a non-zero exit code from one or more processes or MPI errors: {stderr}"
-                )
+                msg = f"command {self.get_job_executable} failed: {stderr}"
+                raise CommandFailedError(msg)
 
         if not stdout.strip():
             return None
@@ -262,7 +266,7 @@ $${qverbatim}"""
                 sub_state=SGEState(state),
                 account=owner,
                 queue_name=queue_name,
-                info=QJobInfo(nodes=nodes, cpus=cpus, threads_per_process=1),
+                info=QJobInfo(nodes=nodes, cpus=cpus),
             )
         except Exception:
             # Not XML, fallback to plain text
@@ -274,8 +278,10 @@ $${qverbatim}"""
 
             try:
                 cpus = int(job_info.get("slots", 1))
+                nodes = int(job_info.get("tasks", 1))
             except ValueError:
                 cpus = 1
+                nodes = 1
 
             state_str = job_info.get("state")
             state = SGEState(state_str) if state_str else None
@@ -287,7 +293,7 @@ $${qverbatim}"""
                 sub_state=state,
                 account=job_info.get("owner"),
                 queue_name=job_info.get("queue_name"),
-                info=QJobInfo(nodes=nodes, cpus=cpus, threads_per_process=1),
+                info=QJobInfo(nodes=nodes, cpus=cpus),
             )
 
     def _get_element_text(self, parent, tag_name):
@@ -314,7 +320,8 @@ $${qverbatim}"""
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if exit_code != 0:
-            raise OutputParsingError(f"Error in jobs list output parsing: {stderr}")
+            msg = f"command {self.get_job_executable} failed: {stderr}"
+            raise CommandFailedError(msg)
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
