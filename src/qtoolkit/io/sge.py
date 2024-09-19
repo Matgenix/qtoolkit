@@ -142,11 +142,8 @@ $${qverbatim}"""
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
 
-    def __init__(
-        self, get_job_executable: str = "qstat", split_separator: str = "<><>"
-    ):
+    def __init__(self, get_job_executable: str = "qstat"):
         self.get_job_executable = get_job_executable
-        self.split_separator = split_separator  # not so sure if this is really needed
 
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
