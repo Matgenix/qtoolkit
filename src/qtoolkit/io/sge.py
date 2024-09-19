@@ -321,7 +321,7 @@ $${qverbatim}"""
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
         if job_ids:
-            raise UnsupportedResourcesError("Cannot query by job id in SGE")
+            raise ValueError("Cannot query by job ids list in SGE")
         user = user if user else "*"
         return f"qstat -ext -urg -xml -u {user}"
 
