@@ -130,7 +130,6 @@ class SGEIO(BaseSchedulerIO):
 #$ -pe $${model}
 #$ -binding $${place}
 #$ -W group_list=$${group_list}
-#$ -A $${account}
 #$ -M $${mail_user}
 #$ -m $${mail_type}
 #$ -o $${qout_path}
