@@ -142,6 +142,12 @@ $${qverbatim}"""
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
 
+    def __init__(
+        self, get_job_executable: str = "qstat", split_separator: str = "<><>"
+    ):
+        self.get_job_executable = get_job_executable
+        self.split_separator = split_separator  # not so sure if this is really needed
+
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
@@ -203,7 +209,7 @@ $${qverbatim}"""
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
         if exit_code != 0:
-            msg = f"command {self.get_job_executable} failed: {stderr}"
+            msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
             raise CommandFailedError(msg)
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
@@ -230,7 +236,7 @@ $${qverbatim}"""
 
         for pattern in error_patterns:
             if pattern.search(stderr) or pattern.search(stdout):
-                msg = f"command {self.get_job_executable} failed: {stderr}"
+                msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
                 raise CommandFailedError(msg)
 
         if not stdout.strip():
@@ -324,7 +330,7 @@ $${qverbatim}"""
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if exit_code != 0:
-            msg = f"command {self.get_job_executable} failed: {stderr}"
+            msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
             raise CommandFailedError(msg)
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
