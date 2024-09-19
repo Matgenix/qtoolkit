@@ -256,11 +256,14 @@ $${qverbatim}"""
                 0
             ].firstChild.nodeValue
             slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue
+            tasks = job_info.getElementsByTagName("tasks")[0].firstChild.nodeValue
 
             try:
                 cpus = int(slots)
+                nodes = int(tasks)
             except ValueError:
                 cpus = 1
+                nodes = 1
 
             return QJob(
                 name=job_name,
@@ -269,7 +272,7 @@ $${qverbatim}"""
                 sub_state=SGEState(state),
                 account=owner,
                 queue_name=queue_name,
-                info=QJobInfo(nodes=1, cpus=cpus, threads_per_process=1),
+                info=QJobInfo(nodes=nodes, cpus=cpus, threads_per_process=1),
             )
         except Exception:
             # Not XML, fallback to plain text
@@ -294,7 +297,7 @@ $${qverbatim}"""
                 sub_state=state,
                 account=job_info.get("owner"),
                 queue_name=job_info.get("queue_name"),
-                info=QJobInfo(nodes=1, cpus=cpus, threads_per_process=1),
+                info=QJobInfo(nodes=nodes, cpus=cpus, threads_per_process=1),
             )
 
     def _get_element_text(self, parent, tag_name):
