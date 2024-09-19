@@ -130,6 +130,7 @@ class SGEIO(BaseSchedulerIO):
 #$ -pe $${model}
 #$ -binding $${place}
 #$ -W group_list=$${group_list}
+#$ -A $${account}
 #$ -M $${mail_user}
 #$ -m $${mail_type}
 #$ -o $${qout_path}
@@ -261,9 +262,11 @@ $${qverbatim}"""
             try:
                 cpus = int(slots)
                 nodes = int(tasks)
+                threads_per_process = int(cpus / nodes)
             except ValueError:
                 cpus = None
                 nodes = None
+                threads_per_process = None
 
             return QJob(
                 name=job_name,
@@ -272,7 +275,9 @@ $${qverbatim}"""
                 sub_state=sge_state,
                 account=owner,
                 queue_name=queue_name,
-                info=QJobInfo(nodes=nodes, cpus=cpus),
+                info=QJobInfo(
+                    nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
+                ),
             )
         except Exception:
             # Not XML, fallback to plain text
@@ -285,9 +290,11 @@ $${qverbatim}"""
             try:
                 cpus = int(job_info.get("slots", 1))
                 nodes = int(job_info.get("tasks", 1))
+                threads_per_process = int(cpus / nodes)
             except ValueError:
                 cpus = None
                 nodes = None
+                threads_per_process = None
 
             state_str = job_info.get("state")
             sge_state = SGEState(state_str) if state_str else None
@@ -300,7 +307,9 @@ $${qverbatim}"""
                 sub_state=sge_state,
                 account=job_info.get("owner"),
                 queue_name=job_info.get("queue_name"),
-                info=QJobInfo(nodes=nodes, cpus=cpus),
+                info=QJobInfo(
+                    nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
+                ),
             )
 
     def _get_element_text(self, parent, tag_name):

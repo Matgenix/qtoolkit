@@ -102,19 +102,13 @@ class TestSGEIO:
         assert cmd == "qstat -j 56"
 
     def test_get_jobs_list_cmd(self, sge_io):
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
-        ):
+        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
             sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
         cmd = sge_io._get_jobs_list_cmd(user="johndoe")
         assert cmd == ("qstat -ext -urg -xml -u johndoe")
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
-        ):
+        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
             sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Cannot query by job id in SGE"
-        ):
+        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
             sge_io._get_jobs_list_cmd(job_ids=["1"])
 
     def test_convert_str_to_time(self, sge_io):
@@ -200,7 +194,11 @@ class TestSGEIO:
         assert header_dict == {
             "queue": "myqueue",
             "job_name": "myjob",
-            "place": "scatter",  # a bit unsure about this
+            "memory_per_thread": 2048,
+            "nodes": 4,
+            "processes_per_node": 3,
+            "threads_per_process": 2,
+            "time_limit": 39073,
             "account": "myaccount",
             "priority": 1,
             "qout_path": "someoutputpath",
