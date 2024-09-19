@@ -20,7 +20,8 @@ from qtoolkit.core.data_objects import (
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.base import BaseSchedulerIO
 
-# https://wiki.nikhil.io/Ancient_Sysadmin_Stuff/Sun_Grid_Engine_States/:
+# https://wiki.nikhil.io/Ancient_Sysadmin_Stuff/Sun_Grid_Engine_States/
+# https://manpages.ubuntu.com/manpages/jammy/en/man5/sge_status.5.html
 # Jobs Status:
 #     'qw' - Queued and waiting,
 #     'w' - Job waiting,
@@ -31,6 +32,7 @@ from qtoolkit.io.base import BaseSchedulerIO
 #     'R' - Job restarted,
 #     'd' - Job has been marked for deletion,
 #     'Eqw' - An error occurred with the job.
+# 'z' - finished
 #
 # Category     State     SGE Letter Code
 # Pending:     pending     qw
@@ -58,6 +60,7 @@ from qtoolkit.io.base import BaseSchedulerIO
 
 class SGEState(QSubState):
     # Job states
+    FINISHED = "z"
     QUEUED_WAITING = "qw"
     WAITING = "w"
     JOB_SUSPENDED = "s"
@@ -86,6 +89,7 @@ class SGEState(QSubState):
 
 
 _STATUS_MAPPING = {
+    SGEState.FINISHED: QState.DONE,
     SGEState.QUEUED_WAITING: QState.QUEUED,
     SGEState.WAITING: QState.QUEUED,
     SGEState.HOLD: QState.QUEUED_HELD,
@@ -96,17 +100,17 @@ _STATUS_MAPPING = {
     SGEState.TRANSFERRING: QState.RUNNING,
     SGEState.RESTARTED: QState.RUNNING,
     SGEState.JOB_SUSPENDED: QState.SUSPENDED,
-    SGEState.DELETION: QState.DONE,
-    SGEState.DELETION_RUNNING: QState.DONE,
-    SGEState.DELETION_TRANSFERRING: QState.DONE,
-    SGEState.DELETION_RUNNING_RESUBMIT: QState.DONE,
-    SGEState.DELETION_TRANSFERRING_RESUBMIT: QState.DONE,
-    SGEState.DELETION_SUSPENDED_JOB: QState.DONE,
-    SGEState.DELETION_SUSPENDED_QUEUE: QState.DONE,
-    SGEState.DELETION_SUSPENDED_ALARM: QState.DONE,
-    SGEState.DELETION_SUSPENDED_RESUBMIT_JOB: QState.DONE,
-    SGEState.DELETION_SUSPENDED_RESUBMIT_QUEUE: QState.DONE,
-    SGEState.DELETION_SUSPENDED_RESUBMIT_ALARM: QState.DONE,
+    SGEState.DELETION: QState.FAILED,
+    SGEState.DELETION_RUNNING: QState.FAILED,
+    SGEState.DELETION_TRANSFERRING: QState.FAILED,
+    SGEState.DELETION_RUNNING_RESUBMIT: QState.FAILED,
+    SGEState.DELETION_TRANSFERRING_RESUBMIT: QState.FAILED,
+    SGEState.DELETION_SUSPENDED_JOB: QState.SUSPENDED,
+    SGEState.DELETION_SUSPENDED_QUEUE: QState.SUSPENDED,
+    SGEState.DELETION_SUSPENDED_ALARM: QState.SUSPENDED,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_JOB: QState.SUSPENDED,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_QUEUE: QState.SUSPENDED,
+    SGEState.DELETION_SUSPENDED_RESUBMIT_ALARM: QState.SUSPENDED,
 }
 
 
