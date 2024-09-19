@@ -57,13 +57,6 @@ from qtoolkit.io.base import BaseSchedulerIO
 
 
 class SGEState(QSubState):
-    # Queue states
-    ALARM = "a"
-    SUSPENDED_BY_USER_ADMIN = "s"
-    DISABLED_BY_USER_ADMIN = "d"
-    SUSPENDED_BY_SUBORDINATION = "S"
-    ERROR = "E"
-
     # Job states
     QUEUED_WAITING = "qw"
     WAITING = "w"
