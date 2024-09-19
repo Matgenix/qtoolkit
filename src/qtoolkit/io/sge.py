@@ -425,7 +425,6 @@ $${qverbatim}"""
     _qresources_mapping = {
         "queue_name": "queue",
         "job_name": "job_name",
-        "account": "account",
         "priority": "priority",
         "output_filepath": "qout_path",
         "error_filepath": "qerr_path",
