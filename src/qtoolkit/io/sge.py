@@ -20,7 +20,7 @@ from qtoolkit.core.data_objects import (
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.base import BaseSchedulerIO
 
-# 'http://www.loni.ucla.edu/twiki/bin/view/Infrastructure/GridComputing?skin=plain':
+# https://wiki.nikhil.io/Ancient_Sysadmin_Stuff/Sun_Grid_Engine_States/:
 # Jobs Status:
 #     'qw' - Queued and waiting,
 #     'w' - Job waiting,
@@ -31,9 +31,6 @@ from qtoolkit.io.base import BaseSchedulerIO
 #     'R' - Job restarted,
 #     'd' - Job has been marked for deletion,
 #     'Eqw' - An error occurred with the job.
-#
-# 'http://confluence.rcs.griffith.edu.au:8080/display/v20zCluster/
-# Sun+Grid+Engine+SGE+state+letter+symbol+codes+meanings':
 #
 # Category     State     SGE Letter Code
 # Pending:     pending     qw
