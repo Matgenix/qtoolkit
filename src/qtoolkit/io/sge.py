@@ -252,6 +252,9 @@ $${qverbatim}"""
             slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue
             tasks = job_info.getElementsByTagName("tasks")[0].firstChild.nodeValue
 
+            sge_state = SGEState(state)
+            job_state = sge_state.qstate
+
             try:
                 cpus = int(slots)
                 nodes = int(tasks)
@@ -262,8 +265,8 @@ $${qverbatim}"""
             return QJob(
                 name=job_name,
                 job_id=job_id,
-                state=QState("DONE"),
-                sub_state=SGEState(state),
+                state=job_state,
+                sub_state=sge_state,
                 account=owner,
                 queue_name=queue_name,
                 info=QJobInfo(nodes=nodes, cpus=cpus),
@@ -284,13 +287,14 @@ $${qverbatim}"""
                 nodes = None
 
             state_str = job_info.get("state")
-            state = SGEState(state_str) if state_str else None
+            sge_state = SGEState(state_str) if state_str else None
+            job_state = sge_state.qstate
 
             return QJob(
                 name=job_info.get("job_name"),
                 job_id=job_info.get("job_id"),
-                state=QState("DONE"),
-                sub_state=state,
+                state=job_state,
+                sub_state=sge_state,
                 account=job_info.get("owner"),
                 queue_name=job_info.get("queue_name"),
                 info=QJobInfo(nodes=nodes, cpus=cpus),
