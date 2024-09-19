@@ -236,3 +236,40 @@ class TestSGEIO:
             UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
         ):
             sge_io.check_convert_qresources(res)
+
+    def test_submission_script(self, sge_io, maximalist_qresources):
+        # remove unsupported SGE options
+        maximalist_qresources.rerunnable = None
+        maximalist_qresources.project = None
+        maximalist_qresources.account = None
+        maximalist_qresources.qos = None
+        maximalist_qresources.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
+
+        # Set `processes` to None to avoid the conflict
+        maximalist_qresources.processes = None
+
+        # generate the SGE submission script
+        script_qresources = sge_io.get_submission_script(
+            commands=["ls -l"], options=maximalist_qresources
+        )
+
+        # assert the correctness of the generated script
+        assert (
+            script_qresources.split("\n")
+            == """#!/bin/bash
+
+#$ -q test_queue
+#$ -N test_job
+#$ -l select=1:ncpus=1:mpiprocs=1:mem=1000mb
+#$ -l h_rt=0:1:40
+#$ -l s_rt=0:1:30
+#$ -binding scatter
+#$ -M test_email_address@email.address
+#$ -m abe
+#$ -o test_output_filepath
+#$ -e test_error_filepath
+#$ -p 1
+ls -l""".split(
+                "\n"
+            )
+        )
