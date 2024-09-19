@@ -256,8 +256,8 @@ $${qverbatim}"""
                 cpus = int(slots)
                 nodes = int(tasks)
             except ValueError:
-                cpus = 1
-                nodes = 1
+                cpus = None
+                nodes = None
 
             return QJob(
                 name=job_name,
@@ -280,8 +280,8 @@ $${qverbatim}"""
                 cpus = int(job_info.get("slots", 1))
                 nodes = int(job_info.get("tasks", 1))
             except ValueError:
-                cpus = 1
-                nodes = 1
+                cpus = None
+                nodes = None
 
             state_str = job_info.get("state")
             state = SGEState(state_str) if state_str else None
