@@ -102,14 +102,16 @@ class TestSGEIO:
         assert cmd == "qstat -j 56"
 
     def test_get_jobs_list_cmd(self, sge_io):
-        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
+        with pytest.raises(
+            ValueError, match=r"Cannot query by user and job\(s\) in SGE"
+        ):
             sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
         cmd = sge_io._get_jobs_list_cmd(user="johndoe")
-        assert cmd == ("qstat -ext -urg -xml -u johndoe")
-        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
-            sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        with pytest.raises(ValueError, match=r"Cannot query by job ids list in SGE"):
-            sge_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == "qstat -ext -urg -xml -u johndoe"
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
+        assert cmd == "qstat -ext -urg -xml -j 1,3,56,15"
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == "qstat -ext -urg -xml -j 1"
 
     def test_convert_str_to_time(self, sge_io):
         time_seconds = sge_io._convert_str_to_time("10:51:13")
