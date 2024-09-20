@@ -262,13 +262,11 @@ $${qverbatim}"""
         except ValueError:
             return None
 
-    def _get_jobs_list_cmd(
-        self, job_ids: list[str] | None = None, user: str | None = None
-    ) -> str:
-        if job_ids:
-            raise ValueError("Cannot query by job ids list in SGE")
-        user = user if user else "*"
-        return f"qstat -ext -urg -xml -u {user}"
+    def _get_base_command(self) -> list[str]:
+        return ["qstat", "-ext", "-urg", "-xml"]
+
+    def _get_job_ids_flag(self, job_ids_str: str) -> str:
+        return f"-j {job_ids_str}"
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if exit_code != 0:

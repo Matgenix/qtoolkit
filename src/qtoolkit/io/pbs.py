@@ -102,24 +102,11 @@ $${qverbatim}"""
             return out[0]
         return None
 
-    def _get_jobs_list_cmd(
-        self, job_ids: list[str] | None = None, user: str | None = None
-    ) -> str:
-        if user and job_ids:
-            raise ValueError("Cannot query by user and job(s) in PBS")
+    def _get_base_command(self) -> list[str]:
+        return ["qstat", "-f"]
 
-        command = [
-            "qstat",
-            "-f",
-        ]
-
-        if user:
-            command.append(f"-u {user}")
-
-        if job_ids:
-            command.append(" ".join(job_ids))
-
-        return " ".join(command)
+    def _get_job_ids_flag(self, job_ids_str: str) -> str:
+        return job_ids_str
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if isinstance(stdout, bytes):

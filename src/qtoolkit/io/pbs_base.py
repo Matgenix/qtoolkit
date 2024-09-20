@@ -83,6 +83,35 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     def extract_job_id_from_cancel(self, stderr):
         pass
 
+    def _get_jobs_list_cmd(
+        self, job_ids: list[str] | None = None, user: str | None = None
+    ) -> str:
+        if user and job_ids:
+            self._check_user_and_job_ids_conflict()
+
+        command = self._get_base_command()
+
+        if user:
+            command.append(f"-u {user}")
+
+        if job_ids:
+            job_ids_str = ",".join(job_ids)
+            command.append(self._get_job_ids_flag(job_ids_str))
+
+        return " ".join(command)
+
+    def _check_user_and_job_ids_conflict(self):
+        # Use get_system_name() for more informative error messages
+        raise ValueError(f"Cannot query by user and job(s) in {self.get_system_name()}")
+
+    @abc.abstractmethod
+    def _get_base_command(self) -> list[str]:
+        pass
+
+    @abc.abstractmethod
+    def _get_job_ids_flag(self, job_ids_str: str) -> str:
+        pass
+
     def _get_job_cmd(self, job_id: str):
         cmd = f"qstat -j {job_id}"
         return cmd
