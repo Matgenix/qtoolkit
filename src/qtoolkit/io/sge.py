@@ -463,7 +463,7 @@ $${qverbatim}"""
         if resources.time_limit:
             header_dict["walltime"] = self._convert_time_to_str(resources.time_limit)
             header_dict["soft_walltime"] = self._convert_time_to_str(
-                resources.time_limit * 0.9
+                resources.time_limit * 0.99
             )
 
         if resources.rerunnable is not None:
