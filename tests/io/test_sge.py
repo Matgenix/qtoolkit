@@ -128,6 +128,7 @@ class TestSGEIO:
             sge_io._convert_str_to_time("2:10:a")
 
     def test_convert_memory_str(self, sge_io):
+        assert isinstance(sge_io, SGEIO)
         memory_kb = sge_io._convert_memory_str(None)
         assert memory_kb is None
         memory_kb = sge_io._convert_memory_str("")
@@ -200,7 +201,7 @@ class TestSGEIO:
             "array": "1-4",
             "walltime": "10:51:13",
             "select": "select=4:ncpus=6:mpiprocs=3:ompthreads=2:mem=12288mb",
-            "soft_walltime": "9:46:5",
+            "soft_walltime": "10:44:42",
             "mail_user": "john.doe@submit.qtk",
             "mail_type": "abe",
             "tata": "toto",
@@ -214,7 +215,7 @@ class TestSGEIO:
         header_dict = sge_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "walltime": "10:51:13",
-            "soft_walltime": "9:46:5",
+            "soft_walltime": "10:44:42",
             "select": "select=24",  # also not sure about this
         }
 
@@ -262,7 +263,7 @@ class TestSGEIO:
 #$ -N test_job
 #$ -l select=1:ncpus=1:mpiprocs=1:mem=1000mb
 #$ -l h_rt=0:1:40
-#$ -l s_rt=0:1:30
+#$ -l s_rt=0:1:39
 #$ -binding scatter
 #$ -M test_email_address@email.address
 #$ -m abe
