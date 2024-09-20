@@ -87,8 +87,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         cmd = f"qstat -j {job_id}"
         return cmd
 
-    @staticmethod
-    def _convert_memory_str(memory: str | None) -> int | None:
+    def _convert_memory_str(self, memory: str | None) -> int | None:
         if not memory:
             return None
 
@@ -97,28 +96,20 @@ class PBSIOBase(BaseSchedulerIO, ABC):
             raise OutputParsingError("No numbers and units parsed")
         memory, units = match.groups()
 
-        power_labels = PBSIOBase.get_power_labels()
+        # Now we call the methods specific to the child class (PBSIO or SGEIO)
+        power_labels = self.get_power_labels()
 
         if not units:
-            units = PBSIOBase.get_default_unit()
+            units = self.get_default_unit()
         elif units.lower() not in power_labels:
             raise OutputParsingError(f"Unknown units {units}")
+
         try:
             v = int(memory)
         except ValueError:
             raise OutputParsingError
 
         return v * (1024 ** power_labels[units.lower()])
-
-    @staticmethod
-    def get_power_labels() -> dict:
-        """To be overridden in child classes for specific unit labels"""
-        raise NotImplementedError("Child class must implement this method")
-
-    @staticmethod
-    def get_default_unit() -> str:
-        """To be overridden in child classes for specific default units"""
-        raise NotImplementedError("Child class must implement this method")
 
     _qresources_mapping = {
         "queue_name": "queue",
