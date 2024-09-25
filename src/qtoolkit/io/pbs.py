@@ -102,7 +102,7 @@ $${qverbatim}"""
             return out[0]
         return None
 
-    def _get_base_command(self) -> list[str]:
+    def _get_qstat_base_command(self) -> list[str]:
         return ["qstat", "-f"]
 
     def _get_job_ids_flag(self, job_ids_str: str) -> str:

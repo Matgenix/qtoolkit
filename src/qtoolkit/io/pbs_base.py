@@ -89,7 +89,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         if user and job_ids:
             self._check_user_and_job_ids_conflict()
 
-        command = self._get_base_command()
+        command = self._get_qstat_base_command()
 
         if user:
             command.append(f"-u {user}")
@@ -105,7 +105,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         raise ValueError(f"Cannot query by user and job(s) in {self.get_system_name()}")
 
     @abc.abstractmethod
-    def _get_base_command(self) -> list[str]:
+    def _get_qstat_base_command(self) -> list[str]:
         pass
 
     @abc.abstractmethod
