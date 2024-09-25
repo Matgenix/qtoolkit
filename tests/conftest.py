@@ -119,7 +119,7 @@ def test_utils():
     return TestUtils
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()  # scope="session")
 def maximalist_qresources():
     """A set of QResources options that try to make use of most features"""
     from qtoolkit.core.data_objects import QResources
