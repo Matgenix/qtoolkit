@@ -127,7 +127,16 @@ $${qverbatim}"""
     CANCEL_CMD: str | None = "qdel"
 
     def __init__(self, get_job_executable: str = "qstat"):
+        super().__init__()
         self.get_job_executable = get_job_executable
+        self._qresources_mapping = {
+            "queue_name": "queue",
+            "job_name": "job_name",
+            "priority": "priority",
+            "output_filepath": "qout_path",
+            "error_filepath": "qerr_path",
+            "project": "group_list",
+        }
 
     def extract_job_id(self, stdout):
         match = re.search(r'Your job (\d+) \(".*?"\) has been submitted', stdout)

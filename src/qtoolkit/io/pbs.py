@@ -89,6 +89,16 @@ $${qverbatim}"""
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
 
+    _qresources_mapping = {
+        "queue_name": "queue",
+        "job_name": "job_name",
+        "account": "account",
+        "priority": "priority",
+        "output_filepath": "qout_path",
+        "error_filepath": "qerr_path",
+        "project": "group_list",
+    }
+
     def extract_job_id(self, stdout):
         return stdout.strip()
 

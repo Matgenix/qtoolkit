@@ -25,6 +25,9 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
 
+    def __init__(self):
+        self._qresources_mapping = None
+
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
@@ -139,15 +142,6 @@ class PBSIOBase(BaseSchedulerIO, ABC):
             raise OutputParsingError
 
         return v * (1024 ** power_labels[units.lower()])
-
-    _qresources_mapping = {
-        "queue_name": "queue",
-        "job_name": "job_name",
-        "priority": "priority",
-        "output_filepath": "qout_path",
-        "error_filepath": "qerr_path",
-        "project": "group_list",
-    }
 
     @staticmethod
     def _convert_time_to_str(time: int | float | timedelta) -> str:
