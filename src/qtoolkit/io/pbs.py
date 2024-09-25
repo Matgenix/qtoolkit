@@ -91,6 +91,9 @@ $${qverbatim}"""
 
     def __init__(self):
         super().__init__()
+        self.system_name = "PBS"
+        self.default_unit = "mb"
+        self.power_labels = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
         self._qresources_mapping = {
             "queue_name": "queue",
             "job_name": "job_name",
@@ -251,14 +254,3 @@ $${qverbatim}"""
             raise OutputParsingError()
 
         return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
-
-    @staticmethod
-    def get_power_labels() -> dict:
-        return {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
-
-    @staticmethod
-    def get_default_unit() -> str:
-        return "mb"
-
-    def get_system_name(self) -> str:
-        return "PBS"

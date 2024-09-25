@@ -27,6 +27,9 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     def __init__(self):
         self._qresources_mapping = None
+        self.system_name = None
+        self.default_unit = None
+        self.power_labels = None
 
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
@@ -104,8 +107,8 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         return " ".join(command)
 
     def _check_user_and_job_ids_conflict(self):
-        # Use get_system_name() for more informative error messages
-        raise ValueError(f"Cannot query by user and job(s) in {self.get_system_name()}")
+        # Use system_name for more informative error messages
+        raise ValueError(f"Cannot query by user and job(s) in {self.system_name}")
 
     @abc.abstractmethod
     def _get_qstat_base_command(self) -> list[str]:
@@ -129,10 +132,10 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         memory, units = match.groups()
 
         # Now we call the methods specific to the child class (PBSIO or SGEIO)
-        power_labels = self.get_power_labels()
+        power_labels = self.power_labels
 
         if not units:
-            units = self.get_default_unit()
+            units = self.default_unit
         elif units.lower() not in power_labels:
             raise OutputParsingError(f"Unknown units {units}")
 
@@ -211,7 +214,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
                 header_dict["place"] = "pack"
         else:
             raise UnsupportedResourcesError(
-                f"process placement {resources.process_placement} is not supported for {self.get_system_name()}"
+                f"process placement {resources.process_placement} is not supported for {self.system_name}"
             )
 
         header_dict["select"] = select
@@ -228,10 +231,6 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     @abc.abstractmethod
     def _add_soft_walltime(self, header_dict: dict, resources: QResources):
         """Add soft_walltime if required by child classes (SGE)."""
-
-    @abc.abstractmethod
-    def get_system_name(self) -> str:
-        """This should return the system name (PBS or SGE) for error messages."""
 
     @property
     def supported_qresources_keys(self) -> list:

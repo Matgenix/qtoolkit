@@ -129,6 +129,9 @@ $${qverbatim}"""
     def __init__(self, get_job_executable: str = "qstat"):
         super().__init__()
         self.get_job_executable = get_job_executable
+        self.system_name = "SGE"
+        self.default_unit = "M"
+        self.power_labels = {"k": 0, "m": 1, "g": 2, "t": 3}
         self._qresources_mapping = {
             "queue_name": "queue",
             "job_name": "job_name",
@@ -350,17 +353,6 @@ $${qverbatim}"""
             return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
         except ValueError:
             raise OutputParsingError(f"Invalid time format: {time_str}")
-
-    @staticmethod
-    def get_power_labels() -> dict:
-        return {"k": 0, "m": 1, "g": 2, "t": 3}
-
-    @staticmethod
-    def get_default_unit() -> str:
-        return "M"
-
-    def get_system_name(self) -> str:
-        return "SGE"
 
     def _add_soft_walltime(self, header_dict: dict, resources: QResources):
         header_dict["soft_walltime"] = self._convert_time_to_str(
