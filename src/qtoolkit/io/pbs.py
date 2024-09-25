@@ -89,9 +89,8 @@ $${qverbatim}"""
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
 
-    def __init__(self, get_job_executable: str = "qstat"):
+    def __init__(self):
         super().__init__()
-        self.get_job_executable = get_job_executable
         self._qresources_mapping = {
             "queue_name": "queue",
             "job_name": "job_name",
