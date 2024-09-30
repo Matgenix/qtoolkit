@@ -88,21 +88,18 @@ $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
-
-    def __init__(self):
-        super().__init__()
-        self.system_name = "PBS"
-        self.default_unit = "mb"
-        self.power_labels = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
-        self._qresources_mapping = {
-            "queue_name": "queue",
-            "job_name": "job_name",
-            "account": "account",
-            "priority": "priority",
-            "output_filepath": "qout_path",
-            "error_filepath": "qerr_path",
-            "project": "group_list",
-        }
+    system_name: str = "PBS"
+    default_unit: str = "mb"
+    power_labels: dict = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
+    _qresources_mapping: dict = {
+        "queue_name": "queue",
+        "job_name": "job_name",
+        "account": "account",
+        "priority": "priority",
+        "output_filepath": "qout_path",
+        "error_filepath": "qerr_path",
+        "project": "group_list",
+    }
 
     def extract_job_id(self, stdout):
         return stdout.strip()

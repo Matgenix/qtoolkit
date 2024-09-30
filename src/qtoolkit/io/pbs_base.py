@@ -24,12 +24,10 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
-
-    def __init__(self):
-        self._qresources_mapping = None
-        self.system_name = None
-        self.default_unit = None
-        self.power_labels = None
+    _qresources_mapping: dict
+    system_name: str
+    default_unit: str
+    power_labels: dict
 
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
