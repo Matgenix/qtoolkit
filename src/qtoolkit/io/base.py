@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import difflib
 import shlex
 from dataclasses import fields
 from pathlib import Path
@@ -82,9 +83,22 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
         # check that all the options are present in the template
         keys = set(options.keys())
-        extra = keys.difference(template.get_identifiers())
+        all_identifiers = template.get_identifiers()
+        extra = keys.difference(all_identifiers)
         if extra:
-            msg = f"The following keys are not present in the template: {', '.join(sorted(extra))}"
+            close_matches = {}
+            for extra_val in extra:
+                m = difflib.get_close_matches(extra_val, all_identifiers, n=1)
+                if m:
+                    close_matches[extra_val] = m[0]
+            msg = (
+                f"The following keys are not present in the template: {', '.join(sorted(extra))}. "
+                f"Check the template in {type(self).__module__}.{type(self).__qualname__}.header_template"
+            )
+            if close_matches:
+                msg += "Possible replacements:"
+                for extra_val, match in close_matches.items():
+                    msg += f" {match} instead of {extra_val}."
             raise ValueError(msg)
 
         unclean_header = template.safe_substitute(options)

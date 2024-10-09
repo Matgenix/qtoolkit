@@ -146,12 +146,24 @@ class TestBaseScheduler:
 
         with pytest.raises(
             ValueError,
-            match=r"The following keys are not present in the template: tata, titi",
+            match=r"The following keys are not present in the template: tata, titi. Check the template in .*MyScheduler.header_template",
         ):
             res = QResources(
                 nodes=4,
                 processes_per_node=16,
                 scheduler_kwargs={"tata": "tata", "titi": "titi"},
+            )
+            scheduler.generate_header(res)
+
+        with pytest.raises(
+            ValueError,
+            match=r"The following keys are not present in the template: option32, processes-per-node. "
+            r"Check the template in .*MyScheduler.header_template.*option3 instead of option32. processes_per_node instead of processes-per-node",
+        ):
+            res = QResources(
+                nodes=4,
+                processes_per_node=16,
+                scheduler_kwargs={"option32": "xxx", "processes-per-node": "yyy"},
             )
             scheduler.generate_header(res)
 
