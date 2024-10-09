@@ -88,9 +88,11 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         if extra:
             close_matches = {}
             for extra_val in extra:
-                m = difflib.get_close_matches(extra_val, all_identifiers, n=1)
+                m = difflib.get_close_matches(
+                    extra_val, all_identifiers, n=3, cutoff=0.65
+                )
                 if m:
-                    close_matches[extra_val] = m[0]
+                    close_matches[extra_val] = m
             msg = (
                 f"The following keys are not present in the template: {', '.join(sorted(extra))}. "
                 f"Check the template in {type(self).__module__}.{type(self).__qualname__}.header_template."
@@ -98,7 +100,10 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
             if close_matches:
                 msg += " Possible replacements:"
                 for extra_val in sorted(close_matches):
-                    msg += f" {close_matches[extra_val]} instead of {extra_val}."
+                    replacements = " or ".join(
+                        f"'{m}'" for m in close_matches[extra_val]
+                    )
+                    msg += f" {replacements} instead of '{extra_val}'."
             raise ValueError(msg)
 
         unclean_header = template.safe_substitute(options)

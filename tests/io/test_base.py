@@ -144,9 +144,12 @@ class TestBaseScheduler:
 #SPECCMD --nodes=4"""
         )
 
+        # check that the error message contains the expected error, but should not match
+        # the possible replacements, as they are too different
         with pytest.raises(
             ValueError,
-            match=r"The following keys are not present in the template: tata, titi. Check the template in .*MyScheduler.header_template",
+            match=r"The following keys are not present in the template: tata, titi. Check "
+            r"the template in .*MyScheduler.header_template(?!.*instead of 'titi')",
         ):
             res = QResources(
                 nodes=4,
@@ -158,7 +161,8 @@ class TestBaseScheduler:
         with pytest.raises(
             ValueError,
             match=r"The following keys are not present in the template: option32, processes-per-node. "
-            r"Check the template in .*MyScheduler.header_template.*option3 instead of option32. processes_per_node instead of processes-per-node",
+            r"Check the template in .*MyScheduler.header_template.*'option3' or 'option2' or 'option1' "
+            r"instead of 'option32'. 'processes_per_node' or 'processes' instead of 'processes-per-node'",
         ):
             res = QResources(
                 nodes=4,
