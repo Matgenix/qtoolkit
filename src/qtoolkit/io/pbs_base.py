@@ -215,7 +215,6 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
         return header_dict
 
-    @abc.abstractmethod
     def _add_soft_walltime(self, header_dict: dict, resources: QResources):
         """Add soft_walltime if required by child classes (SGE)."""
 

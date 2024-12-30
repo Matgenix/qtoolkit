@@ -385,3 +385,9 @@ $${qverbatim}"""
         header_dict["soft_walltime"] = self._convert_time_to_str(
             resources.time_limit * 0.99
         )
+
+    def sanitize_options(self, options):
+        if "job_name" in options:
+            options = dict(options)
+            options["job_name"] = re.sub(r"[\s/@*\\:]", "_", options["job_name"])
+        return options

@@ -6,47 +6,76 @@ from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
 from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
-from qtoolkit.io.sge import SGEIO, SGEState
+from qtoolkit.io.pbs import PBSIO, PBSState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
-submit_ref_file = TEST_DIR / "io" / "sge" / "parse_submit_output_inout.yaml"
+submit_ref_file = TEST_DIR / "io" / "pbs" / "parse_submit_output_inout.yaml"
 in_out_submit_ref_list = loadfn(submit_ref_file)
-cancel_ref_file = TEST_DIR / "io" / "sge" / "parse_cancel_output_inout.yaml"
+cancel_ref_file = TEST_DIR / "io" / "pbs" / "parse_cancel_output_inout.yaml"
 in_out_cancel_ref_list = loadfn(cancel_ref_file)
-job_ref_file = TEST_DIR / "io" / "sge" / "parse_job_output_inout.yaml"
+job_ref_file = TEST_DIR / "io" / "pbs" / "parse_job_output_inout.yaml"
 in_out_job_ref_list = loadfn(job_ref_file)
 
 
 @pytest.fixture(scope="module")
-def sge_io():
-    return SGEIO()
+def pbs_io():
+    return PBSIO()
 
 
-class TestSGEState:
-    @pytest.mark.parametrize("sge_state", [s for s in SGEState])
+@pytest.fixture()  # scope="session")
+def maximalist_qresources_pbs():
+    """A set of QResources options that try to make use of most features"""
+    from qtoolkit.core.data_objects import QResources
+
+    return QResources(
+        queue_name="test_queue",
+        job_name="test_job",
+        nodes=1,
+        processes=1,
+        processes_per_node=1,
+        threads_per_process=1,
+        time_limit=100,
+        account="test_account",
+        qos="test_qos",
+        priority=1,
+        output_filepath="test_output_filepath",
+        error_filepath="test_error_filepath",
+        process_placement="no_constraints",
+        email_address="test_email_address@email.address",
+        rerunnable=True,
+        project="test_project",
+        njobs=1,
+    )
+
+
+class TestPBSState:
+    @pytest.mark.parametrize("sge_state", [s for s in PBSState])
     def test_qstate(self, sge_state):
         assert isinstance(sge_state.qstate, QState)
-        assert SGEState("hqw") == SGEState.HOLD
-        assert SGEState("r") == SGEState.RUNNING
-        assert SGEState("Eqw") == SGEState.ERROR_PENDING
-        assert SGEState("dr") == SGEState.DELETION_RUNNING
+
+    def test_instance(self):
+        assert PBSState("H") == PBSState.HELD
+        assert PBSState("R") == PBSState.RUNNING
+        assert PBSState("Q") == PBSState.QUEUED
+        assert PBSState("E") == PBSState.EXITING
 
 
-class TestSGEIO:
+class TestPBSIO:
     @pytest.mark.parametrize("in_out_ref", in_out_submit_ref_list)
-    def test_parse_submit_output(self, sge_io, in_out_ref, test_utils):
+    def test_parse_submit_output(self, pbs_io, in_out_ref, test_utils):
         parse_cmd_output, sr_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_submit_kwargs", outkey="submission_result_ref"
         )
-        sr = sge_io.parse_submit_output(**parse_cmd_output)
+        sr = pbs_io.parse_submit_output(**parse_cmd_output)
+        print(sr, sr_ref)
         assert sr == sr_ref
-        sr = sge_io.parse_submit_output(
+        sr = pbs_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert sr == sr_ref
-        sr = sge_io.parse_submit_output(
+        sr = pbs_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
@@ -54,19 +83,19 @@ class TestSGEIO:
         assert sr == sr_ref
 
     @pytest.mark.parametrize("in_out_ref", in_out_cancel_ref_list)
-    def test_parse_cancel_output(self, sge_io, in_out_ref, test_utils):
+    def test_parse_cancel_output(self, pbs_io, in_out_ref, test_utils):
         parse_cmd_output, cr_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_cancel_kwargs", outkey="cancel_result_ref"
         )
-        cr = sge_io.parse_cancel_output(**parse_cmd_output)
+        cr = pbs_io.parse_cancel_output(**parse_cmd_output)
         assert cr == cr_ref
-        cr = sge_io.parse_cancel_output(
+        cr = pbs_io.parse_cancel_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert cr == cr_ref
-        cr = sge_io.parse_cancel_output(
+        cr = pbs_io.parse_cancel_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
@@ -74,121 +103,108 @@ class TestSGEIO:
         assert cr == cr_ref
 
     @pytest.mark.parametrize("in_out_ref", in_out_job_ref_list)
-    def test_parse_job_output(self, sge_io, in_out_ref, test_utils):
+    def test_parse_job_output(self, pbs_io, in_out_ref, test_utils):
         parse_cmd_output, job_ref = test_utils.inkwargs_outref(
             in_out_ref, inkey="parse_job_kwargs", outkey="job_ref"
         )
         if "stderr" not in parse_cmd_output:
             parse_cmd_output["stderr"] = ""
-        job = sge_io.parse_job_output(**parse_cmd_output)
+        job = pbs_io.parse_job_output(**parse_cmd_output)
         assert job == job_ref
-        job = sge_io.parse_job_output(
+        job = pbs_io.parse_job_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
             stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
         )
         assert job == job_ref
-        job = sge_io.parse_job_output(
+        job = pbs_io.parse_job_output(
             exit_code=parse_cmd_output["exit_code"],
             stdout=bytes(parse_cmd_output["stdout"], "ascii"),
             stderr=bytes(parse_cmd_output["stderr"], "ascii"),
         )
         assert job == job_ref
 
-    def test_get_job_cmd(self, sge_io):
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd(3)
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd("56")
+    def test_get_job_cmd(self, pbs_io):
+        cmd = pbs_io._get_job_cmd(3)
+        assert cmd == "qstat -f 3"
+        cmd = pbs_io._get_job_cmd("56")
+        assert cmd == "qstat -f 56"
 
-    def test_get_jobs_list_cmd(self, sge_io):
+    def test_get_jobs_list_cmd(self, pbs_io):
         with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
+            ValueError, match=r"Cannot query by user and job\(s\) in PBS"
         ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"])
+            pbs_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
+        cmd = pbs_io._get_jobs_list_cmd(user="johndoe")
+        assert cmd == "qstat -f -u johndoe"
+        cmd = pbs_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
+        assert cmd == "qstat -f 1,3,56,15"
+        cmd = pbs_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == "qstat -f 1"
 
-        cmd = sge_io._get_jobs_list_cmd(user="johndoe")
-        assert cmd == "qstat -ext -urg -xml -u johndoe"
-
-    def test_convert_str_to_time(self, sge_io):
-        time_seconds = sge_io._convert_str_to_time("10:51:13")
+    def test_convert_str_to_time(self, pbs_io):
+        time_seconds = pbs_io._convert_str_to_time("10:51:13")
         assert time_seconds == 39073
-        time_seconds = sge_io._convert_str_to_time("02:10:02")
+        time_seconds = pbs_io._convert_str_to_time("02:10:02")
         assert time_seconds == 7802
-        time_seconds = sge_io._convert_str_to_time("10:02")
+        time_seconds = pbs_io._convert_str_to_time("10:02")
         assert time_seconds == 602
-        time_seconds = sge_io._convert_str_to_time("45")
+        time_seconds = pbs_io._convert_str_to_time("45")
         assert time_seconds == 45
 
         with pytest.raises(OutputParsingError):
-            sge_io._convert_str_to_time("2:10:02:10")
+            pbs_io._convert_str_to_time("2:10:a")
 
-        with pytest.raises(OutputParsingError):
-            sge_io._convert_str_to_time("2:10:a")
-
-    def test_convert_memory_str(self, sge_io):
-        assert isinstance(sge_io, SGEIO)
-        memory_kb = sge_io._convert_memory_str(None)
+    def test_convert_memory_str(self, pbs_io):
+        assert isinstance(pbs_io, PBSIO)
+        memory_kb = pbs_io._convert_memory_str(None)
         assert memory_kb is None
-        memory_kb = sge_io._convert_memory_str("")
+        memory_kb = pbs_io._convert_memory_str("")
         assert memory_kb is None
 
-        memory_kb = sge_io._convert_memory_str("12M")
+        memory_kb = pbs_io._convert_memory_str("12mb")
         assert memory_kb == 12288
-        memory_kb = sge_io._convert_memory_str("13K")
+        memory_kb = pbs_io._convert_memory_str("13kb")
         assert memory_kb == 13
-        memory_kb = sge_io._convert_memory_str("5G")
+        memory_kb = pbs_io._convert_memory_str("5gb")
         assert memory_kb == 5242880
-        memory_kb = sge_io._convert_memory_str("1T")
+        memory_kb = pbs_io._convert_memory_str("1tb")
         assert memory_kb == 1073741824
 
         with pytest.raises(OutputParsingError):
-            sge_io._convert_memory_str("aT")
+            pbs_io._convert_memory_str("aT")
 
-    def test_convert_time_to_str(self, sge_io):
-        time_str = sge_io._convert_time_to_str(10)
+    def test_convert_time_to_str(self, pbs_io):
+        time_str = pbs_io._convert_time_to_str(10)
         assert time_str == "0:0:10"
-        time_str = sge_io._convert_time_to_str(39073)
+        time_str = pbs_io._convert_time_to_str(39073)
         assert time_str == "10:51:13"
-        time_str = sge_io._convert_time_to_str(7802)
+        time_str = pbs_io._convert_time_to_str(7802)
         assert time_str == "2:10:2"
-        time_str = sge_io._convert_time_to_str(602)
+        time_str = pbs_io._convert_time_to_str(602)
         assert time_str == "0:10:2"
 
-        time_str = sge_io._convert_time_to_str(timedelta(seconds=39073))
+        time_str = pbs_io._convert_time_to_str(timedelta(seconds=39073))
         assert time_str == "10:51:13"
-        time_str = sge_io._convert_time_to_str(
+        time_str = pbs_io._convert_time_to_str(
             timedelta(hours=15, minutes=19, seconds=32)
         )
         assert time_str == "15:19:32"
 
         # test float
-        time_str = sge_io._convert_time_to_str(602.0)
+        time_str = pbs_io._convert_time_to_str(602.0)
         assert time_str == "0:10:2"
 
         # test negative
         # negative time makes no sense and should not be passed. this test is just to be alerted
         # if the output for negative numbers changes
-        time_str = sge_io._convert_time_to_str(-10)
+        time_str = pbs_io._convert_time_to_str(-10)
         assert time_str == "-1:59:50"
 
-    def test_check_convert_qresources(self, sge_io):
+    def test_check_convert_qresources(self, pbs_io):
         res = QResources(
             queue_name="myqueue",
             job_name="myjob",
-            memory_per_thread=2048,
             priority=1,
             output_filepath="someoutputpath",
             error_filepath="someerrorpath",
@@ -201,7 +217,7 @@ class TestSGEIO:
             email_address="john.doe@submit.qtk",
             scheduler_kwargs={"tata": "toto", "titi": "tutu"},
         )
-        header_dict = sge_io.check_convert_qresources(resources=res)
+        header_dict = pbs_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "queue": "myqueue",
             "job_name": "myjob",
@@ -211,8 +227,7 @@ class TestSGEIO:
             "qerr_path": "someerrorpath",
             "array": "1-4",
             "walltime": "10:51:13",
-            "select": "select=4:ncpus=6:mpiprocs=3:ompthreads=2:mem=12288mb",
-            "soft_walltime": "10:44:42",
+            "select": "select=4:ncpus=6:mpiprocs=3:ompthreads=2",
             "mail_user": "john.doe@submit.qtk",
             "mail_type": "abe",
             "tata": "toto",
@@ -223,10 +238,9 @@ class TestSGEIO:
             time_limit=39073,
             processes=24,
         )
-        header_dict = sge_io.check_convert_qresources(resources=res)
+        header_dict = pbs_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "walltime": "10:51:13",
-            "soft_walltime": "10:44:42",
             "select": "select=24",  # also not sure about this
         }
 
@@ -234,7 +248,7 @@ class TestSGEIO:
             njobs=1,
             processes=24,
         )
-        header_dict = sge_io.check_convert_qresources(resources=res)
+        header_dict = pbs_io.check_convert_qresources(resources=res)
         assert header_dict == {
             "select": "select=24",
         }
@@ -246,23 +260,24 @@ class TestSGEIO:
         with pytest.raises(
             UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
         ):
-            sge_io.check_convert_qresources(res)
+            pbs_io.check_convert_qresources(res)
 
-    def test_submission_script(self, sge_io, maximalist_qresources):
+    def test_submission_script(self, pbs_io, maximalist_qresources_pbs):
         # remove unsupported SGE options
-        maximalist_qresources.rerunnable = None
-        maximalist_qresources.project = None
-        maximalist_qresources.account = None
-        maximalist_qresources.qos = None
-        maximalist_qresources.gpus_per_job = None
-        maximalist_qresources.process_placement = ProcessPlacement.EVENLY_DISTRIBUTED
+        maximalist_qresources_pbs.rerunnable = None
+        maximalist_qresources_pbs.project = None
+        maximalist_qresources_pbs.account = None
+        maximalist_qresources_pbs.qos = None
+        maximalist_qresources_pbs.process_placement = (
+            ProcessPlacement.EVENLY_DISTRIBUTED
+        )
 
         # Set `processes` to None to avoid the conflict
-        maximalist_qresources.processes = None
+        maximalist_qresources_pbs.processes = None
 
         # generate the SGE submission script
-        script_qresources = sge_io.get_submission_script(
-            commands=["ls -l"], options=maximalist_qresources
+        script_qresources = pbs_io.get_submission_script(
+            commands=["ls -l"], options=maximalist_qresources_pbs
         )
 
         # assert the correctness of the generated script
@@ -270,34 +285,33 @@ class TestSGEIO:
             script_qresources.split("\n")
             == """#!/bin/bash
 
-#$ -q test_queue
-#$ -N test_job
-#$ -l select=1:ncpus=1:mpiprocs=1:mem=1000mb
-#$ -l h_rt=0:1:40
-#$ -l s_rt=0:1:39
-#$ -binding scatter
-#$ -M test_email_address@email.address
-#$ -m abe
-#$ -o test_output_filepath
-#$ -e test_error_filepath
-#$ -p 1
+#PBS -q test_queue
+#PBS -N test_job
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#PBS -l walltime=0:1:40
+#PBS -l place=scatter
+#PBS -M test_email_address@email.address
+#PBS -m abe
+#PBS -o test_output_filepath
+#PBS -e test_error_filepath
+#PBS -p 1
 ls -l""".split(
                 "\n"
             )
         )
 
-    def test_sanitize_options(self, sge_io):
-        script = sge_io.get_submission_script(
+    def test_sanitize_options(self, pbs_io):
+        script = pbs_io.get_submission_script(
             commands=["ls -l"], options={"job_name": "test-_@/*"}
         )
-        assert "#$ -N test-____" in script
+        assert "#PBS -N test-____" in script
 
-        script = sge_io.get_submission_script(
+        script = pbs_io.get_submission_script(
             commands=["ls -l"], options={"job_name": "test-_test"}
         )
-        assert "#$ -N test-_test" in script
+        assert "#PBS -N test-_test" in script
 
-        script = sge_io.get_submission_script(
+        script = pbs_io.get_submission_script(
             commands=["ls -l"], options={"job_name": "test -_!#$test"}
         )
-        assert "#$ -N test_-_!#$test" in script
+        assert "#PBS -N test_-____test" in script

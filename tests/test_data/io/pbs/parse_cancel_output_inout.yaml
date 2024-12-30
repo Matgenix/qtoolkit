@@ -1,0 +1,42 @@
+- parse_cancel_kwargs: '{"exit_code": 0, "stdout": "", "stderr": ""}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 0, "stdout": "", "stderr": "", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "CancelStatus", "@version": "0.1.5.post38+g62b683f.d20241229", "value":
+    "SUCCESSFUL"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "usage:\n    qdel
+    [-W force|suppress_email=X] [-x] job_identifier...\n    qdel --version\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 1, "stdout": "", "stderr": "usage:\n    qdel [-W force|suppress_email=X]
+    [-x] job_identifier...\n    qdel --version\n", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "CancelStatus", "@version": "0.1.5.post38+g62b683f.d20241229", "value":
+    "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 210, "stdout": "", "stderr": "qdel: Unauthorized
+    Request  210\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 210, "stdout": "", "stderr": "qdel: Unauthorized Request  210\n",
+    "status": {"@module": "qtoolkit.core.data_objects", "@class": "CancelStatus",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "value": "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "qdel: illegally
+    formed job identifier: a\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 1, "stdout": "", "stderr": "qdel: illegally formed job identifier:
+    a\n", "status": {"@module": "qtoolkit.core.data_objects", "@class": "CancelStatus",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "value": "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "qdel: Job has finished
+    8\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 1, "stdout": "", "stderr": "qdel: Job has finished 8\n", "status":
+    {"@module": "qtoolkit.core.data_objects", "@class": "CancelStatus", "@version":
+    "0.1.5.post38+g62b683f.d20241229", "value": "FAILED"}}'
+- parse_cancel_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "qdel: Unknown Job
+    Id 120\n"}'
+  cancel_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "CancelResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 1, "stdout": "", "stderr": "qdel: Unknown Job Id 120\n", "status":
+    {"@module": "qtoolkit.core.data_objects", "@class": "CancelStatus", "@version":
+    "0.1.5.post38+g62b683f.d20241229", "value": "FAILED"}}'

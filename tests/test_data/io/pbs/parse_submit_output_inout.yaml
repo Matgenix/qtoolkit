@@ -1,0 +1,12 @@
+- parse_submit_kwargs: '{"exit_code": 1, "stdout": "", "stderr": "qsub: Unknown queue\n"}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": null, "step_id": null,
+    "exit_code": 1, "stdout": "", "stderr": "qsub: Unknown queue\n", "status": {"@module":
+    "qtoolkit.core.data_objects", "@class": "SubmissionStatus", "@version": "0.1.5.post38+g62b683f.d20241229",
+    "value": "FAILED"}}'
+- parse_submit_kwargs: '{"exit_code": 0, "stdout": "24\n", "stderr": ""}'
+  submission_result_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "SubmissionResult",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "job_id": "24", "step_id": null,
+    "exit_code": 0, "stdout": "24\n", "stderr": "", "status": {"@module": "qtoolkit.core.data_objects",
+    "@class": "SubmissionStatus", "@version": "0.1.5.post38+g62b683f.d20241229", "value":
+    "SUCCESSFUL"}}'

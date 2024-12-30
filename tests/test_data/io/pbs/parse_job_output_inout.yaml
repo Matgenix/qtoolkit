@@ -1,0 +1,29 @@
+- parse_job_kwargs: '{"exit_code": 0, "stdout": "Job Id: 14\n    Job_Name = myscript_1\n    Job_Owner
+    = testu@f41a0fbae027\n    resources_used.cpupercent = 0\n    resources_used.cput
+    = 00:00:00\n    resources_used.mem = 0kb\n    resources_used.ncpus = 1\n    resources_used.vmem
+    = 0kb\n    resources_used.walltime = 00:00:00\n    job_state = R\n    queue =
+    workq\n    server = f41a0fbae027\n    Checkpoint = u\n    ctime = Sun Dec 29 20:13:12
+    2024\n    Error_Path = f41a0fbae027:/home/testu/myscript_1.e14\n    exec_host
+    = f41a0fbae027/0\n    exec_vnode = (f41a0fbae027:ncpus=1)\n    Hold_Types = n\n    Join_Path
+    = n\n    Keep_Files = n\n    Mail_Points = a\n    mtime = Sun Dec 29 20:13:14
+    2024\n    Output_Path = f41a0fbae027:/home/testu/myscript_1.o14\n    Priority
+    = 0\n    qtime = Sun Dec 29 20:13:12 2024\n    Rerunable = True\n    Resource_List.ncpus
+    = 1\n    Resource_List.nodect = 1\n    Resource_List.nodes = 1:ppn=1\n    Resource_List.place
+    = scatter\n    Resource_List.select = 1:ncpus=1\n    Resource_List.walltime =
+    01:00:00\n    stime = Sun Dec 29 20:13:12 2024\n    session_id = 1534\n    Shell_Path_List
+    = /bin/bash\n    jobdir = /home/testu\n    substate = 42\n    Variable_List =
+    PBS_O_HOME=/home/testu,PBS_O_LANG=C.UTF-8,\n    PBS_O_LOGNAME=testu,\n    PBS_O_PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bi\n    n:/usr/games:/usr/local/games:/snap/bin:/opt/pbs/bin,\n    PBS_O_SHELL=/bin/bash,PBS_O_WORKDIR=/home/testu,PBS_O_SYSTEM=Linux,\n    PBS_O_QUEUE=workq,PBS_O_HOST=f41a0fbae027\n    comment
+    = Job run at Sun Dec 29 at 20:13 on (f41a0fbae027:ncpus=1)\n    etime = Sun Dec
+    29 20:13:12 2024\n    run_count = 1\n    Submit_arguments = test_submit.sh\n    project
+    = _pbs_project_default\n    Submit_Host = f41a0fbae027\n", "stderr": ""}'
+  job_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "QJob", "@version":
+    "0.1.5.post38+g62b683f.d20241229", "name": "myscript_1", "job_id": "14", "exit_status":
+    null, "state": {"@module": "qtoolkit.core.data_objects", "@class": "QState", "@version":
+    "0.1.5.post38+g62b683f.d20241229", "value": "RUNNING"}, "sub_state": {"@module":
+    "qtoolkit.io.pbs", "@class": "PBSState", "@version": "0.1.5.post38+g62b683f.d20241229",
+    "value": "R"}, "info": {"@module": "qtoolkit.core.data_objects", "@class": "QJobInfo",
+    "@version": "0.1.5.post38+g62b683f.d20241229", "memory": null, "memory_per_cpu":
+    null, "nodes": 1, "cpus": 1, "threads_per_process": null, "time_limit": 3600},
+    "account": null, "runtime": 0, "queue_name": null}'
+- parse_job_kwargs: '{"exit_code": 0, "stdout": "", "stderr": ""}'
+  job_ref: 'null'
