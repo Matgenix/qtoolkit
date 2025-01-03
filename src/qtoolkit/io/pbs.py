@@ -120,7 +120,7 @@ $${qverbatim}"""
             command.append(f"-u {user}")
 
         if job_ids:
-            job_ids_str = ",".join(job_ids)
+            job_ids_str = " ".join(job_ids)
             command.append(self._get_job_ids_flag(job_ids_str))
 
         return " ".join(command)
