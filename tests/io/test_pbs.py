@@ -136,11 +136,11 @@ class TestPBSIO:
         ):
             pbs_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
         cmd = pbs_io._get_jobs_list_cmd(user="johndoe")
-        assert cmd == "qstat -f -u johndoe"
+        assert cmd == "qstat -f -w -u johndoe"
         cmd = pbs_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        assert cmd == "qstat -f 1,3,56,15"
+        assert cmd == "qstat -f -w 1 3 56 15"
         cmd = pbs_io._get_jobs_list_cmd(job_ids=["1"])
-        assert cmd == "qstat -f 1"
+        assert cmd == "qstat -f -w 1"
 
     def test_convert_str_to_time(self, pbs_io):
         time_seconds = pbs_io._convert_str_to_time("10:51:13")

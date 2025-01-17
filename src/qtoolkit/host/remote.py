@@ -135,7 +135,9 @@ class RemoteHost(BaseHost):
         self.config = config
         self._connection = fabric.Connection(
             host=self.config.host,
+            port=self.config.port,
             user=self.config.user,
+            connect_kwargs=self.config.connect_kwargs,
         )
 
     @property
