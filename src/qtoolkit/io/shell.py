@@ -12,11 +12,7 @@ from qtoolkit.core.data_objects import (
     SubmissionResult,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import (
-    CommandFailedError,
-    OutputParsingError,
-    UnsupportedResourcesError,
-)
+from qtoolkit.core.exceptions import CommandFailedError, OutputParsingError
 from qtoolkit.io.base import BaseSchedulerIO
 
 # States in from ps command, extracted from man ps.
@@ -251,17 +247,27 @@ $${qverbatim}
 
         return jobs_list
 
+    # helper attribute to match the values defined in QResources and
+    # the dictionary that should be passed to the template
+    _qresources_mapping = {
+        "job_name": "job_name",
+        "output_filepath": "qout_path",
+        "error_filepath": "qerr_path",
+    }
+
     def _convert_qresources(self, resources: QResources) -> dict:
         """
         Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
         Only an empty QResources is accepted in ShellIO.
         """
-        if not resources.check_empty():
-            raise UnsupportedResourcesError(
-                "Only empty QResources is supported"
-            )  # pragma: no cover
-        return {}
+        header_dict = {}
+        for qr_field, slurm_field in self._qresources_mapping.items():
+            val = getattr(resources, qr_field)
+            if val is not None:
+                header_dict[slurm_field] = val
+
+        return header_dict
 
     @property
     def supported_qresources_keys(self) -> list:
@@ -270,7 +276,7 @@ $${qverbatim}
         _convert_qresources method. It is used to validate that the user
         does not pass an unsupported value, expecting to have an effect.
         """
-        return []
+        return list(self._qresources_mapping)
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None) -> int | None:

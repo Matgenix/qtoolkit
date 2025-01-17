@@ -202,12 +202,14 @@ class QResources(QTKObject):
                 raise UnsupportedResourcesError(msg)
         self.scheduler_kwargs = self.scheduler_kwargs or {}
 
-    def _check_no_values(self) -> bool:
+    def _check_no_values(
+        self, excluded=("job_name", "output_filepath", "error_filepath")
+    ) -> bool:
         """
         Check if all the attributes are None or empty.
         """
         for f in fields(self):
-            if self.__getattribute__(f.name):
+            if excluded and f.name not in excluded and self.__getattribute__(f.name):
                 return False
 
         return True

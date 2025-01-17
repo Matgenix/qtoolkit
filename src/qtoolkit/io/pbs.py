@@ -132,7 +132,7 @@ $${qverbatim}"""
         return None
 
     def _get_qstat_base_command(self) -> list[str]:
-        return ["qstat", "-f"]
+        return ["qstat", "-f", "-w"]
 
     def _get_job_cmd(self, job_id: str):
         cmd = f"qstat -f {job_id}"
