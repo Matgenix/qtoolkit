@@ -126,9 +126,9 @@ class TestPBSIO:
 
     def test_get_job_cmd(self, pbs_io):
         cmd = pbs_io._get_job_cmd(3)
-        assert cmd == "qstat -f 3"
+        assert cmd == "qstat -f -w 3"
         cmd = pbs_io._get_job_cmd("56")
-        assert cmd == "qstat -f 56"
+        assert cmd == "qstat -f -w 56"
 
     def test_get_jobs_list_cmd(self, pbs_io):
         with pytest.raises(
