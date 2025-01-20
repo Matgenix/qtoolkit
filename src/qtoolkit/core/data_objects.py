@@ -206,23 +206,13 @@ class QResources(QTKObject):
         self, excluded=("job_name", "output_filepath", "error_filepath")
     ) -> bool:
         """
-        Check if all the attributes are None or empty.
+        Check if all the attributes are None or empty, except the excluded ones.
         """
+        excluded = excluded or []
         for f in fields(self):
-            if excluded and f.name not in excluded and self.__getattribute__(f.name):
+            if f.name not in excluded and self.__getattribute__(f.name):
                 return False
 
-        return True
-
-    def check_empty(self) -> bool:
-        """
-        Check if the QResouces is empty and its content is coherent.
-        Raises an error if process_placement is None, but some attributes are set.
-        """
-        if self.process_placement is not None:
-            return False
-        if not self._check_no_values():
-            raise ValueError("process_placement is None, but some values are set")
         return True
 
     @classmethod

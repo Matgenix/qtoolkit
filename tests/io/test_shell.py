@@ -211,6 +211,15 @@ class TestShellIO:
         qr = QResources()
         assert shell_io.check_convert_qresources(qr) == {}
 
+        qr = QResources(
+            job_name="test", output_filepath="t.out", error_filepath="t.err"
+        )
+        assert shell_io.check_convert_qresources(qr) == {
+            "job_name": "test",
+            "qerr_path": "t.err",
+            "qout_path": "t.out",
+        }
+
     def test_header(self, shell_io):
         # check that the required elements are properly handled in header template
         options = {

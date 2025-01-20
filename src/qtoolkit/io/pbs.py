@@ -135,7 +135,7 @@ $${qverbatim}"""
         return ["qstat", "-f", "-w"]
 
     def _get_job_cmd(self, job_id: str):
-        cmd = f"qstat -f -w {job_id}"
+        cmd = f"{' '.join(self._get_qstat_base_command())} {job_id}"
         return cmd
 
     def _get_job_ids_flag(self, job_ids_str: str) -> str:

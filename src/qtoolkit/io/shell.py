@@ -259,7 +259,6 @@ $${qverbatim}
         """
         Converts a QResources instance to a dict that will be used to fill in the
         header of the submission script.
-        Only an empty QResources is accepted in ShellIO.
         """
         header_dict = {}
         for qr_field, slurm_field in self._qresources_mapping.items():

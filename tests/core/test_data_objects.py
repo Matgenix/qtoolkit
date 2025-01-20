@@ -551,20 +551,6 @@ class TestQResources:
         proc_distr = qr.get_processes_distribution()
         assert proc_distr == [None, None, None]
 
-    def test_is_empty(self):
-        qr = QResources()
-        assert qr.check_empty()
-
-        qr = QResources(process_placement=ProcessPlacement.NO_CONSTRAINTS, processes=10)
-        assert not qr.check_empty()
-
-        qr = QResources(process_placement=None)
-        qr.processes = 10
-        with pytest.raises(
-            ValueError, match="process_placement is None, but some values are set"
-        ):
-            qr.check_empty()
-
 
 class TestQJobInfo:
     def test_equality(self):
