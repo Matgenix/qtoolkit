@@ -158,17 +158,17 @@ class TestBaseScheduler:
         ):
             scheduler.generate_header(res)
 
+        res = QResources(
+            nodes=4,
+            processes_per_node=16,
+            scheduler_kwargs={"option32": "xxx", "processes-per-node": "yyy"},
+        )
         with pytest.raises(
             ValueError,
             match=r"The following keys are not present in the template: option32, processes-per-node. "
             r"Check the template in .*MyScheduler.header_template.*'option3' or 'option2' or 'option1' "
             r"instead of 'option32'. 'processes_per_node' or 'processes' instead of 'processes-per-node'",
         ):
-            res = QResources(
-                nodes=4,
-                processes_per_node=16,
-                scheduler_kwargs={"option32": "xxx", "processes-per-node": "yyy"},
-            )
             scheduler.generate_header(res)
 
     def test_generate_ids_list(self, scheduler):

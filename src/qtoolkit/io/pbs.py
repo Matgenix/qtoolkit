@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import re
-
-from datetime import timedelta
 from typing import ClassVar
 
 from qtoolkit.core.data_objects import QJob, QJobInfo, QState, QSubState
@@ -93,8 +91,8 @@ $${qverbatim}"""
     CANCEL_CMD: str | None = "qdel"
     system_name: str = "PBS"
     default_unit: str = "mb"
-    power_labels: dict = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
-    _qresources_mapping: dict = {
+    power_labels: ClassVar[dict] = {"kb": 0, "mb": 1, "gb": 2, "tb": 3}
+    _qresources_mapping: ClassVar[dict] = {
         "queue_name": "queue",
         "job_name": "job_name",
         "account": "account",
@@ -138,8 +136,7 @@ $${qverbatim}"""
         return ["qstat", "-f", "-w"]
 
     def _get_job_cmd(self, job_id: str):
-        cmd = f"{' '.join(self._get_qstat_base_command())} {job_id}"
-        return cmd
+        return f"{' '.join(self._get_qstat_base_command())} {job_id}"
 
     def _get_job_ids_flag(self, job_ids_str: str) -> str:
         return job_ids_str

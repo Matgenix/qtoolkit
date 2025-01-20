@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -248,7 +248,7 @@ $${qverbatim}
 
     # helper attribute to match the values defined in QResources and
     # the dictionary that should be passed to the template
-    _qresources_mapping = {
+    _qresources_mapping: ClassVar = {
         "job_name": "job_name",
         "output_filepath": "qout_path",
         "error_filepath": "qerr_path",

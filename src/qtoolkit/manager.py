@@ -77,6 +77,7 @@ class QueueManager(QTKObject):
         if env_config:
             env_setup = []
             if "modules" in env_config:
+                env_setup.append("module purge")
                 env_setup += [f"module load {mod}" for mod in env_config["modules"]]
             if "source_files" in env_config:
                 env_setup += [
