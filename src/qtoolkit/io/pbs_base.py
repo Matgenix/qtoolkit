@@ -4,6 +4,7 @@ import abc
 import re
 from abc import ABC
 from datetime import timedelta
+from typing import ClassVar
 
 from qtoolkit.core.data_objects import (
     CancelResult,
@@ -24,10 +25,10 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
-    _qresources_mapping: dict
+    _qresources_mapping: ClassVar[dict]
     system_name: str
     default_unit: str
-    power_labels: dict
+    power_labels: ClassVar[dict]
 
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
         if isinstance(stdout, bytes):
@@ -128,21 +129,20 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
         try:
             v = int(memory)
-        except ValueError:
-            raise OutputParsingError
+        except ValueError as exc:
+            raise OutputParsingError from exc
 
         return v * (1024 ** power_labels[units.lower()])
 
     @staticmethod
-    def _convert_time_to_str(time: int | float | timedelta) -> str:
+    def _convert_time_to_str(time: int | float | timedelta) -> str:  # noqa: PYI041
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
         hours, remainder = divmod(int(time.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        time_str = f"{hours}:{minutes}:{seconds}"
-        return time_str
+        return f"{hours}:{minutes}:{seconds}"
 
     def _convert_qresources(self, resources: QResources) -> dict:
         header_dict = {}

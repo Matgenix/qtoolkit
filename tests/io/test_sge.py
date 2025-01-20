@@ -23,7 +23,7 @@ def sge_io():
 
 
 class TestSGEState:
-    @pytest.mark.parametrize("sge_state", [s for s in SGEState])
+    @pytest.mark.parametrize("sge_state", list(SGEState))
     def test_qstate(self, sge_state):
         assert isinstance(sge_state.qstate, QState)
         assert SGEState("hqw") == SGEState.HOLD
@@ -281,9 +281,7 @@ class TestSGEIO:
 #$ -o test_output_filepath
 #$ -e test_error_filepath
 #$ -p 1
-ls -l""".split(
-                "\n"
-            )
+ls -l""".split("\n")
         )
 
     def test_sanitize_options(self, sge_io):

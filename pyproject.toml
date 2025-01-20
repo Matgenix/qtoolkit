@@ -113,7 +113,7 @@ docstring-code-format = true
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"**/tests/*" = ["INP001", "S101"]
+"**/tests/*" = ["INP001", "S101", "SLF001"]
 
 [tool.mypy]
 ignore_missing_imports = true

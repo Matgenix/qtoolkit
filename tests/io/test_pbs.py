@@ -49,7 +49,7 @@ def maximalist_qresources_pbs():
 
 
 class TestPBSState:
-    @pytest.mark.parametrize("sge_state", [s for s in PBSState])
+    @pytest.mark.parametrize("sge_state", list(PBSState))
     def test_qstate(self, sge_state):
         assert isinstance(sge_state.qstate, QState)
 
@@ -295,9 +295,7 @@ class TestPBSIO:
 #PBS -o test_output_filepath
 #PBS -e test_error_filepath
 #PBS -p 1
-ls -l""".split(
-                "\n"
-            )
+ls -l""".split("\n")
         )
 
     def test_sanitize_options(self, pbs_io):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import xml.dom.minidom
 import xml.parsers.expat
+from typing import ClassVar
 
 from qtoolkit.core.data_objects import QJob, QJobInfo, QResources, QState, QSubState
 from qtoolkit.core.exceptions import CommandFailedError, OutputParsingError
@@ -127,8 +128,8 @@ $${qverbatim}"""
     CANCEL_CMD: str | None = "qdel"
     system_name: str = "SGE"
     default_unit: str = "M"
-    power_labels: dict = {"k": 0, "m": 1, "g": 2, "t": 3}
-    _qresources_mapping: dict = {
+    power_labels: ClassVar[dict] = {"k": 0, "m": 1, "g": 2, "t": 3}
+    _qresources_mapping: ClassVar[dict] = {
         "queue_name": "queue",
         "job_name": "job_name",
         "priority": "priority",
@@ -167,6 +168,8 @@ $${qverbatim}"""
         return " ".join(command)
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
+        # TODO at the moment the command for a single job is not available
+        # check if this should be removed as well.
         if exit_code != 0:
             msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
             raise CommandFailedError(msg)
@@ -203,19 +206,19 @@ $${qverbatim}"""
 
         # Check if stdout is in XML format
         try:
-            xmldata = xml.dom.minidom.parseString(stdout)
+            xmldata = xml.dom.minidom.parseString(stdout)  # noqa: S318
             job_info = xmldata.getElementsByTagName("job_list")[0]
             job_id = job_info.getElementsByTagName("JB_job_number")[
                 0
-            ].firstChild.nodeValue
-            job_name = job_info.getElementsByTagName("JB_name")[0].firstChild.nodeValue
-            owner = job_info.getElementsByTagName("JB_owner")[0].firstChild.nodeValue
-            state = job_info.getElementsByTagName("state")[0].firstChild.nodeValue
+            ].firstChild.nodeValue  # type: ignore
+            job_name = job_info.getElementsByTagName("JB_name")[0].firstChild.nodeValue  # type: ignore
+            owner = job_info.getElementsByTagName("JB_owner")[0].firstChild.nodeValue  # type: ignore
+            state = job_info.getElementsByTagName("state")[0].firstChild.nodeValue  # type: ignore
             queue_name = job_info.getElementsByTagName("queue_name")[
                 0
-            ].firstChild.nodeValue
-            slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue
-            tasks = job_info.getElementsByTagName("tasks")[0].firstChild.nodeValue
+            ].firstChild.nodeValue  # type: ignore
+            slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue  # type: ignore
+            tasks = job_info.getElementsByTagName("tasks")[0].firstChild.nodeValue  # type: ignore
 
             sge_state = SGEState(state)
             job_state = sge_state.qstate
@@ -242,32 +245,32 @@ $${qverbatim}"""
             )
         except Exception:
             # Not XML, fallback to plain text
-            job_info = {}
+            job_info_dict: dict = {}
             for line in stdout.split("\n"):
                 if ":" in line:
                     key, value = line.split(":", 1)
-                    job_info[key.strip()] = value.strip()
+                    job_info_dict[key.strip()] = value.strip()
 
             try:
-                cpus = int(job_info.get("slots", 1))
-                nodes = int(job_info.get("tasks", 1))
+                cpus = int(job_info_dict.get("slots", 1))
+                nodes = int(job_info_dict.get("tasks", 1))
                 threads_per_process = int(cpus / nodes)
             except ValueError:
                 cpus = None
                 nodes = None
                 threads_per_process = None
 
-            state_str = job_info.get("state")
+            state_str = job_info_dict.get("state")
             sge_state = SGEState(state_str) if state_str else None
             job_state = sge_state.qstate
 
             return QJob(
-                name=job_info.get("job_name"),
-                job_id=job_info.get("job_id"),
+                name=job_info_dict.get("job_name"),
+                job_id=job_info_dict.get("job_id"),
                 state=job_state,
                 sub_state=sge_state,
-                account=job_info.get("owner"),
-                queue_name=job_info.get("queue_name"),
+                account=job_info_dict.get("owner"),
+                queue_name=job_info_dict.get("queue_name"),
                 info=QJobInfo(
                     nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
                 ),
@@ -306,9 +309,9 @@ $${qverbatim}"""
             stderr = stderr.decode()
 
         try:
-            xmldata = xml.dom.minidom.parseString(stdout)
-        except xml.parsers.expat.ExpatError:
-            raise OutputParsingError("XML parsing of stdout failed")
+            xmldata = xml.dom.minidom.parseString(stdout)  # noqa: S318
+        except xml.parsers.expat.ExpatError as exc:
+            raise OutputParsingError("XML parsing of stdout failed") from exc
 
         # Ensure <job_info> elements exist
         # (==> xml file created via -u option,
@@ -331,10 +334,10 @@ $${qverbatim}"""
 
             try:
                 sge_job_state = SGEState(job_state_string)
-            except ValueError:
+            except ValueError as exc:
                 raise OutputParsingError(
                     f"Unknown job state {job_state_string} for job id {qjob.job_id}"
-                )
+                ) from exc
 
             qjob.sub_state = sge_job_state
             qjob.state = sge_job_state.qstate
@@ -378,8 +381,8 @@ $${qverbatim}"""
 
         try:
             return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-        except ValueError:
-            raise OutputParsingError(f"Invalid time format: {time_str}")
+        except ValueError as exc:
+            raise OutputParsingError(f"Invalid time format: {time_str}") from exc
 
     def _add_soft_walltime(self, header_dict: dict, resources: QResources):
         header_dict["soft_walltime"] = self._convert_time_to_str(
