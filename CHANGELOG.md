@@ -1,6 +1,24 @@
 # Changelog
 
-## [v0.1.5](https://github.com/Matgenix/qtoolkit/tree/v0.1.5) (2024-08-07)
+## [v0.1.6](https://github.com/Matgenix/qtoolkit/tree/v0.1.6) (2025-01-20)
+
+[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.5...v0.1.6)
+
+**Closed issues:**
+
+- Potential issue for jobs list in SGE [\#50](https://github.com/Matgenix/qtoolkit/issues/50)
+- Confusing SLURM template variables [\#48](https://github.com/Matgenix/qtoolkit/issues/48)
+- `process_placement` unused by `slurm.py`? [\#47](https://github.com/Matgenix/qtoolkit/issues/47)
+
+**Merged pull requests:**
+
+- Sanitization of job name and tests for PBS [\#53](https://github.com/Matgenix/qtoolkit/pull/53) ([gpetretto](https://github.com/gpetretto))
+- fix parse\_jobs\_list\_output parsing issues with SGE [\#52](https://github.com/Matgenix/qtoolkit/pull/52) ([QuantumChemist](https://github.com/QuantumChemist))
+- improve message for missing keys [\#49](https://github.com/Matgenix/qtoolkit/pull/49) ([gpetretto](https://github.com/gpetretto))
+- Implementation of SGE interface [\#43](https://github.com/Matgenix/qtoolkit/pull/43) ([QuantumChemist](https://github.com/QuantumChemist))
+- Same `ruff` linting as `jf-remote` [\#42](https://github.com/Matgenix/qtoolkit/pull/42) ([janosh](https://github.com/janosh))
+
+## [v0.1.5](https://github.com/Matgenix/qtoolkit/tree/v0.1.5) (2024-08-09)
 
 [Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.4...v0.1.5)
 
