@@ -171,23 +171,8 @@ services:
                 )
 
             yield docker_client
-            # if pytestconfig.getoption("copy_files_from_containers"):
-            #     print(" * Copying files back from the containers...")
-            #     containers_files_dir = pytestconfig.rootpath / "containers_files"
-            #     for c in containers:
-            #         if c.name in ("mongo_container",):
-            #             continue
-            #         container_dir = containers_files_dir / c.name
-            #         container_dir.mkdir(parents=True, exist_ok=True)
-            #         c.copy_from(
-            #             "/home/jobflow/jfr/",
-            #             container_dir,
-            #         )
+
         finally:
-            # if pytestconfig.getoption("keep_containers_alive"):
-            #     print("\n * Keeping containers alive...")
-            #     print(f"\n  - Docker compose yaml file: {f.name}")
-            # else:
             try:
                 print("\n * Stopping containers...")
                 try:

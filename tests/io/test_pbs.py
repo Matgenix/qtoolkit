@@ -67,7 +67,6 @@ class TestPBSIO:
             in_out_ref, inkey="parse_submit_kwargs", outkey="submission_result_ref"
         )
         sr = pbs_io.parse_submit_output(**parse_cmd_output)
-        # print(sr, sr_ref)
         assert sr == sr_ref
         sr = pbs_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
