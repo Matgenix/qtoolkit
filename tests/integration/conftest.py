@@ -66,6 +66,34 @@ def slurm_host(slurm_ssh_port):
     return RemoteHost(conf)
 
 
+@pytest.fixture(scope="session")
+def sge_host(sge_ssh_port):
+    from qtoolkit.host.remote import RemoteConfig, RemoteHost
+
+    conf = RemoteConfig(
+        root_dir="/home/qtoolkit",
+        host="localhost",
+        port=sge_ssh_port,
+        user="qtoolkit",
+        connect_kwargs={"password": "qtoolkit"},
+    )
+    return RemoteHost(conf)
+
+
+@pytest.fixture(scope="session")
+def pbs_host(pbs_ssh_port):
+    from qtoolkit.host.remote import RemoteConfig, RemoteHost
+
+    conf = RemoteConfig(
+        root_dir="/home/qtoolkit",
+        host="localhost",
+        port=pbs_ssh_port,
+        user="qtoolkit",
+        connect_kwargs={"password": "qtoolkit"},
+    )
+    return RemoteHost(conf)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def bake_containers():
     hcl_path = Path(__file__).parent.resolve() / "dockerfiles/docker-bake.hcl"
@@ -77,7 +105,9 @@ def bake_containers():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def compose_containers(slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers):
+def compose_containers(
+    slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers, pytestconfig
+):
     compose_yaml = f"""
 name: qtoolkit_testing
 services:
@@ -173,23 +203,31 @@ services:
             yield docker_client
 
         finally:
-            try:
-                print("\n * Stopping containers...")
+            if pytestconfig.getoption("keep_containers_alive"):
+                print("\n * Keeping containers alive...")
+                print(f"\n  - Docker compose yaml file: {f.name}")
+                print("\n  - Docker containers:")
+                containers = docker_client.compose.ps()
+                for c in containers:
+                    print(f"\n    - {c.name}")
+            else:
                 try:
-                    docker_client.compose.stop()
-                except Exception:  # noqa: S110
-                    pass
+                    print("\n * Stopping containers...")
+                    try:
+                        docker_client.compose.stop()
+                    except Exception:  # noqa: S110
+                        pass
 
-                try:
-                    docker_client.compose.kill()
-                except Exception:  # noqa: S110
-                    pass
+                    try:
+                        docker_client.compose.kill()
+                    except Exception:  # noqa: S110
+                        pass
 
-                try:
-                    docker_client.compose.rm(volumes=True)
-                except Exception:  # noqa: S110
-                    pass
+                    try:
+                        docker_client.compose.rm(volumes=True)
+                    except Exception:  # noqa: S110
+                        pass
 
-                print(" * Done!")
-            except Exception as exc:
-                print(f" x Failed to stop container: {exc}")
+                    print(" * Done!")
+                except Exception as exc:
+                    print(f" x Failed to stop container: {exc}")

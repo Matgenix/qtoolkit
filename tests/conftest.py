@@ -143,3 +143,15 @@ def maximalist_qresources():
         project="test_project",
         njobs=1,
     )
+
+
+def pytest_addoption(parser):
+    """Add a command-line option to enable the reporting of the coverage per flag."""
+    parser.addoption(
+        "--keep-containers-alive",
+        "--kca",
+        action="store_true",
+        default=False,
+        dest="keep_containers_alive",
+        help="Keep the containers alive for inspection.",
+    )
