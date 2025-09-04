@@ -35,7 +35,7 @@ RUN uv venv /home/${USERNAME}/.venv && \
 
 # Add desired queue system as a build stage:
 # Each different queue system must provide an startup script, following the example
-# of the prebuilt SLURM image, that needs to be run by a user with sudo priveleges.
+# of the prebuilt SLURM image, that needs to be run by a user with sudo privileges.
 # This script should also start the SSH server via `service ssh start`.
 # This script is then edited at the final stage to include starting the SSH server and updating
 # the qtoolkit user's permissions.

@@ -1,9 +1,9 @@
 # ruff: noqa: SLF001
 
 import os
-import pytest
 import re
 
+import pytest
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("CI"),
@@ -12,9 +12,9 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_submission(slurm_host):
-    from qtoolkit.manager import QueueManager
+    from qtoolkit.core.data_objects import QJob, SubmissionResult, SubmissionStatus
     from qtoolkit.io.slurm import SlurmIO
-    from qtoolkit.core.data_objects import SubmissionResult, SubmissionStatus, QJob
+    from qtoolkit.manager import QueueManager
 
     qm = QueueManager(scheduler_io=SlurmIO(), host=slurm_host)
 

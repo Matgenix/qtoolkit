@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import random
+import socket
 import tempfile
 import time
 from pathlib import Path
 
-import fabric
-import socket
 import pytest
 from python_on_whales import DockerClient
 from python_on_whales import docker as docker_pow
@@ -56,10 +54,15 @@ def pbs_ssh_port():
 
 @pytest.fixture(scope="session")
 def slurm_host(slurm_ssh_port):
-    from qtoolkit.host.remote import RemoteHost
-    from qtoolkit.host.remote import RemoteConfig
+    from qtoolkit.host.remote import RemoteConfig, RemoteHost
 
-    conf = RemoteConfig(root_dir="/home/qtoolkit",host="localhost", port=slurm_ssh_port, user="qtoolkit", connect_kwargs={"password": "qtoolkit"})
+    conf = RemoteConfig(
+        root_dir="/home/qtoolkit",
+        host="localhost",
+        port=slurm_ssh_port,
+        user="qtoolkit",
+        connect_kwargs={"password": "qtoolkit"},
+    )
     return RemoteHost(conf)
 
 
@@ -73,11 +76,8 @@ def bake_containers():
     )
 
 
-
 @pytest.fixture(scope="session", autouse=True)
-def compose_containers(
-    slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers
-):
+def compose_containers(slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers):
     compose_yaml = f"""
 name: qtoolkit_testing
 services:
@@ -192,17 +192,17 @@ services:
                 print("\n * Stopping containers...")
                 try:
                     docker_client.compose.stop()
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 try:
                     docker_client.compose.kill()
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 try:
                     docker_client.compose.rm(volumes=True)
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 print(" * Done!")

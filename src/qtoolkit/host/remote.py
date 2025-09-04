@@ -175,7 +175,7 @@ class RemoteHost(BaseHost):
         # TODO: check if this works:
         workdir = str(workdir) if workdir else "."
         with self.connection.cd(workdir):
-            out = self.connection.run(command, hide=True, warn=True)
+            out = self.connection.run(command, hide=True, warn=True, in_stream=False)
 
         return out.stdout, out.stderr, out.exited
 
