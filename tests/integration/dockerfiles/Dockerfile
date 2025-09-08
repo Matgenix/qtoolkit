@@ -203,9 +203,14 @@ RUN printf "${USERNAME} ALL=(root:root) NOPASSWD: /etc/startup.sh\n" >> /etc/sud
     && chmod 0440 /etc/sudoers.d/startup \
     && visudo -c
 
-# # Make a job directory for jobflow
-# WORKDIR /home/${USERNAME}
-# RUN mkdir jfr
+# Add additional users for job submission
+RUN useradd -m -s /bin/bash johndoe && echo "johndoe:johndoe" | chpasswd
+RUN useradd -m -s /bin/bash sarahking && echo "sarahking:sarahking" | chpasswd
+
+# Ensure home directories exist and have correct ownership
+RUN chown -R johndoe:johndoe /home/johndoe
+RUN chown -R sarahking:sarahking /home/sarahking
+
 
 # Copy the installed qtoolkit virtualenv
 COPY --from=qtoolkit-install /home/${USERNAME}/.venv /home/${USERNAME}/.venv

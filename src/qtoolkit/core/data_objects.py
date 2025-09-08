@@ -352,3 +352,6 @@ class QJob(QTKObject):
 
     queue_name: str | None = None
     """Job execution queue name."""
+
+    username: str | None = None
+    """Name of the user who owns or submitted the job."""

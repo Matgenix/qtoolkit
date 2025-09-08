@@ -205,7 +205,16 @@ $${qverbatim}"""
             qjob.sub_state = pbs_job_state
             qjob.state = pbs_job_state.qstate
 
-            qjob.username = data["Job_Owner"]
+            # Username is provided with the name of the machine
+            n_ats = data["Job_Owner"].count("@")
+            if n_ats == 0:
+                qjob.username = data["Job_Owner"]
+            elif n_ats == 1:
+                qjob.username = data["Job_Owner"].split("@")[0]
+            else:
+                raise ValueError(
+                    f"More than one '@' found while parsing username: '{data['Job_Owner']}'"
+                )
 
             info = QJobInfo()
 

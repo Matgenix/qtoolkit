@@ -237,11 +237,11 @@ $${qverbatim}"""
                 job_id=job_id,
                 state=job_state,
                 sub_state=sge_state,
-                account=owner,
                 queue_name=queue_name,
                 info=QJobInfo(
                     nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
                 ),
+                username=owner,
             )
         except Exception:
             # Not XML, fallback to plain text

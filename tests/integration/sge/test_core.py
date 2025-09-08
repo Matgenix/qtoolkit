@@ -16,9 +16,11 @@ def test_submission(sge_host):
     from qtoolkit.io.sge import SGEIO
     from qtoolkit.manager import QueueManager
 
-    qm = QueueManager(scheduler_io=SGEIO(), host=sge_host)
+    johndoe_host = sge_host("johndoe")
 
-    sr = qm.submit(commands="sleep 60", work_dir="/home/qtoolkit")
+    qm = QueueManager(scheduler_io=SGEIO(), host=johndoe_host)
+
+    sr = qm.submit(commands="sleep 60", work_dir=johndoe_host.config.root_dir)
     assert isinstance(sr, SubmissionResult)
     assert sr.exit_code == 0
     assert sr.status == SubmissionStatus.SUCCESSFUL

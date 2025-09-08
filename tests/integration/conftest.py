@@ -56,42 +56,51 @@ def pbs_ssh_port():
 def slurm_host(slurm_ssh_port):
     from qtoolkit.host.remote import RemoteConfig, RemoteHost
 
-    conf = RemoteConfig(
-        root_dir="/home/qtoolkit",
-        host="localhost",
-        port=slurm_ssh_port,
-        user="qtoolkit",
-        connect_kwargs={"password": "qtoolkit"},
-    )
-    return RemoteHost(conf)
+    def _make_host(username: str):
+        conf = RemoteConfig(
+            root_dir=f"/home/{username}",
+            host="localhost",
+            port=slurm_ssh_port,
+            user=username,
+            connect_kwargs={"password": username},
+        )
+        return RemoteHost(conf)
+
+    return _make_host
 
 
 @pytest.fixture(scope="session")
 def sge_host(sge_ssh_port):
     from qtoolkit.host.remote import RemoteConfig, RemoteHost
 
-    conf = RemoteConfig(
-        root_dir="/home/qtoolkit",
-        host="localhost",
-        port=sge_ssh_port,
-        user="qtoolkit",
-        connect_kwargs={"password": "qtoolkit"},
-    )
-    return RemoteHost(conf)
+    def _make_host(username: str):
+        conf = RemoteConfig(
+            root_dir=f"/home/{username}",
+            host="localhost",
+            port=sge_ssh_port,
+            user=username,
+            connect_kwargs={"password": username},
+        )
+        return RemoteHost(conf)
+
+    return _make_host
 
 
 @pytest.fixture(scope="session")
 def pbs_host(pbs_ssh_port):
     from qtoolkit.host.remote import RemoteConfig, RemoteHost
 
-    conf = RemoteConfig(
-        root_dir="/home/qtoolkit",
-        host="localhost",
-        port=pbs_ssh_port,
-        user="qtoolkit",
-        connect_kwargs={"password": "qtoolkit"},
-    )
-    return RemoteHost(conf)
+    def _make_host(username: str):
+        conf = RemoteConfig(
+            root_dir=f"/home/{username}",
+            host="localhost",
+            port=pbs_ssh_port,
+            user=username,
+            connect_kwargs={"password": username},
+        )
+        return RemoteHost(conf)
+
+    return _make_host
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -128,7 +137,7 @@ services:
 
   qtoolkit_testing_sge:
     image: ghcr.io/matgenix/qtoolkit-testing-sge:latest
-    container_name: qtoolkit_testing_sge
+    container_name: qtoolkit_sge
     ports:
       - "{sge_ssh_port}:22"
     stdin_open: true

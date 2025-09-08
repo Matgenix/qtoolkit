@@ -74,6 +74,8 @@ qconf -Auser qtoolkit_user.txt
 
 # Add user to default user list
 qconf -au qtoolkit default
+qconf -au johndoe default
+qconf -au sarahking default
 
 # Add host group
 qconf -Ahgrp allhosts.txt

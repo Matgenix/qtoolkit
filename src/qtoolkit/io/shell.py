@@ -184,10 +184,13 @@ $${qverbatim}
             )
             raise ValueError(msg)
 
+        # 32 characters seems reasonable for the maximum size of a username
+        #
+        username_maxsize = 32
         # use etime instead of etimes for compatibility
         command = [
             "ps",
-            "-o pid,user,etime,state,comm",
+            f"-o pid,user:{username_maxsize},etime,state,comm",
         ]
 
         if user:
@@ -230,6 +233,10 @@ $${qverbatim}
 
             qjob = QJob()
             qjob.job_id = data[0]
+            # If the ps command truncates the username, a "+" will be in username
+            # Consider having the possibility to set a larger output for username (currently 32 characters)
+            if "+" in data[1]:
+                raise RuntimeError(f'The username was truncated: "{data[1]}".')
             qjob.username = data[1]
             qjob.runtime = self._convert_str_to_time(data[2])
             qjob.name = data[4]

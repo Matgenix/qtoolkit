@@ -16,9 +16,11 @@ def test_submission(slurm_host):
     from qtoolkit.io.slurm import SlurmIO
     from qtoolkit.manager import QueueManager
 
-    qm = QueueManager(scheduler_io=SlurmIO(), host=slurm_host)
+    johndoe_host = slurm_host("johndoe")
 
-    sr = qm.submit(commands="sleep 60", work_dir="/home/qtoolkit")
+    qm = QueueManager(scheduler_io=SlurmIO(), host=johndoe_host)
+
+    sr = qm.submit(commands="sleep 60", work_dir=johndoe_host.config.root_dir)
     assert isinstance(sr, SubmissionResult)
     assert sr.exit_code == 0
     assert sr.status == SubmissionStatus.SUCCESSFUL
