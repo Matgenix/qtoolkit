@@ -117,12 +117,6 @@ def get_host(get_host_kwargs, slurm_host, pbs_host, sge_host):
     host_type = get_host_kwargs.get("type")
     return available_hosts.get(host_type)
 
-    def _get_host(get_host_kwargs: dict):
-        host_type = get_host_kwargs.get("type")
-        return available_hosts.get(host_type)
-
-    return _get_host
-
 
 @pytest.fixture(scope="session", autouse=True)
 def bake_containers():
