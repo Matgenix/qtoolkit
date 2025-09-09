@@ -146,4 +146,5 @@ exclude_lines = [
     '^\s*@overload( |$)',
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
+    'if TYPE_CHECKING:',
 ]
