@@ -126,7 +126,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     def generate_footer(self) -> str:
         return ""
 
-    def generate_ids_list(self, jobs: list[QJob | int | str] | None) -> list[str]:
+    def generate_ids_list(
+        self, jobs: list[QJob | int | str] | None
+    ) -> list[str] | None:
         if jobs is None:
             return None
         ids_list = []
@@ -228,11 +230,19 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     def get_jobs_list_cmd(
         self, jobs: list[QJob | int | str] | None, user: str | None
-    ) -> str:
+    ) -> tuple[str, list[str] | None]:
         job_ids = self.generate_ids_list(jobs)
         if user:
             user = shlex.quote(user)
-        return self._get_jobs_list_cmd(job_ids, user)
+        return self._get_jobs_list_cmd(job_ids, user), job_ids
+
+    def refilter(self, jobs_list: list[QJob], job_ids_str: list[str] | None):
+        if job_ids_str is None:
+            return jobs_list
+        return self._refilter(jobs_list, job_ids_str)
+
+    def _refilter(self, jobs_list: list[QJob], job_ids_str: list[str]) -> list[QJob]:
+        return jobs_list
 
     @abc.abstractmethod
     def _get_jobs_list_cmd(

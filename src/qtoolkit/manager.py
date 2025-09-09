@@ -167,8 +167,9 @@ class QueueManager(QTKObject):
     def get_jobs_list(
         self, jobs: list[QJob | int | str] | None = None, user: str | None = None
     ) -> list[QJob]:
-        job_cmd = self.scheduler_io.get_jobs_list_cmd(jobs, user)
+        job_cmd, job_ids_str = self.scheduler_io.get_jobs_list_cmd(jobs, user)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
-        return self.scheduler_io.parse_jobs_list_output(
+        jobs_list = self.scheduler_io.parse_jobs_list_output(
             exit_code=returncode, stdout=stdout, stderr=stderr
         )
+        return self.scheduler_io.refilter(jobs_list, job_ids_str)

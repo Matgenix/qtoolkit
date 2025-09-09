@@ -188,6 +188,7 @@ RUN apt update && \
         dos2unix \
         openssh-server \
         sudo \
+        vim \
         python3.10-venv && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*

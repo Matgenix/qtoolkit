@@ -106,18 +106,8 @@ class TestSGEIO:
             sge_io._get_job_cmd("56")
 
     def test_get_jobs_list_cmd(self, sge_io):
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"])
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == 'qstat -ext -urg -xml -u "*"'
 
         cmd = sge_io._get_jobs_list_cmd(user="johndoe")
         assert cmd == "qstat -ext -urg -xml -u johndoe"

@@ -103,6 +103,27 @@ def pbs_host(pbs_ssh_port):
     return _make_host
 
 
+@pytest.fixture()
+def get_host(get_host_kwargs, slurm_host, pbs_host, sge_host):
+    from qtoolkit.io.pbs import PBSIO
+    from qtoolkit.io.sge import SGEIO
+    from qtoolkit.io.slurm import SlurmIO
+
+    available_hosts = {
+        "slurm": (slurm_host, SlurmIO()),
+        "pbs": (pbs_host, PBSIO()),
+        "sge": (sge_host, SGEIO()),
+    }
+    host_type = get_host_kwargs.get("type")
+    return available_hosts.get(host_type)
+
+    def _get_host(get_host_kwargs: dict):
+        host_type = get_host_kwargs.get("type")
+        return available_hosts.get(host_type)
+
+    return _get_host
+
+
 @pytest.fixture(scope="session", autouse=True)
 def bake_containers():
     hcl_path = Path(__file__).parent.resolve() / "dockerfiles/docker-bake.hcl"
@@ -219,6 +240,28 @@ services:
                 containers = docker_client.compose.ps()
                 for c in containers:
                     print(f"\n    - {c.name}")
+                    inspect = docker_client.container.inspect(c.name)
+                    ports = inspect.network_settings.ports or {}
+                    ssh_bindings = ports.get("22/tcp", [])
+                    seen_ports = set()
+                    for binding in ssh_bindings:
+                        host_ip = binding.get("HostIp") or "localhost"
+                        host_port = binding.get("HostPort")
+
+                        # Skip IPv6 all-addresses
+                        if host_ip == "::":
+                            continue
+
+                        # Normalize IPv4 all-addresses to localhost
+                        if host_ip == "0.0.0.0":  # noqa: S104
+                            host_ip = "localhost"
+
+                        # Deduplicate multiple bindings with same port
+                        if host_port in seen_ports:
+                            continue
+                        seen_ports.add(host_port)
+
+                        print(f"      ssh johndoe@{host_ip} -p {host_port}")
             else:
                 try:
                     print("\n * Stopping containers...")

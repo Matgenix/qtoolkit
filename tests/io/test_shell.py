@@ -141,12 +141,16 @@ class TestShellIO:
         assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 789"
 
     def test_get_jobs_list_cmd(self, shell_io):
-        get_jobs_list_cmd = shell_io.get_jobs_list_cmd(
+        get_jobs_list_cmd, job_ids_str = shell_io.get_jobs_list_cmd(
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
+        assert job_ids_str == ["125", "126", "127"]
         assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -p 125,126,127"
-        get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
+        get_jobs_list_cmd, job_ids_str = shell_io.get_jobs_list_cmd(
+            jobs=None, user="johndoe"
+        )
         assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -U johndoe"
+        assert job_ids_str is None
         with pytest.raises(
             ValueError,
             match=r"Cannot query by user and job\(s\) with ps, "

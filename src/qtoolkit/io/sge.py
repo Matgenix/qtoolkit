@@ -157,15 +157,19 @@ $${qverbatim}"""
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-        if job_ids:
-            raise ValueError("Querying by job IDs is not supported for SGE.")
-
         command = self._get_qstat_base_command()
 
         if user:
             command.append(f"-u {user}")
+        else:
+            # by default sge show only the jobs for the current user, to make it consistent
+            # with other schedulers, we add this.
+            command.append('-u "*"')
 
         return " ".join(command)
+
+    def _refilter(self, jobs_list: list[QJob], job_ids_str: list[str]) -> list[QJob]:
+        return [qjob for qjob in jobs_list if qjob.job_id in job_ids_str]
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
         # TODO at the moment the command for a single job is not available
