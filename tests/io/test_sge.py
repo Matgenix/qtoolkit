@@ -73,37 +73,9 @@ class TestSGEIO:
         )
         assert cr == cr_ref
 
-    @pytest.mark.parametrize("in_out_ref", in_out_job_ref_list)
-    def test_parse_job_output(self, sge_io, in_out_ref, test_utils):
-        parse_cmd_output, job_ref = test_utils.inkwargs_outref(
-            in_out_ref, inkey="parse_job_kwargs", outkey="job_ref"
-        )
-        if "stderr" not in parse_cmd_output:
-            parse_cmd_output["stderr"] = ""
-        job = sge_io.parse_job_output(**parse_cmd_output)
-        assert job == job_ref
-        job = sge_io.parse_job_output(
-            exit_code=parse_cmd_output["exit_code"],
-            stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
-            stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
-        )
-        assert job == job_ref
-        job = sge_io.parse_job_output(
-            exit_code=parse_cmd_output["exit_code"],
-            stdout=bytes(parse_cmd_output["stdout"], "ascii"),
-            stderr=bytes(parse_cmd_output["stderr"], "ascii"),
-        )
-        assert job == job_ref
-
     def test_get_job_cmd(self, sge_io):
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd(3)
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd("56")
+        get_job_cmd = sge_io._get_job_cmd(3)
+        assert get_job_cmd == 'qstat -ext -urg -xml -u "*"'
 
     def test_get_jobs_list_cmd(self, sge_io):
         cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])

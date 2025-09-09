@@ -11,10 +11,18 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize(
-    "get_host_kwargs", [{"type": "slurm"}, {"type": "pbs"}, {"type": "sge"}]
+    "get_host_kwargs",
+    [{"type": "slurm"}, {"type": "pbs"}, {"type": "sge"}],
+    ids=["slurm", "pbs", "sge"],
 )
 def test_submission(get_host, get_host_kwargs):
-    from qtoolkit.core.data_objects import QJob, SubmissionResult, SubmissionStatus
+    from qtoolkit.core.data_objects import (
+        CancelResult,
+        CancelStatus,
+        QJob,
+        SubmissionResult,
+        SubmissionStatus,
+    )
     from qtoolkit.manager import QueueManager
 
     host_factory, scheduler_io = get_host
@@ -30,7 +38,6 @@ def test_submission(get_host, get_host_kwargs):
     assert sr.exit_code == 0
     assert sr.status == SubmissionStatus.SUCCESSFUL
     assert sr.stderr == ""
-    # assert re.fullmatch(r"\d+\.[\w.-]+\n", sr.stdout)
 
     job_id_johndoe = sr.job_id
 
@@ -66,3 +73,13 @@ def test_submission(get_host, get_host_kwargs):
     job_list = qm_johndoe.get_jobs_list(user="johndoe")
     assert len(job_list) == 1
     assert job_list[0].username == "johndoe"
+
+    qjob = qm_sarahking.get_job(job_id_johndoe)
+    assert isinstance(qjob, QJob)
+    assert qjob.job_id == job_id_johndoe
+
+    # This should fail as the job belongs to johndoe
+    cr = qm_sarahking.cancel(qjob)
+    assert isinstance(cr, CancelResult)
+    assert cr.exit_code != 0
+    assert cr.status == CancelStatus.FAILED

@@ -172,113 +172,10 @@ $${qverbatim}"""
         return [qjob for qjob in jobs_list if qjob.job_id in job_ids_str]
 
     def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
-        # TODO at the moment the command for a single job is not available
-        # check if this should be removed as well.
-        if exit_code != 0:
-            msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
-            raise CommandFailedError(msg)
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode()
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode()
-
-        # Check for specific error messages in stderr or stdout
-        error_patterns = [
-            re.compile(
-                r"Primary job\s+terminated normally, but\s+(\d+)\s+process returned a non-zero exit code",
-                re.IGNORECASE,
-            ),
-            re.compile(
-                r"mpiexec detected that one or more processes exited with non-zero status",
-                re.IGNORECASE,
-            ),
-            re.compile(r"An error occurred in MPI_Allreduce", re.IGNORECASE),
-            re.compile(
-                r"Error: mca_pml_ucx_send_nbr failed: -25, Connection reset by remote peer",
-                re.IGNORECASE,
-            ),
-            re.compile(r"mpi_errors_are_fatal", re.IGNORECASE),
-        ]
-
-        for pattern in error_patterns:
-            if pattern.search(stderr) or pattern.search(stdout):
-                msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
-                raise CommandFailedError(msg)
-
-        if not stdout.strip():
-            return None
-
-        # Check if stdout is in XML format
-        try:
-            xmldata = xml.dom.minidom.parseString(stdout)  # noqa: S318
-            job_info = xmldata.getElementsByTagName("job_list")[0]
-            job_id = job_info.getElementsByTagName("JB_job_number")[
-                0
-            ].firstChild.nodeValue  # type: ignore
-            job_name = job_info.getElementsByTagName("JB_name")[0].firstChild.nodeValue  # type: ignore
-            owner = job_info.getElementsByTagName("JB_owner")[0].firstChild.nodeValue  # type: ignore
-            state = job_info.getElementsByTagName("state")[0].firstChild.nodeValue  # type: ignore
-            queue_name = job_info.getElementsByTagName("queue_name")[
-                0
-            ].firstChild.nodeValue  # type: ignore
-            slots = job_info.getElementsByTagName("slots")[0].firstChild.nodeValue  # type: ignore
-            tasks = job_info.getElementsByTagName("tasks")[0].firstChild.nodeValue  # type: ignore
-
-            sge_state = SGEState(state)
-            job_state = sge_state.qstate
-
-            try:
-                cpus = int(slots)
-                nodes = int(tasks)
-                threads_per_process = int(cpus / nodes)
-            except ValueError:
-                cpus = None
-                nodes = None
-                threads_per_process = None
-
-            return QJob(
-                name=job_name,
-                job_id=job_id,
-                state=job_state,
-                sub_state=sge_state,
-                queue_name=queue_name,
-                info=QJobInfo(
-                    nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
-                ),
-                username=owner,
-            )
-        except Exception:
-            # Not XML, fallback to plain text
-            job_info_dict: dict = {}
-            for line in stdout.split("\n"):
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    job_info_dict[key.strip()] = value.strip()
-
-            try:
-                cpus = int(job_info_dict.get("slots", 1))
-                nodes = int(job_info_dict.get("tasks", 1))
-                threads_per_process = int(cpus / nodes)
-            except ValueError:
-                cpus = None
-                nodes = None
-                threads_per_process = None
-
-            state_str = job_info_dict.get("state")
-            sge_state = SGEState(state_str) if state_str else None
-            job_state = sge_state.qstate
-
-            return QJob(
-                name=job_info_dict.get("job_name"),
-                job_id=job_info_dict.get("job_id"),
-                state=job_state,
-                sub_state=sge_state,
-                account=job_info_dict.get("owner"),
-                queue_name=job_info_dict.get("queue_name"),
-                info=QJobInfo(
-                    nodes=nodes, cpus=cpus, threads_per_process=threads_per_process
-                ),
-            )
+        out = self.parse_jobs_list_output(exit_code, stdout, stderr)
+        if out:
+            return out[0]
+        return None
 
     def _get_element_text(self, parent, tag_name):
         elements = parent.getElementsByTagName(tag_name)
@@ -301,7 +198,7 @@ $${qverbatim}"""
         raise NotImplementedError("Querying by job IDs is not supported for SGE.")
 
     def _get_job_cmd(self, job_id: str):
-        raise NotImplementedError("Querying by job IDs is not supported for SGE.")
+        return " ".join(self._get_qstat_base_command()) + ' -u "*"'
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if exit_code != 0:
