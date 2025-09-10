@@ -126,6 +126,7 @@ $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
+    job_id_regex: str | None = r"^\d+(\.[\w.-]+)?(\[\d+(-\d+)?(,\d+)*\])?$"
     system_name: str = "SGE"
     default_unit: str = "M"
     power_labels: ClassVar[dict] = {"k": 0, "m": 1, "g": 2, "t": 3}
@@ -145,13 +146,17 @@ $${qverbatim}"""
     def extract_job_id(self, stdout):
         match = re.search(r'Your job (\d+) \(".*?"\) has been submitted', stdout)
         if not match:
-            raise OutputParsingError("Failed to parse job ID from stdout")
+            raise OutputParsingError(
+                "Failed to parse job ID from stdout"
+            )  # pragma: no cover - trivial
         return match.group(1)
 
     def extract_job_id_from_cancel(self, stderr):
         match = re.search(r"qdel: job (\d+) deleted", stderr)
         if not match:
-            raise OutputParsingError("Failed to parse job ID from stdout")
+            raise OutputParsingError(
+                "Failed to parse job ID from stdout"
+            )  # pragma: no cover - trivial
         return match.group(1)
 
     def _get_jobs_list_cmd(
@@ -171,10 +176,17 @@ $${qverbatim}"""
     def _refilter(self, jobs_list: list[QJob], job_ids_str: list[str]) -> list[QJob]:
         return [qjob for qjob in jobs_list if qjob.job_id in job_ids_str]
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:  # aiida style
+    def parse_job_output(
+        self, exit_code, stdout, stderr, **kwargs
+    ) -> QJob | None:  # aiida style
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
-            return out[0]
+            job_id = self.generate_ids_list([kwargs.get("job_id")])[0]
+            jobs = self._refilter(out, [job_id])
+            if len(jobs) == 1:
+                return jobs[0]
+            if len(jobs) > 1:
+                raise RuntimeError("Should not happen.")
         return None
 
     def _get_element_text(self, parent, tag_name):

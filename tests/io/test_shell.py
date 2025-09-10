@@ -264,3 +264,24 @@ class TestShellIO:
             shell_io._convert_str_to_time("2-11:21:32:5")
         with pytest.raises(OutputParsingError):
             shell_io._convert_str_to_time("2-11:21:hello")
+
+    def test_get_jobs_list(self, tmp_dir):
+        from qtoolkit.host.local import LocalHost
+        from qtoolkit.manager import QueueManager
+
+        shell_io = ShellIO()
+        shell_io.USERNAME_MAXCHARS = (
+            2  # explicitly set a very small number of characters allowed for the user
+        )
+        qm = QueueManager(scheduler_io=shell_io, host=LocalHost())
+
+        # Here the sleep is very small should be enough to have the
+        sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
+        job_id = sr.job_id
+        with pytest.raises(RuntimeError, match=r"The username was truncated: \".\+\""):
+            qm.get_jobs_list(jobs=[job_id])
+
+        shell_io.USERNAME_MAXCHARS = 32
+        jobs_list = qm.get_jobs_list(jobs=[job_id])
+        assert len(jobs_list) == 1
+        assert jobs_list[0].job_id == job_id

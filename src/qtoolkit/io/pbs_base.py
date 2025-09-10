@@ -25,6 +25,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
+    job_id_regex: str | None = r"^\d+\.[\w.-]+(\[\d+(-\d+)?(,\d+)*\])?$"
     _qresources_mapping: ClassVar[dict]
     system_name: str
     default_unit: str

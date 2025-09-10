@@ -66,6 +66,10 @@ $${qverbatim}
 """
 
     CANCEL_CMD: str | None = "kill -9"
+    # 32 characters seems reasonable for the maximum size of a username
+    USERNAME_MAXCHARS = 32
+
+    job_id_regex: str | None = r"^[1-9]\d*$"
 
     def __init__(self, blocking=False, stdout_path="stdout", stderr_path="stderr"):
         """Construct the ShellIO object.
@@ -153,7 +157,7 @@ $${qverbatim}
     def _get_job_cmd(self, job_id: str):
         return self._get_jobs_list_cmd(job_ids=[job_id])
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
         """Parse the output of the ps command and return the corresponding QJob object.
 
         If the ps command returns multiple shell jobs, only the first corresponding
@@ -184,13 +188,10 @@ $${qverbatim}
             )
             raise ValueError(msg)
 
-        # 32 characters seems reasonable for the maximum size of a username
-        #
-        username_maxsize = 32
         # use etime instead of etimes for compatibility
         command = [
             "ps",
-            f"-o pid,user:{username_maxsize},etime,state,comm",
+            f"-o pid,user:{self.USERNAME_MAXCHARS},etime,state,comm",
         ]
 
         if user:

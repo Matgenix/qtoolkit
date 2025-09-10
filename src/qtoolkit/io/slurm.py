@@ -180,6 +180,7 @@ $${qverbatim}"""
     CANCEL_CMD: str | None = (
         "scancel -v"  # The -v is needed as the default is to report nothing
     )
+    job_id_regex: str | None = r"^\d+(_\d+)?$"
 
     squeue_fields: ClassVar = [
         ("%i", "job_id"),  # job or job step id
@@ -286,14 +287,14 @@ $${qverbatim}"""
             cmd = f"SLURM_TIME_FORMAT='standard' scontrol show job -o {job_id}"
         elif self.get_job_executable == "sacct":  # pragma: no cover
             raise NotImplementedError("sacct for get_job not yet implemented.")
-        else:  # pragma: no cover
+        else:  # pragma: no cover - trivial
             raise RuntimeError(
                 f'"{self.get_job_executable}" is not a valid get_job_executable.'
             )
 
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -397,9 +398,9 @@ $${qverbatim}"""
 
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
         if isinstance(stdout, bytes):
-            stdout = stdout.decode()
+            stdout = stdout.decode()  # pragma: no cover - trivial
         if isinstance(stderr, bytes):
-            stderr = stderr.decode()
+            stderr = stderr.decode()  # pragma: no cover - trivial
 
         if exit_code != 0:
             msg = f"command {self.get_job_executable} failed: {stderr}"
@@ -418,7 +419,9 @@ $${qverbatim}"""
         # Create dictionary and parse specific fields
         jobs_list = []
         for data in jobdata_raw:
-            if len(data) != num_fields:
+            if (
+                len(data) != num_fields
+            ):  # pragma: no cover - difficult to test, can this happen ?
                 msg = f"Wrong number of fields. Found {len(jobdata_raw)}, expected {num_fields}"
                 # TODO should this raise or just continue? and should there be
                 # a logging of the errors?
@@ -433,7 +436,7 @@ $${qverbatim}"""
 
             try:
                 slurm_job_state = SlurmState(job_state_string)
-            except ValueError as exc:
+            except ValueError as exc:  # pragma: no cover - unlikely
                 msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
                 raise OutputParsingError(msg) from exc
             qjob.sub_state = slurm_job_state
@@ -445,19 +448,19 @@ $${qverbatim}"""
 
             try:
                 info.nodes = int(thisjob_dict["number_nodes"])
-            except ValueError:
+            except ValueError:  # pragma: no cover - trivial
                 info.nodes = None
 
             try:
                 info.cpus = int(thisjob_dict["number_cpus"])
-            except ValueError:
+            except ValueError:  # pragma: no cover - trivial
                 info.cpus = None
 
             try:
                 info.memory_per_cpu = self._convert_memory_str(
                     thisjob_dict["min_memory"]
                 )
-            except OutputParsingError:
+            except OutputParsingError:  # pragma: no cover - trivial
                 info.memory_per_cpu = None
 
             info.partition = thisjob_dict["partition"]
@@ -468,7 +471,7 @@ $${qverbatim}"""
 
             try:
                 qjob.runtime = self._convert_str_to_time(thisjob_dict["time_used"])
-            except OutputParsingError:
+            except OutputParsingError:  # pragma: no cover - never seen
                 # if the job did not start usually it is set to 00:00, but if it is
                 # empty it should be fine.
                 qjob.runtime = None
@@ -519,10 +522,7 @@ $${qverbatim}"""
         if not memory:
             return None
 
-        # TODO: @GP not sure I get what is this line here
-        #  Shouldn't it be all(u not in memory for u in ("K", "M", "G", "T"))?
-        #  Or not any(u in memory for u in ("K", "M", "G", "T"))?
-        if all(u in memory for u in ("K", "M", "G", "T")):
+        if all(u not in memory for u in ("K", "M", "G", "T")):
             # assume Mb
             units = "M"
         else:

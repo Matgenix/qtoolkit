@@ -21,3 +21,9 @@ class UnsupportedResourcesError(QTKError):
     Exception raised when the resources requested are not supported
     in qtoolkit for the chosen scheduler.
     """
+
+
+class InvalidJobIDError(QTKError):
+    """
+    Exception raised when a job ID does not match the expected format.
+    """

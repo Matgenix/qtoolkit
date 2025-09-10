@@ -57,9 +57,11 @@ def tmp_dir():
     old_cwd = os.getcwd()
     newpath = tempfile.mkdtemp()
     os.chdir(newpath)
-    yield
-    os.chdir(old_cwd)
-    shutil.rmtree(newpath)
+    try:
+        yield newpath
+    finally:
+        os.chdir(old_cwd)
+        shutil.rmtree(newpath)
 
 
 @pytest.fixture(scope="session")

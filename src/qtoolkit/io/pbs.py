@@ -126,7 +126,7 @@ $${qverbatim}"""
 
         return " ".join(command)
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
             return out[0]
@@ -189,7 +189,7 @@ $${qverbatim}"""
             job_id = job_id.strip()
             results = values_regex.findall(chunk_data)
             if not results:
-                continue
+                continue  # pragma: no cover - trivial
             data = dict(results)
 
             qjob = QJob()
@@ -199,7 +199,7 @@ $${qverbatim}"""
 
             try:
                 pbs_job_state = PBSState(job_state_string)
-            except ValueError as exc:
+            except ValueError as exc:  # pragma: no cover - unlikely
                 msg = f"Unknown job state {job_state_string} for job id {qjob.job_id}"
                 raise OutputParsingError(msg) from exc
             qjob.sub_state = pbs_job_state
@@ -208,10 +208,12 @@ $${qverbatim}"""
             # Username is provided with the name of the machine
             n_ats = data["Job_Owner"].count("@")
             if n_ats == 0:
-                qjob.username = data["Job_Owner"]
+                qjob.username = data[
+                    "Job_Owner"
+                ]  # pragma: no cover - never seen it but could it happen ?
             elif n_ats == 1:
                 qjob.username = data["Job_Owner"].split("@")[0]
-            else:
+            else:  # pragma: no cover - never seen it but could it happen ?
                 raise ValueError(
                     f"More than one '@' found while parsing username: '{data['Job_Owner']}'"
                 )
@@ -220,19 +222,19 @@ $${qverbatim}"""
 
             try:
                 info.nodes = int(data.get("Resource_List.nodect"))
-            except ValueError:
+            except ValueError:  # pragma: no cover - never seen
                 info.nodes = None
 
             try:
                 info.cpus = int(data.get("Resource_List.ncpus"))
-            except ValueError:
+            except ValueError:  # pragma: no cover - never seen
                 info.cpus = None
 
             try:
                 info.memory_per_cpu = self._convert_memory_str(
                     data.get("Resource_List.mem")
                 )
-            except OutputParsingError:
+            except OutputParsingError:  # pragma: no cover - never seen
                 info.memory_per_cpu = None
 
             info.partition = data["queue"]
@@ -247,7 +249,7 @@ $${qverbatim}"""
                 runtime_str = data.get("resources_used.walltime")
                 if runtime_str:
                     qjob.runtime = self._convert_str_to_time(runtime_str)
-            except OutputParsingError:
+            except OutputParsingError:  # pragma: no cover - never seen
                 qjob.runtime = None
 
             qjob.name = data.get("Job_Name")

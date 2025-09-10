@@ -83,3 +83,8 @@ def test_submission(get_host, get_host_kwargs):
     assert isinstance(cr, CancelResult)
     assert cr.exit_code != 0
     assert cr.status == CancelStatus.FAILED
+
+    # don't check the format of the job id passed, we just want to see that we get no job
+    qm_johndoe.scheduler_io.check_job_ids = False
+    nojob = qm_johndoe.get_job(job="99999")
+    assert nojob is None

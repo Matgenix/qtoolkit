@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import difflib
+import re
 import shlex
 from dataclasses import fields
 from string import Template
@@ -9,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
-from qtoolkit.core.exceptions import UnsupportedResourcesError
+from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +53,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     shebang: str = "#!/bin/bash"
 
     sanitize_job_name: bool = False
+
+    job_id_regex: str | None = None
+    check_job_ids: bool = True
 
     def get_submission_script(
         self,
@@ -137,7 +141,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
                 ids_list.append(str(j.job_id))
             else:
                 ids_list.append(str(j))
-
+        self._check_job_ids(ids_list)
         return ids_list
 
     def get_submit_cmd(self, script_file: str | Path | None = "submit.script") -> str:
@@ -169,6 +173,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
             raise ValueError(
                 f"The id of the job to be cancelled should be defined. Received: {received}"
             )
+        self._check_job_ids(job_id)
         return f"{self.CANCEL_CMD} {job_id}"
 
     @abc.abstractmethod
@@ -185,7 +190,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
         pass
 
     def check_convert_qresources(self, resources: QResources) -> dict:
@@ -260,3 +265,13 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         header. Subclasses should implement their own sanitizations.
         """
         return options
+
+    def _check_job_ids(self, job_ids):
+        if not isinstance(job_ids, list):
+            job_ids = [job_ids]
+        if self.check_job_ids and self.job_id_regex:
+            for job_id in job_ids:
+                if not re.fullmatch(self.job_id_regex, job_id):
+                    raise InvalidJobIDError(
+                        f"Job ID '{job_id}' is invalid for this scheduler"
+                    )

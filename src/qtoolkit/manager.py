@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
+from qtoolkit.core.exceptions import CommandFailedError
 from qtoolkit.host.local import LocalHost
 
 if TYPE_CHECKING:
@@ -158,11 +159,29 @@ class QueueManager(QTKObject):
         )
 
     def get_job(self, job: QJob | int | str) -> QJob | None:
+        """Get job from job id or QJob object.
+
+        Parameters
+        ----------
+        job: QJob or int or str
+            Identifier of the job to get.
+
+        Returns
+        -------
+        :py:class:`qtoolkit.QJob` object or None
+            Qjob object corresponding to the job id provided or None if no job
+            was found with that id.
+
+        """
         job_cmd = self.scheduler_io.get_job_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
-        return self.scheduler_io.parse_job_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
-        )
+        try:
+            return self.scheduler_io.parse_job_output(
+                exit_code=returncode, stdout=stdout, stderr=stderr, job_id=job
+            )
+        # TODO: deal more specifically with why the command failed here maybe ?
+        except CommandFailedError:
+            return None
 
     def get_jobs_list(
         self, jobs: list[QJob | int | str] | None = None, user: str | None = None
