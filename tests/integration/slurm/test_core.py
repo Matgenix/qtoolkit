@@ -10,7 +10,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_submission(slurm_host):
+def test_errors(slurm_host):
     from qtoolkit.core.exceptions import CommandFailedError, InvalidJobIDError
     from qtoolkit.io.slurm import SlurmIO
     from qtoolkit.manager import QueueManager
@@ -38,3 +38,13 @@ def test_submission(slurm_host):
         InvalidJobIDError, match=r"Job ID 'toutou' is invalid for this scheduler"
     ):
         qm.get_jobs_list(["toutou", "youtou"])
+
+    stdout, stderr, returncode = qm.execute_cmd("squeue --noheadre -o '%i' -u johndoe")
+    assert "squeue: unrecognized option '--noheadre'" in stderr
+    with pytest.raises(
+        CommandFailedError,
+        match=r"command squeue failed: squeue: unrecognized option '--noheadre'",
+    ):
+        qm.scheduler_io.parse_jobs_list_output(
+            exit_code=returncode, stdout=stdout, stderr=stderr
+        )

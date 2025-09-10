@@ -403,7 +403,7 @@ $${qverbatim}"""
             stderr = stderr.decode()  # pragma: no cover - trivial
 
         if exit_code != 0:
-            msg = f"command {self.get_job_executable} failed: {stderr}"
+            msg = f"command squeue failed: {stderr}"
             raise CommandFailedError(msg)
 
         num_fields = len(self.squeue_fields)

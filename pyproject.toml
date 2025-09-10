@@ -147,4 +147,5 @@ exclude_lines = [
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
     'if TYPE_CHECKING:',
+    'raise NotImplementedError',
 ]
