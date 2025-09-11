@@ -5,7 +5,7 @@ import pytest
 from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
-from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
+from qtoolkit.core.exceptions import OutputParsingError
 from qtoolkit.io.sge import SGEIO, SGEState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -205,10 +205,12 @@ class TestSGEIO:
             processes=5,
             rerunnable=True,
         )
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
-        ):
-            sge_io.check_convert_qresources(res)
+
+        header_dict = sge_io.check_convert_qresources(res)
+        assert header_dict == {
+            "rerunnable": "y",
+            "select": "select=5",
+        }
 
     def test_submission_script(self, sge_io, maximalist_qresources):
         # remove unsupported SGE options

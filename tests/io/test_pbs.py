@@ -5,7 +5,7 @@ import pytest
 from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
-from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
+from qtoolkit.core.exceptions import OutputParsingError
 from qtoolkit.io.pbs import PBSIO, PBSState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -256,10 +256,11 @@ class TestPBSIO:
             processes=5,
             rerunnable=True,
         )
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
-        ):
-            pbs_io.check_convert_qresources(res)
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=5",
+            "rerunnable": "y",
+        }
 
     def test_submission_script(self, pbs_io, maximalist_qresources_pbs):
         # remove unsupported SGE options
@@ -312,3 +313,8 @@ ls -l""".split("\n")
             commands=["ls -l"], options={"job_name": "test -_!#$test"}
         )
         assert "#PBS -N test_-____test" in script
+
+    def test__convert_memory_str(self, pbs_io):
+        assert pbs_io._convert_memory_str("10") == 10240
+        with pytest.raises(OutputParsingError, match=r"Unknown units apples"):
+            pbs_io._convert_memory_str("10apples")

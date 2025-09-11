@@ -130,7 +130,9 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
         try:
             v = int(memory)
-        except ValueError as exc:
+        except (
+            ValueError
+        ) as exc:  # pragma: no cover - should not happen (matching numbers above)
             raise OutputParsingError from exc
 
         return v * (1024 ** power_labels[units.lower()])
@@ -233,5 +235,6 @@ class PBSIOBase(BaseSchedulerIO, ABC):
             "memory_per_thread",
             "email_address",
             "scheduler_kwargs",
+            "rerunnable",
         ]
         return supported
