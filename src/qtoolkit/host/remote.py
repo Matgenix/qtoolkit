@@ -198,14 +198,33 @@ class RemoteHost(BaseHost):
 
     def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True) -> bool:
         """Create directory on the host."""
-        command = "mkdir "
         if recursive:
-            command += "-p "
-        command += str(directory)
+            if exist_ok:
+                cmd_parts = ["mkdir", "-p", directory]
+            else:
+                # we need to check first if directory exists
+                cmd_parts = [
+                    "sh",
+                    "-c",
+                    shlex.quote(
+                        f'[ -e "{directory}" ] && exit 1 || mkdir -p "{directory}"'
+                    ),
+                ]
+        elif exist_ok:
+            # we need to check first if directory exists
+            cmd_parts = [
+                "sh",
+                "-c",
+                shlex.quote(f'[ -d "{directory}" ] || mkdir "{directory}"'),
+            ]
+        else:
+            cmd_parts = ["mkdir", directory]
+        command = " ".join(cmd_parts)
+
         try:
             _stdout, _stderr, returncode = self.execute(command)
         except Exception:
-            return False
+            return False  # pragma: no cover - hard to test
         else:
             return returncode == 0
 

@@ -261,3 +261,37 @@ ls -l""".split("\n")
             commands=["ls -l"], options={"job_name": "test -_!#$test"}
         )
         assert "#$ -N test_-_!#$test" in script
+
+    def test_parse_job_output(self, sge_io):
+        assert sge_io.parse_job_output(exit_code=0, stdout="", stderr="") is None
+
+    def test_safe_int(self, sge_io):
+        assert sge_io._safe_int(None) is None
+        assert sge_io._safe_int("10") == 10
+        assert sge_io._safe_int("10.0") is None
+        assert sge_io._safe_int("abcd") is None
+
+    def test_parse_jobs_list_output(self, sge_io):
+        with pytest.raises(OutputParsingError, match=r"XML parsing of stdout failed"):
+            sge_io.parse_jobs_list_output(
+                exit_code=0,
+                stdout=bytes("stdout", "utf-8"),
+                stderr=bytes("stderr", "utf-8"),
+            )
+
+        xml_missing_job_info = """<?xml version="1.0"?>
+        <root>
+            <job>
+                <id>123</id>
+                <name>TestJob</name>
+            </job>
+        </root>
+        """
+        with pytest.raises(
+            OutputParsingError, match=r"Unexpected root element.*expected \'job_info\'"
+        ):
+            sge_io.parse_jobs_list_output(
+                exit_code=0,
+                stdout=xml_missing_job_info,
+                stderr=bytes("stderr", "utf-8"),
+            )

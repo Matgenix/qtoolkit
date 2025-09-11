@@ -186,7 +186,9 @@ $${qverbatim}"""
             if len(jobs) == 1:
                 return jobs[0]
             if len(jobs) > 1:
-                raise RuntimeError("Should not happen.")
+                raise RuntimeError(
+                    "Should not happen."
+                )  # pragma: no cover - should not happen
         return None
 
     def _get_element_text(self, parent, tag_name):
@@ -221,6 +223,9 @@ $${qverbatim}"""
         if isinstance(stderr, bytes):
             stderr = stderr.decode()
 
+        if not stdout:
+            return []
+
         try:
             xmldata = xml.dom.minidom.parseString(stdout)  # noqa: S318
         except xml.parsers.expat.ExpatError as exc:
@@ -247,7 +252,7 @@ $${qverbatim}"""
 
             try:
                 sge_job_state = SGEState(job_state_string)
-            except ValueError as exc:
+            except ValueError as exc:  # pragma: no cover
                 raise OutputParsingError(
                     f"Unknown job state {job_state_string} for job id {qjob.job_id}"
                 ) from exc
