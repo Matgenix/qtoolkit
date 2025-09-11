@@ -223,8 +223,8 @@ class RemoteHost(BaseHost):
 
         try:
             _stdout, _stderr, returncode = self.execute(command)
-        except Exception:
-            return False  # pragma: no cover - hard to test
+        except Exception:  # pragma: no cover - hard to test
+            return False
         else:
             return returncode == 0
 
