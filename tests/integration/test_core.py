@@ -88,3 +88,24 @@ def test_submission(get_host, get_host_kwargs):
     qm_johndoe.scheduler_io.check_job_ids = False
     nojob = qm_johndoe.get_job(job="99999")
     assert nojob is None
+
+    with pytest.raises(FileNotFoundError):
+        qm_johndoe.submit(
+            commands="sleep 60",
+            work_dir=os.path.join(johndoe_host.config.root_dir, "nonexistingdir"),
+        )
+
+    sr = qm_johndoe.submit(
+        commands="sleep 60",
+        work_dir=os.path.join(johndoe_host.config.root_dir, "nonexistingdir"),
+        create_submit_dir=True,
+    )
+    assert isinstance(sr, SubmissionResult)
+    assert sr.exit_code == 0
+    assert sr.status == SubmissionStatus.SUCCESSFUL
+    assert sr.stderr == ""
+
+    with pytest.raises(RuntimeError, match=r"failed to create directory"):
+        qm_johndoe.submit(
+            commands="sleep 60", work_dir="/home/noaccess", create_submit_dir=True
+        )

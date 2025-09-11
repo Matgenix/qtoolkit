@@ -107,7 +107,7 @@ class QueueManager(QTKObject):
         return ""
 
     def get_pre_run(self, pre_run) -> str:
-        pass
+        return pre_run
 
     def get_run_commands(self, commands) -> str:
         if isinstance(commands, str):
@@ -117,7 +117,7 @@ class QueueManager(QTKObject):
         raise ValueError("commands should be a str or a list of str.")
 
     def get_post_run(self, post_run) -> str:
-        pass
+        return post_run
 
     def submit(
         self,

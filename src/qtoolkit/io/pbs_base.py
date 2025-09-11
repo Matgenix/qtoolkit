@@ -200,7 +200,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
                 ProcessPlacement.SCATTERED,
             ):
                 header_dict["place"] = "scatter"
-            elif resources.process_placement == ProcessPlacement.SAME_NODE:
+            else:  # ProcessPlacement.SAME_NODE
                 header_dict["place"] = "pack"
         else:
             raise UnsupportedResourcesError(

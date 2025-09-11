@@ -70,6 +70,9 @@ class TestBaseScheduler:
             ) -> SubmissionResult:
                 pass
 
+            def generate_footer(self) -> str:
+                return "echo toto"
+
             def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
                 pass
 
@@ -171,6 +174,10 @@ class TestBaseScheduler:
         ):
             scheduler.generate_header(res)
 
+    def test_generate_footer(self, scheduler):
+        footer = scheduler.generate_footer()
+        assert footer == "echo toto"
+
     def test_generate_ids_list(self, scheduler):
         ids_list = scheduler.generate_ids_list(
             [QJob(job_id=4), QJob(job_id="job_id_abc1"), 215, "job12345"]
@@ -206,3 +213,34 @@ class TestBaseScheduler:
             r"Received: '' \(empty string\)",
         ):
             scheduler.get_cancel_cmd(job="")
+
+    def test_get_submission_script(self, scheduler):
+        res = QResources(
+            nodes=4, processes_per_node=16, scheduler_kwargs={"option2": "myopt2"}
+        )
+        submission_script = scheduler.get_submission_script(
+            ["ls -l", "pwd"], options=res
+        )
+        assert (
+            submission_script
+            == """#!/bin/bash
+#SPECCMD --option2=myopt2
+#SPECCMD --processes_per_node=16
+#SPECCMD --nodes=4
+ls -l
+pwd
+echo toto"""
+        )
+        submission_script = scheduler.get_submission_script(
+            "mpirun abinit\necho done", options=res
+        )
+        assert (
+            submission_script
+            == """#!/bin/bash
+#SPECCMD --option2=myopt2
+#SPECCMD --processes_per_node=16
+#SPECCMD --nodes=4
+mpirun abinit
+echo done
+echo toto"""
+        )

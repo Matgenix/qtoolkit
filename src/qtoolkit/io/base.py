@@ -157,7 +157,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def get_cancel_cmd(self, job: QJob | int | str) -> str:
         """
@@ -178,7 +178,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def get_job_cmd(self, job: QJob | int | str) -> str:
         job_id = self.generate_ids_list([job])[0]
@@ -187,11 +187,11 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def _get_job_cmd(self, job_id: str) -> str:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
     def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def check_convert_qresources(self, resources: QResources) -> dict:
         """
@@ -231,7 +231,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         _convert_qresources method. It is used to validate that the user
         does not pass an unsupported value, expecting to have an effect.
         """
-        return []
+        return []  # pragma: no cover - trivial and usually overwritten in subclasses
 
     def get_jobs_list_cmd(
         self, jobs: list[QJob | int | str] | None, user: str | None
@@ -253,11 +253,11 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
     def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def sanitize_options(self, options):
         """

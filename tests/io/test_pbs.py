@@ -5,7 +5,7 @@ import pytest
 from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
-from qtoolkit.core.exceptions import OutputParsingError
+from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
 from qtoolkit.io.pbs import PBSIO, PBSState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -260,6 +260,33 @@ class TestPBSIO:
         assert header_dict == {
             "select": "select=5",
             "rerunnable": "y",
+        }
+
+        res = QResources(
+            process_placement=ProcessPlacement.NO_CONSTRAINTS,
+            threads_per_process=2,
+            memory_per_thread=640,
+        )
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=1:ncpus=2:ompthreads=2:mem=1280mb",
+        }
+
+        res = QResources(
+            process_placement="BadPlacement",
+        )
+        with pytest.raises(
+            UnsupportedResourcesError,
+            match=r"process placement BadPlacement is not supported for PBS",
+        ):
+            pbs_io.check_convert_qresources(res)
+        res = QResources(
+            process_placement=ProcessPlacement.SAME_NODE,
+        )
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=1:ncpus=1:mpiprocs=1",
+            "place": "pack",
         }
 
     def test_submission_script(self, pbs_io, maximalist_qresources_pbs):

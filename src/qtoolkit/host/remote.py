@@ -198,6 +198,7 @@ class RemoteHost(BaseHost):
 
     def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True) -> bool:
         """Create directory on the host."""
+        directory = str(directory)
         if recursive:
             if exist_ok:
                 cmd_parts = ["mkdir", "-p", directory]
