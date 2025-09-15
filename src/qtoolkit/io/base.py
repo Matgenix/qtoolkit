@@ -266,12 +266,15 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         """
         return options
 
+    def is_valid_job_id(self, job_id):
+        return re.fullmatch(self.job_id_regex, job_id)
+
     def _check_job_ids(self, job_ids):
         if not isinstance(job_ids, list):
             job_ids = [job_ids]
         if self.check_job_ids and self.job_id_regex:
             for job_id in job_ids:
-                if not re.fullmatch(self.job_id_regex, job_id):
+                if not self.is_valid_job_id(job_id=job_id):
                     raise InvalidJobIDError(
                         f"Job ID '{job_id}' is invalid for this scheduler"
                     )
