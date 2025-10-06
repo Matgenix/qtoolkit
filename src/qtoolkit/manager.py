@@ -4,16 +4,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
+from qtoolkit.core.data_objects import QJob
 from qtoolkit.core.exceptions import CommandFailedError
 from qtoolkit.host.local import LocalHost
 
 if TYPE_CHECKING:
-    from qtoolkit.core.data_objects import (
-        CancelResult,
-        QJob,
-        QResources,
-        SubmissionResult,
-    )
+    from qtoolkit.core.data_objects import CancelResult, QResources, SubmissionResult
     from qtoolkit.host.base import BaseHost
     from qtoolkit.io.base import BaseSchedulerIO
 
@@ -175,9 +171,10 @@ class QueueManager(QTKObject):
         """
         job_cmd = self.scheduler_io.get_job_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
+        job_str = job.job_id if isinstance(job, QJob) else str(job)
         try:
             return self.scheduler_io.parse_job_output(
-                exit_code=returncode, stdout=stdout, stderr=stderr, job_id=job
+                exit_code=returncode, stdout=stdout, stderr=stderr, job_id=job_str
             )
         # TODO: deal more specifically with why the command failed here maybe ?
         except CommandFailedError:
@@ -186,9 +183,9 @@ class QueueManager(QTKObject):
     def get_jobs_list(
         self, jobs: list[QJob | int | str] | None = None, user: str | None = None
     ) -> list[QJob]:
-        job_cmd, job_ids_str = self.scheduler_io.get_jobs_list_cmd(jobs, user)
+        job_cmd = self.scheduler_io.get_jobs_list_cmd(jobs, user)
+        job_ids_str = self.scheduler_io.generate_ids_list(jobs)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
-        jobs_list = self.scheduler_io.parse_jobs_list_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
+        return self.scheduler_io.parse_jobs_list_output(
+            exit_code=returncode, stdout=stdout, stderr=stderr, job_ids=job_ids_str
         )
-        return self.scheduler_io.refilter(jobs_list, job_ids_str)

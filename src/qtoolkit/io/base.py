@@ -190,8 +190,21 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
-        pass  # pragma: no cover - implementation in subclasses
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
+        """Parse the output of a command to get a job and return the corresponding QJob object.
+
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the ps command.
+        stdout : str
+            Standard output of the ps command.
+        stderr : str
+            Standard error of the ps command.
+        job_id : str
+            Job ID of the parsed job.
+        """
+        # pragma: no cover - implementation in subclasses
 
     def check_convert_qresources(self, resources: QResources) -> dict:
         """
@@ -235,19 +248,11 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     def get_jobs_list_cmd(
         self, jobs: list[QJob | int | str] | None, user: str | None
-    ) -> tuple[str, list[str] | None]:
+    ) -> str:
         job_ids = self.generate_ids_list(jobs)
         if user:
             user = shlex.quote(user)
-        return self._get_jobs_list_cmd(job_ids, user), job_ids
-
-    def refilter(self, jobs_list: list[QJob], job_ids_str: list[str] | None):
-        if job_ids_str is None:
-            return jobs_list
-        return self._refilter(jobs_list, job_ids_str)
-
-    def _refilter(self, jobs_list: list[QJob], job_ids_str: list[str]) -> list[QJob]:
-        return jobs_list
+        return self._get_jobs_list_cmd(job_ids, user)
 
     @abc.abstractmethod
     def _get_jobs_list_cmd(
@@ -256,7 +261,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         pass  # pragma: no cover - implementation in subclasses
 
     def sanitize_options(self, options):

@@ -173,19 +173,16 @@ $${qverbatim}"""
 
         return " ".join(command)
 
-    def _refilter(self, jobs_list: list[QJob], job_ids_str: list[str]) -> list[QJob]:
-        return [qjob for qjob in jobs_list if qjob.job_id in job_ids_str]
-
     def parse_job_output(
-        self, exit_code, stdout, stderr, **kwargs
+        self, exit_code, stdout, stderr, job_id=None
     ) -> QJob | None:  # aiida style
-        out = self.parse_jobs_list_output(exit_code, stdout, stderr)
+        if job_id is None:
+            raise RuntimeError("job_id should be passed for sge.")
+        out = self.parse_jobs_list_output(exit_code, stdout, stderr, job_ids=[job_id])
         if out:
-            job_id = self.generate_ids_list([kwargs.get("job_id")])[0]
-            jobs = self._refilter(out, [job_id])
-            if len(jobs) == 1:
-                return jobs[0]
-            if len(jobs) > 1:
+            if len(out) == 1:
+                return out[0]
+            if len(out) > 1:
                 raise RuntimeError(
                     "Should not happen."
                 )  # pragma: no cover - should not happen
@@ -214,7 +211,9 @@ $${qverbatim}"""
     def _get_job_cmd(self, job_id: str):
         return " ".join(self._get_qstat_base_command()) + ' -u "*"'
 
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         if exit_code != 0:
             msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
             raise CommandFailedError(msg)
@@ -248,6 +247,8 @@ $${qverbatim}"""
         for job_element in job_elements:
             qjob = QJob()
             qjob.job_id = self._get_element_text(job_element, "JB_job_number")
+            if job_ids is not None and qjob.job_id not in job_ids:
+                continue
             job_state_string = self._get_element_text(job_element, "state")
 
             try:

@@ -27,7 +27,7 @@ def test_errors(sge_host):
         match=r"command qstat failed\:[\s\S]*SGE[\s\S]*usage\: qstat \[options\][\s\S]*invalid option argument \"blabli\"",
     ):
         qm.scheduler_io.parse_job_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
+            exit_code=returncode, stdout=stdout, stderr=stderr, job_id="dummy_id"
         )
 
     with pytest.raises(
@@ -47,5 +47,5 @@ def test_errors(sge_host):
         match=r"command qstat failed\:[\s\S]*SGE[\s\S]*usage\: qstat \[options\][\s\S]*invalid option argument \"--bad\"",
     ):
         qm.scheduler_io.parse_jobs_list_output(
-            exit_code=returncode, stdout=stdout, stderr=stderr
+            exit_code=returncode, stdout=stdout, stderr=stderr, job_ids=[]
         )

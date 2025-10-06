@@ -294,7 +294,7 @@ $${qverbatim}"""
 
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -396,7 +396,9 @@ $${qverbatim}"""
 
         return " ".join(command)
 
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()  # pragma: no cover - trivial
         if isinstance(stderr, bytes):

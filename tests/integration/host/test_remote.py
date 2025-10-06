@@ -4,7 +4,6 @@ import os
 import re
 
 import pytest
-from python_on_whales import DockerException
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("CI"),
@@ -13,6 +12,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_remote(slurm_host, mocker, compose_containers):
+    from python_on_whales import DockerException
+
     host = slurm_host("johndoe")
 
     connection_spy = mocker.spy(host.connection, "run")

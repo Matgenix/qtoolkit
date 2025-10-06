@@ -265,7 +265,12 @@ ls -l""".split("\n")
         assert "#$ -N test_-_!#$test" in script
 
     def test_parse_job_output(self, sge_io):
-        assert sge_io.parse_job_output(exit_code=0, stdout="", stderr="") is None
+        assert (
+            sge_io.parse_job_output(
+                exit_code=0, stdout="", stderr="", job_id="dummy_id"
+            )
+            is None
+        )
 
     def test_safe_int(self, sge_io):
         assert sge_io._safe_int(None) is None

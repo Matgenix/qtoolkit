@@ -126,7 +126,7 @@ $${qverbatim}"""
 
         return " ".join(command)
 
-    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
             return out[0]
@@ -141,7 +141,9 @@ $${qverbatim}"""
     def _get_job_ids_flag(self, job_ids_str: str) -> str:
         return job_ids_str
 
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):

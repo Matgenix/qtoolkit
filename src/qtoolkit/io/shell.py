@@ -157,7 +157,7 @@ $${qverbatim}
     def _get_job_cmd(self, job_id: str):
         return self._get_jobs_list_cmd(job_ids=[job_id])
 
-    def parse_job_output(self, exit_code, stdout, stderr, **kwargs) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
         """Parse the output of the ps command and return the corresponding QJob object.
 
         If the ps command returns multiple shell jobs, only the first corresponding
@@ -172,6 +172,8 @@ $${qverbatim}
             Standard output of the ps command.
         stderr : str
             Standard error of the ps command.
+        job_id : str
+            Job ID of the parsed job.
         """
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
@@ -202,7 +204,9 @@ $${qverbatim}
 
         return " ".join(command)
 
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         """Parse the output of the ps command to list jobs.
 
         Parameters
@@ -213,6 +217,8 @@ $${qverbatim}
             Standard output of the ps command.
         stderr : str
             Standard error of the ps command.
+        job_ids : list of str
+            List of Job IDs of the jobs to return.
         """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
