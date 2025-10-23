@@ -25,6 +25,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"
+    job_id_regex: str | None = r"^\d+\.[\w.-]+(\[\d+(-\d+)?(,\d+)*\])?$"
     _qresources_mapping: ClassVar[dict]
     system_name: str
     default_unit: str
@@ -58,7 +59,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     @abc.abstractmethod
     def extract_job_id(self, stdout):
-        pass
+        raise NotImplementedError
 
     def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
         """Parse the output of the qdel command."""
@@ -86,13 +87,13 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     @abc.abstractmethod
     def extract_job_id_from_cancel(self, stderr):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-        pass
+        raise NotImplementedError
 
     def _check_user_and_job_ids_conflict(self):
         # Use system_name for more informative error messages
@@ -100,15 +101,15 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
     @abc.abstractmethod
     def _get_qstat_base_command(self) -> list[str]:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _get_job_ids_flag(self, job_ids_str: str) -> str:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def _get_job_cmd(self, job_id: str) -> str:
-        pass
+        raise NotImplementedError
 
     def _convert_memory_str(self, memory: str | None) -> int | None:
         if not memory:
@@ -129,7 +130,9 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
         try:
             v = int(memory)
-        except ValueError as exc:
+        except (
+            ValueError
+        ) as exc:  # pragma: no cover - should not happen (matching numbers above)
             raise OutputParsingError from exc
 
         return v * (1024 ** power_labels[units.lower()])
@@ -197,7 +200,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
                 ProcessPlacement.SCATTERED,
             ):
                 header_dict["place"] = "scatter"
-            elif resources.process_placement == ProcessPlacement.SAME_NODE:
+            else:  # ProcessPlacement.SAME_NODE
                 header_dict["place"] = "pack"
         else:
             raise UnsupportedResourcesError(
@@ -232,5 +235,6 @@ class PBSIOBase(BaseSchedulerIO, ABC):
             "memory_per_thread",
             "email_address",
             "scheduler_kwargs",
+            "rerunnable",
         ]
         return supported

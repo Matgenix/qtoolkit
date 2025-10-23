@@ -34,6 +34,7 @@ tests = [
     "pytest-mock==3.10.0",
     "pytest==7.2.1",
     "ruamel.yaml",
+    "python-on-whales ~=0.75",
 ]
 maintain = ["git-changelog>=0.6"]
 docs = [
@@ -145,4 +146,6 @@ exclude_lines = [
     '^\s*@overload( |$)',
     '^\s*assert False(,|$)',
     'if typing.TYPE_CHECKING:',
+    'if TYPE_CHECKING:',
+    'raise NotImplementedError',
 ]

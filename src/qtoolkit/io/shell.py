@@ -66,6 +66,10 @@ $${qverbatim}
 """
 
     CANCEL_CMD: str | None = "kill -9"
+    # 32 characters seems reasonable for the maximum size of a username
+    USERNAME_MAXCHARS = 32
+
+    job_id_regex: str | None = r"^[1-9]\d*$"
 
     def __init__(self, blocking=False, stdout_path="stdout", stderr_path="stderr"):
         """Construct the ShellIO object.
@@ -153,7 +157,7 @@ $${qverbatim}
     def _get_job_cmd(self, job_id: str):
         return self._get_jobs_list_cmd(job_ids=[job_id])
 
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
         """Parse the output of the ps command and return the corresponding QJob object.
 
         If the ps command returns multiple shell jobs, only the first corresponding
@@ -168,6 +172,8 @@ $${qverbatim}
             Standard output of the ps command.
         stderr : str
             Standard error of the ps command.
+        job_id : str
+            Job ID of the parsed job.
         """
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
@@ -187,7 +193,7 @@ $${qverbatim}
         # use etime instead of etimes for compatibility
         command = [
             "ps",
-            "-o pid,user,etime,state,comm",
+            f"-o pid,user:{self.USERNAME_MAXCHARS},etime,state,comm",
         ]
 
         if user:
@@ -198,7 +204,9 @@ $${qverbatim}
 
         return " ".join(command)
 
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
         """Parse the output of the ps command to list jobs.
 
         Parameters
@@ -209,6 +217,8 @@ $${qverbatim}
             Standard output of the ps command.
         stderr : str
             Standard error of the ps command.
+        job_ids : list of str
+            List of Job IDs of the jobs to return.
         """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
@@ -230,6 +240,10 @@ $${qverbatim}
 
             qjob = QJob()
             qjob.job_id = data[0]
+            # If the ps command truncates the username, a "+" will be in username
+            # Consider having the possibility to set a larger output for username (currently 32 characters)
+            if "+" in data[1]:
+                raise RuntimeError(f'The username was truncated: "{data[1]}".')
             qjob.username = data[1]
             qjob.runtime = self._convert_str_to_time(data[2])
             qjob.name = data[4]

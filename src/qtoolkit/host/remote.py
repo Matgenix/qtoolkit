@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import shlex
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,8 @@ class RemoteConfig(HostConfig):
     connect_timeout: int = None
     connect_kwargs: dict = None
     inline_ssh_env: bool = True
+    shell_cmd: str = "bash"
+    login_shell: bool = True
 
 
 # connect_kwargs in paramiko:
@@ -168,6 +171,14 @@ class RemoteHost(BaseHost):
         """
         if isinstance(command, (list, tuple)):
             command = " ".join(command)
+        if self.config.shell_cmd:
+            shell_cmd = self.config.shell_cmd
+            if self.config.login_shell:
+                shell_cmd += " -l "
+            shell_cmd += " -c "
+            remote_command = shell_cmd + shlex.quote(command)
+        else:
+            remote_command = command
 
         # TODO: check here if we use the context manager. What happens if we provide the
         #  connection from outside (not through a config) and we want to keep it alive ?
@@ -175,19 +186,45 @@ class RemoteHost(BaseHost):
         # TODO: check if this works:
         workdir = str(workdir) if workdir else "."
         with self.connection.cd(workdir):
-            out = self.connection.run(command, hide=True, warn=True)
+            out = self.connection.run(
+                remote_command,
+                hide=True,  # still capture output for pytest
+                warn=True,  # don't raise on non-zero exit
+                in_stream=False,  # critical to avoid OSError with pytest
+                pty=False,  # only set True if command needs a TTY
+            )
 
         return out.stdout, out.stderr, out.exited
 
     def mkdir(self, directory, recursive: bool = True, exist_ok: bool = True) -> bool:
         """Create directory on the host."""
-        command = "mkdir "
+        directory = str(directory)
         if recursive:
-            command += "-p "
-        command += str(directory)
+            if exist_ok:
+                cmd_parts = ["mkdir", "-p", directory]
+            else:
+                # we need to check first if directory exists
+                cmd_parts = [
+                    "sh",
+                    "-c",
+                    shlex.quote(
+                        f'[ -e "{directory}" ] && exit 1 || mkdir -p "{directory}"'
+                    ),
+                ]
+        elif exist_ok:
+            # we need to check first if directory exists
+            cmd_parts = [
+                "sh",
+                "-c",
+                shlex.quote(f'[ -d "{directory}" ] || mkdir "{directory}"'),
+            ]
+        else:
+            cmd_parts = ["mkdir", directory]
+        command = " ".join(cmd_parts)
+
         try:
             _stdout, _stderr, returncode = self.execute(command)
-        except Exception:
+        except Exception:  # pragma: no cover - hard to test
             return False
         else:
             return returncode == 0

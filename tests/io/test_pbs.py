@@ -67,7 +67,6 @@ class TestPBSIO:
             in_out_ref, inkey="parse_submit_kwargs", outkey="submission_result_ref"
         )
         sr = pbs_io.parse_submit_output(**parse_cmd_output)
-        print(sr, sr_ref)
         assert sr == sr_ref
         sr = pbs_io.parse_submit_output(
             exit_code=parse_cmd_output["exit_code"],
@@ -257,10 +256,38 @@ class TestPBSIO:
             processes=5,
             rerunnable=True,
         )
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=5",
+            "rerunnable": "y",
+        }
+
+        res = QResources(
+            process_placement=ProcessPlacement.NO_CONSTRAINTS,
+            threads_per_process=2,
+            memory_per_thread=640,
+        )
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=1:ncpus=2:ompthreads=2:mem=1280mb",
+        }
+
+        res = QResources(
+            process_placement="BadPlacement",
+        )
         with pytest.raises(
-            UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
+            UnsupportedResourcesError,
+            match=r"process placement BadPlacement is not supported for PBS",
         ):
             pbs_io.check_convert_qresources(res)
+        res = QResources(
+            process_placement=ProcessPlacement.SAME_NODE,
+        )
+        header_dict = pbs_io.check_convert_qresources(res)
+        assert header_dict == {
+            "select": "select=1:ncpus=1:mpiprocs=1",
+            "place": "pack",
+        }
 
     def test_submission_script(self, pbs_io, maximalist_qresources_pbs):
         # remove unsupported SGE options
@@ -313,3 +340,8 @@ ls -l""".split("\n")
             commands=["ls -l"], options={"job_name": "test -_!#$test"}
         )
         assert "#PBS -N test_-____test" in script
+
+    def test__convert_memory_str(self, pbs_io):
+        assert pbs_io._convert_memory_str("10") == 10240
+        with pytest.raises(OutputParsingError, match=r"Unknown units apples"):
+            pbs_io._convert_memory_str("10apples")

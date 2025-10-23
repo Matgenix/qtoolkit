@@ -5,7 +5,7 @@ import pytest
 from monty.serialization import loadfn
 
 from qtoolkit.core.data_objects import ProcessPlacement, QResources, QState
-from qtoolkit.core.exceptions import OutputParsingError, UnsupportedResourcesError
+from qtoolkit.core.exceptions import OutputParsingError
 from qtoolkit.io.sge import SGEIO, SGEState
 
 TEST_DIR = Path(__file__).resolve().parents[1] / "test_data"
@@ -73,51 +73,13 @@ class TestSGEIO:
         )
         assert cr == cr_ref
 
-    @pytest.mark.parametrize("in_out_ref", in_out_job_ref_list)
-    def test_parse_job_output(self, sge_io, in_out_ref, test_utils):
-        parse_cmd_output, job_ref = test_utils.inkwargs_outref(
-            in_out_ref, inkey="parse_job_kwargs", outkey="job_ref"
-        )
-        if "stderr" not in parse_cmd_output:
-            parse_cmd_output["stderr"] = ""
-        job = sge_io.parse_job_output(**parse_cmd_output)
-        assert job == job_ref
-        job = sge_io.parse_job_output(
-            exit_code=parse_cmd_output["exit_code"],
-            stdout=bytes(parse_cmd_output["stdout"], "utf-8"),
-            stderr=bytes(parse_cmd_output["stderr"], "utf-8"),
-        )
-        assert job == job_ref
-        job = sge_io.parse_job_output(
-            exit_code=parse_cmd_output["exit_code"],
-            stdout=bytes(parse_cmd_output["stdout"], "ascii"),
-            stderr=bytes(parse_cmd_output["stderr"], "ascii"),
-        )
-        assert job == job_ref
-
     def test_get_job_cmd(self, sge_io):
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd(3)
-        with pytest.raises(
-            NotImplementedError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_job_cmd("56")
+        get_job_cmd = sge_io._get_job_cmd(3)
+        assert get_job_cmd == 'qstat -ext -urg -xml -u "*"'
 
     def test_get_jobs_list_cmd(self, sge_io):
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"], user="johndoe")
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1", "3", "56", "15"])
-        with pytest.raises(
-            ValueError, match=r"Querying by job IDs is not supported for SGE."
-        ):
-            sge_io._get_jobs_list_cmd(job_ids=["1"])
+        cmd = sge_io._get_jobs_list_cmd(job_ids=["1"])
+        assert cmd == 'qstat -ext -urg -xml -u "*"'
 
         cmd = sge_io._get_jobs_list_cmd(user="johndoe")
         assert cmd == "qstat -ext -urg -xml -u johndoe"
@@ -243,10 +205,12 @@ class TestSGEIO:
             processes=5,
             rerunnable=True,
         )
-        with pytest.raises(
-            UnsupportedResourcesError, match=r"Keys not supported: rerunnable"
-        ):
-            sge_io.check_convert_qresources(res)
+
+        header_dict = sge_io.check_convert_qresources(res)
+        assert header_dict == {
+            "rerunnable": "y",
+            "select": "select=5",
+        }
 
     def test_submission_script(self, sge_io, maximalist_qresources):
         # remove unsupported SGE options
@@ -299,3 +263,42 @@ ls -l""".split("\n")
             commands=["ls -l"], options={"job_name": "test -_!#$test"}
         )
         assert "#$ -N test_-_!#$test" in script
+
+    def test_parse_job_output(self, sge_io):
+        assert (
+            sge_io.parse_job_output(
+                exit_code=0, stdout="", stderr="", job_id="dummy_id"
+            )
+            is None
+        )
+
+    def test_safe_int(self, sge_io):
+        assert sge_io._safe_int(None) is None
+        assert sge_io._safe_int("10") == 10
+        assert sge_io._safe_int("10.0") is None
+        assert sge_io._safe_int("abcd") is None
+
+    def test_parse_jobs_list_output(self, sge_io):
+        with pytest.raises(OutputParsingError, match=r"XML parsing of stdout failed"):
+            sge_io.parse_jobs_list_output(
+                exit_code=0,
+                stdout=bytes("stdout", "utf-8"),
+                stderr=bytes("stderr", "utf-8"),
+            )
+
+        xml_missing_job_info = """<?xml version="1.0"?>
+        <root>
+            <job>
+                <id>123</id>
+                <name>TestJob</name>
+            </job>
+        </root>
+        """
+        with pytest.raises(
+            OutputParsingError, match=r"Unexpected root element.*expected \'job_info\'"
+        ):
+            sge_io.parse_jobs_list_output(
+                exit_code=0,
+                stdout=xml_missing_job_info,
+                stderr=bytes("stderr", "utf-8"),
+            )

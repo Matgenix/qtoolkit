@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import difflib
+import re
 import shlex
 from dataclasses import fields
 from string import Template
@@ -9,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
-from qtoolkit.core.exceptions import UnsupportedResourcesError
+from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +53,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     shebang: str = "#!/bin/bash"
 
     sanitize_job_name: bool = False
+
+    job_id_regex: str | None = None
+    check_job_ids: bool = True
 
     def get_submission_script(
         self,
@@ -126,7 +130,9 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     def generate_footer(self) -> str:
         return ""
 
-    def generate_ids_list(self, jobs: list[QJob | int | str] | None) -> list[str]:
+    def generate_ids_list(
+        self, jobs: list[QJob | int | str] | None
+    ) -> list[str] | None:
         if jobs is None:
             return None
         ids_list = []
@@ -135,7 +141,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
                 ids_list.append(str(j.job_id))
             else:
                 ids_list.append(str(j))
-
+        self._check_job_ids(ids_list)
         return ids_list
 
     def get_submit_cmd(self, script_file: str | Path | None = "submit.script") -> str:
@@ -151,7 +157,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def get_cancel_cmd(self, job: QJob | int | str) -> str:
         """
@@ -167,11 +173,12 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
             raise ValueError(
                 f"The id of the job to be cancelled should be defined. Received: {received}"
             )
+        self._check_job_ids(job_id)
         return f"{self.CANCEL_CMD} {job_id}"
 
     @abc.abstractmethod
     def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     def get_job_cmd(self, job: QJob | int | str) -> str:
         job_id = self.generate_ids_list([job])[0]
@@ -180,11 +187,24 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def _get_job_cmd(self, job_id: str) -> str:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr) -> QJob | None:
-        pass
+    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
+        """Parse the output of a command to get a job and return the corresponding QJob object.
+
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the ps command.
+        stdout : str
+            Standard output of the ps command.
+        stderr : str
+            Standard error of the ps command.
+        job_id : str
+            Job ID of the parsed job.
+        """
+        # pragma: no cover - implementation in subclasses
 
     def check_convert_qresources(self, resources: QResources) -> dict:
         """
@@ -224,7 +244,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         _convert_qresources method. It is used to validate that the user
         does not pass an unsupported value, expecting to have an effect.
         """
-        return []
+        return []  # pragma: no cover - trivial and usually overwritten in subclasses
 
     def get_jobs_list_cmd(
         self, jobs: list[QJob | int | str] | None, user: str | None
@@ -238,11 +258,13 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     def _get_jobs_list_cmd(
         self, job_ids: list[str] | None = None, user: str | None = None
     ) -> str:
-        pass
+        pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
-    def parse_jobs_list_output(self, exit_code, stdout, stderr) -> list[QJob]:
-        pass
+    def parse_jobs_list_output(
+        self, exit_code, stdout, stderr, job_ids=None
+    ) -> list[QJob]:
+        pass  # pragma: no cover - implementation in subclasses
 
     def sanitize_options(self, options):
         """
@@ -250,3 +272,16 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         header. Subclasses should implement their own sanitizations.
         """
         return options
+
+    def is_valid_job_id(self, job_id):
+        return re.fullmatch(self.job_id_regex, job_id)
+
+    def _check_job_ids(self, job_ids):
+        if not isinstance(job_ids, list):
+            job_ids = [job_ids]
+        if self.check_job_ids and self.job_id_regex:
+            for job_id in job_ids:
+                if not self.is_valid_job_id(job_id=job_id):
+                    raise InvalidJobIDError(
+                        f"Job ID '{job_id}' is invalid for this scheduler"
+                    )

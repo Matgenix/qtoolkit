@@ -134,19 +134,19 @@ class TestShellIO:
 
     def test_get_job_cmd(self, shell_io):
         get_job_cmd = shell_io.get_job_cmd(123)
-        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 123"
-        get_job_cmd = shell_io.get_job_cmd(456)
-        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 456"
+        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 123"
+        get_job_cmd = shell_io.get_job_cmd("456")
+        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 456"
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
-        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 789"
+        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 789"
 
     def test_get_jobs_list_cmd(self, shell_io):
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
-        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
+        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -p 125,126,127"
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
-        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -U johndoe"
+        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -U johndoe"
         with pytest.raises(
             ValueError,
             match=r"Cannot query by user and job\(s\) with ps, "
@@ -159,7 +159,7 @@ class TestShellIO:
     def test_parse_jobs_list_output(self, shell_io):
         joblist = shell_io.parse_jobs_list_output(
             exit_code=0,
-            stdout="    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 S bash\n",
+            stdout="    PID USER     ELAPSED S COMMAND\n  18092 johndoe     04:52 S bash\n  18112 johndoe     01:12 S bash\n",
             stderr="",
         )
         assert joblist == [
@@ -169,6 +169,7 @@ class TestShellIO:
                 name="bash",
                 state=QState.RUNNING,
                 sub_state=ShellState.INTERRUPTIBLE_SLEEP,
+                username="johndoe",
             ),
             QJob(
                 job_id="18112",
@@ -176,6 +177,7 @@ class TestShellIO:
                 name="bash",
                 state=QState.RUNNING,
                 sub_state=ShellState.INTERRUPTIBLE_SLEEP,
+                username="johndoe",
             ),
         ]
         with pytest.raises(
@@ -191,7 +193,7 @@ class TestShellIO:
         ):
             shell_io.parse_jobs_list_output(
                 exit_code=0,
-                stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 K bash\n",
+                stdout=b"    PID USER     ELAPSED S COMMAND\n  18092 johndoe     04:52 S bash\n  18112 johndoe     01:12 K bash\n",
                 stderr=b"",
             )
         joblist = shell_io.parse_jobs_list_output(
@@ -236,7 +238,7 @@ class TestShellIO:
     def test_parse_job_output(self, shell_io):
         job = shell_io.parse_job_output(
             exit_code=0,
-            stdout="    PID USER     ELAPSED S COMMAND\n  18092 davidwa+     04:52 S bash\n  18112 davidwa+     01:12 S bash\n",
+            stdout="    PID USER     ELAPSED S COMMAND\n  18092 johndoe     04:52 S bash\n  18112 johndoe     01:12 S bash\n",
             stderr="",
         )
         assert isinstance(job, QJob)
@@ -258,3 +260,24 @@ class TestShellIO:
             shell_io._convert_str_to_time("2-11:21:32:5")
         with pytest.raises(OutputParsingError):
             shell_io._convert_str_to_time("2-11:21:hello")
+
+    def test_get_jobs_list(self, tmp_dir):
+        from qtoolkit.host.local import LocalHost
+        from qtoolkit.manager import QueueManager
+
+        shell_io = ShellIO()
+        shell_io.USERNAME_MAXCHARS = (
+            2  # explicitly set a very small number of characters allowed for the user
+        )
+        qm = QueueManager(scheduler_io=shell_io, host=LocalHost())
+
+        # Here the sleep is very small should be enough to have the
+        sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
+        job_id = sr.job_id
+        with pytest.raises(RuntimeError, match=r"The username was truncated: \".\+\""):
+            qm.get_jobs_list(jobs=[job_id])
+
+        shell_io.USERNAME_MAXCHARS = 32
+        jobs_list = qm.get_jobs_list(jobs=[job_id])
+        assert len(jobs_list) == 1
+        assert jobs_list[0].job_id == job_id

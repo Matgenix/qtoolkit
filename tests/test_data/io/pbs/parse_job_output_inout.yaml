@@ -17,13 +17,13 @@
     29 20:13:12 2024\n    run_count = 1\n    Submit_arguments = test_submit.sh\n    project
     = _pbs_project_default\n    Submit_Host = f41a0fbae027\n", "stderr": ""}'
   job_ref: '{"@module": "qtoolkit.core.data_objects", "@class": "QJob", "@version":
-    "0.1.5.post38+g62b683f.d20241229", "name": "myscript_1", "job_id": "14", "exit_status":
-    null, "state": {"@module": "qtoolkit.core.data_objects", "@class": "QState", "@version":
-    "0.1.5.post38+g62b683f.d20241229", "value": "RUNNING"}, "sub_state": {"@module":
-    "qtoolkit.io.pbs", "@class": "PBSState", "@version": "0.1.5.post38+g62b683f.d20241229",
-    "value": "R"}, "info": {"@module": "qtoolkit.core.data_objects", "@class": "QJobInfo",
-    "@version": "0.1.5.post38+g62b683f.d20241229", "memory": null, "memory_per_cpu":
-    null, "nodes": 1, "cpus": 1, "threads_per_process": null, "time_limit": 3600},
-    "account": null, "runtime": 0, "queue_name": null}'
+    "0.1.6+d20250904", "name": "myscript_1", "job_id": "14", "exit_status": null,
+    "state": {"@module": "qtoolkit.core.data_objects", "@class": "QState", "@version":
+    "0.1.6+d20250904", "value": "RUNNING"}, "sub_state": {"@module": "qtoolkit.io.pbs",
+    "@class": "PBSState", "@version": "0.1.6+d20250904", "value": "R"}, "info": {"@module":
+    "qtoolkit.core.data_objects", "@class": "QJobInfo", "@version": "0.1.6+d20250904",
+    "memory": null, "memory_per_cpu": null, "nodes": 1, "cpus": 1, "threads_per_process":
+    null, "time_limit": 3600}, "account": null, "runtime": 0, "queue_name": null,
+    "username": "testu"}'
 - parse_job_kwargs: '{"exit_code": 0, "stdout": "", "stderr": ""}'
   job_ref: 'null'

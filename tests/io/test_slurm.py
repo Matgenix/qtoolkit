@@ -172,6 +172,8 @@ class TestSlurmIO:
         assert memory_kb == 5242880
         memory_kb = slurm_io._convert_memory_str("1T")
         assert memory_kb == 1073741824
+        memory_kb = slurm_io._convert_memory_str("12")
+        assert memory_kb == 12288
 
         with pytest.raises(OutputParsingError):
             slurm_io._convert_memory_str("aT")
