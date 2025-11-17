@@ -4,7 +4,7 @@ import re
 from typing import ClassVar
 
 from qtoolkit.core.data_objects import QJob, QJobInfo, QState, QSubState
-from qtoolkit.core.exceptions import OutputParsingError
+from qtoolkit.core.exceptions import CommandFailedError, OutputParsingError
 from qtoolkit.io.pbs_base import PBSIOBase
 
 # States in PBS from qstat's man.
@@ -156,7 +156,14 @@ $${qverbatim}"""
         # qstat: Unknown Job Id 10000.c2cf5fbe1102
         # qstat: 1008.c2cf5fbe1102 Job has finished, use -x or -H to
         #   obtain historical job information
-        # TODO raise if these two kinds of error are not present and exit_code != 0?
+        # Error is raised only if they are present in stderr
+        if (
+            exit_code != 0
+            and "Unknown Job Id" not in stderr
+            and "Job has finished" not in stderr
+        ):
+            msg = f"command qstat failed: {stderr}"
+            raise CommandFailedError(msg)
 
         # Split by the beginning of "Job Id:" and iterate on the different chunks.
         # Matching the beginning of the line to avoid problems in case the "Job Id"
