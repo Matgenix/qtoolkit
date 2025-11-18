@@ -9,7 +9,7 @@ pytestmark = [
         not os.environ.get("CI"),
         reason="Only run integration tests in CI, unless forced with 'CI' env var",
     ),
-    pytest.mark.usefixtures("skip_if_not_sge"),
+    pytest.mark.usefixtures("skip_if_no_sge"),
 ]
 
 
