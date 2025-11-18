@@ -274,6 +274,10 @@ class TestShellIO:
         # Here the sleep is very small should be enough to have the
         sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
         job_id = sr.job_id
+        job_cmd = qm.scheduler_io.get_jobs_list_cmd(jobs=[job_id], user=None)
+        print("JOBCMD")
+        print(job_cmd)
+        print("JOBCMD")
         with pytest.raises(RuntimeError, match=r"The username was truncated: \".\+\""):
             qm.get_jobs_list(jobs=[job_id])
 
