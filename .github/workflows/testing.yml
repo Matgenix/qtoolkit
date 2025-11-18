@@ -28,17 +28,28 @@ jobs:
         run: pre-commit run --all-files --show-diff-on-failure
 
   test:
-    runs-on: ubuntu-latest
+#    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+#        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        config:
+          - { os: macos-latest, python: "3.9", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.9", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.9", resolution: highest }
+          - { os: ubuntu-latest, python: "3.10", resolution: highest }
+          - { os: ubuntu-latest, python: "3.11", resolution: highest }
+          - { os: ubuntu-latest, python: "3.12", resolution: highest }
+          - { os: ubuntu-latest, python: "3.13", resolution: highest }
+          - { os: ubuntu-latest, python: "3.14", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.14", resolution: highest }
 
+    runs-on: ${{ matrix.config.os }}
     steps:
       - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.config.python }}
           cache: pip
           cache-dependency-path: pyproject.toml
 
@@ -47,11 +58,16 @@ jobs:
           python -m pip install --upgrade pip
             pip install .[strict,tests,docs]
 
+#      - name: Test (macos - reduced test suite)
+#        if: matrix.config.os == 'ubuntu-latest'
+#        run: pytest --cov=qtoolkit --cov-report=xml
+
       - name: Test
+#        if: matrix.config.os == 'ubuntu-latest'
         run: pytest --cov=qtoolkit --cov-report=xml
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.11'
+        if: matrix.config.python == '3.11'
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
