@@ -68,19 +68,19 @@ def check_io_requirements(request, io_types):
 
 
 @pytest.fixture(scope="session")
-def skip_if_not_slurm(io_types):
+def skip_if_no_slurm(io_types):
     if "slurm" not in io_types:
         pytest.skip("slurm container is required to run this test")
 
 
 @pytest.fixture(scope="session")
-def skip_if_not_pbs(io_types):
+def skip_if_no_pbs(io_types):
     if "pbs" not in io_types:
         pytest.skip("pbs container is required to run this test")
 
 
 @pytest.fixture(scope="session")
-def skip_if_not_sge(io_types):
+def skip_if_no_sge(io_types):
     if "sge" not in io_types:
         pytest.skip("sge container is required to run this test")
 
