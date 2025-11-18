@@ -4,10 +4,13 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("CI"),
-    reason="Only run integration tests in CI, unless forced with 'CI' env var",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.environ.get("CI"),
+        reason="Only run integration tests in CI, unless forced with 'CI' env var",
+    ),
+    pytest.mark.usefixtures("skip_if_not_slurm"),
+]
 
 
 def test_errors(slurm_host):
