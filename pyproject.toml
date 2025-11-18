@@ -32,9 +32,9 @@ dependencies = []
 dev = ["pre-commit>=3.0.0"]
 tests = [
     "monty>=2022.9.9",
-    "pytest-cov==4.0.0",
-    "pytest-mock==3.10.0",
-    "pytest==7.2.1",
+    "pytest-cov >= 6,< 8",
+    "pytest-mock ~= 3.14",
+    "pytest ~= 8.0",
     "ruamel.yaml",
     "python-on-whales ~=0.75",
 ]
