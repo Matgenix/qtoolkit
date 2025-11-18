@@ -9,6 +9,81 @@ import pytest
 from python_on_whales import DockerClient
 from python_on_whales import docker as docker_pow
 
+IO_TYPES = [
+    "slurm",
+    "sge",
+    "pbs",
+]
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--io-types",
+        "--it",
+        dest="io_types",
+        nargs="+",
+        help="List of IO types to be used for the integration tests. All available if not specified.",
+        default=None,
+        action="store",
+        choices=IO_TYPES,
+    )
+
+
+@pytest.fixture(scope="session")
+def io_types(request):
+    """
+    List of worker types activated during the integration tests
+    """
+    it = request.config.getoption("--io-types")
+    if it is None:
+        it = list(IO_TYPES)
+    return it
+
+
+@pytest.fixture(autouse=True)
+def check_io_requirements(request, io_types):
+    """
+    Automatically check io requirements and skip if needed.
+
+    Will skip, depending on the selected io types:
+      * if there is a parametrization with a parameter named "get_host_kwargs" and
+        the value contains a "type" that does not belong to the selected IOs corresponding
+        parameter value will be skipped
+    """
+
+    # handle tests with
+    if (
+        hasattr(request.node, "callspec")
+        and "get_host_kwargs" in request.node.callspec.params
+    ):
+        host_kwargs = request.node.callspec.params["get_host_kwargs"]
+        if (
+            host_kwargs is not None
+            and isinstance(host_kwargs, dict)
+            and host_kwargs.get("type") not in io_types
+        ):
+            pytest.skip(
+                f"IO with kwargs '{host_kwargs}' not in selected workers {io_types}"
+            )
+
+
+@pytest.fixture(scope="session")
+def skip_if_not_slurm(io_types):
+    if "slurm" not in io_types:
+        pytest.skip("slurm container is required to run this test")
+
+
+@pytest.fixture(scope="session")
+def skip_if_not_pbs(io_types):
+    if "pbs" not in io_types:
+        pytest.skip("pbs container is required to run this test")
+
+
+@pytest.fixture(scope="session")
+def skip_if_not_sge(io_types):
+    if "sge" not in io_types:
+        pytest.skip("sge container is required to run this test")
+
 
 def _get_free_port(upper_bound=90_000):
     """Returns a random free port, with an upper bound.
@@ -62,7 +137,11 @@ def slurm_host(slurm_ssh_port):
             host="localhost",
             port=slurm_ssh_port,
             user=username,
-            connect_kwargs={"password": username},
+            connect_kwargs={
+                "password": username,
+                "allow_agent": False,
+                "look_for_keys": False,
+            },
         )
         return RemoteHost(conf)
 
@@ -79,7 +158,11 @@ def sge_host(sge_ssh_port):
             host="localhost",
             port=sge_ssh_port,
             user=username,
-            connect_kwargs={"password": username},
+            connect_kwargs={
+                "password": username,
+                "allow_agent": False,
+                "look_for_keys": False,
+            },
         )
         return RemoteHost(conf)
 
@@ -96,7 +179,11 @@ def pbs_host(pbs_ssh_port):
             host="localhost",
             port=pbs_ssh_port,
             user=username,
-            connect_kwargs={"password": username},
+            connect_kwargs={
+                "password": username,
+                "allow_agent": False,
+                "look_for_keys": False,
+            },
         )
         return RemoteHost(conf)
 
@@ -119,10 +206,13 @@ def get_host(get_host_kwargs, slurm_host, pbs_host, sge_host):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def bake_containers():
+def bake_containers(io_types):
+    targets = io_types
+    if not targets:
+        return
     hcl_path = Path(__file__).parent.resolve() / "dockerfiles/docker-bake.hcl"
     docker_pow.buildx.bake(
-        targets=["slurm", "sge", "pbs"],
+        targets=targets,
         files=hcl_path,
         set={"*.context": str(Path(__file__).parent.parent.parent.resolve())},
     )
@@ -130,12 +220,15 @@ def bake_containers():
 
 @pytest.fixture(scope="session", autouse=True)
 def compose_containers(
-    slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers, pytestconfig
+    slurm_ssh_port, sge_ssh_port, pbs_ssh_port, bake_containers, pytestconfig, io_types
 ):
-    compose_yaml = f"""
+    compose_yaml = """
 name: qtoolkit_testing
 services:
+"""
 
+    if "slurm" in io_types:
+        compose_yaml += f"""
   qtoolkit_testing_slurm:
     image: ghcr.io/matgenix/qtoolkit-testing-slurm:latest
     container_name: qtoolkit_slurm
@@ -149,7 +242,9 @@ services:
       timeout: 1s
       retries: 30
       start_period: 2s
-
+"""
+    if "sge" in io_types:
+        compose_yaml += f"""
   qtoolkit_testing_sge:
     image: ghcr.io/matgenix/qtoolkit-testing-sge:latest
     container_name: qtoolkit_sge
@@ -163,7 +258,10 @@ services:
       timeout: 1s
       retries: 30
       start_period: 2s
+"""
 
+    if "pbs" in io_types:
+        compose_yaml += f"""
   qtoolkit_testing_pbs:
     image: ghcr.io/matgenix/qtoolkit-testing-pbs:latest
     container_name: qtoolkit_pbs
