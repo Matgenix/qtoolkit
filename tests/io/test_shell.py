@@ -1,4 +1,7 @@
 # ruff: noqa: SLF001
+import re
+import sys
+
 import pytest
 
 try:
@@ -274,8 +277,19 @@ class TestShellIO:
         # Here the sleep is very small should be enough to have the
         sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
         job_id = sr.job_id
-        with pytest.raises(RuntimeError, match=r"The username was truncated: \".\+\""):
-            qm.get_jobs_list(jobs=[job_id])
+        if sys.platform == "darwin":
+            with pytest.raises(
+                CommandFailedError,
+                match=re.compile(
+                    r"command ps failed.*Euser:2: keyword not found", re.DOTALL
+                ),
+            ):
+                qm.get_jobs_list(jobs=[job_id])
+        else:
+            with pytest.raises(
+                RuntimeError, match=r"The username was truncated: \".\+\""
+            ):
+                qm.get_jobs_list(jobs=[job_id])
 
         shell_io.USERNAME_MAXCHARS = 32
         jobs_list = qm.get_jobs_list(jobs=[job_id])
