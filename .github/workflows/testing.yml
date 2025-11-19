@@ -57,19 +57,23 @@ jobs:
             echo
             echo "### Running: $CMD"
 
-            # Capture stdout to a variable
-            STDOUT=$(bash -c "$CMD" 2> >(cat >&2))
+            # Create temp files for capturing output
+            OUT=$(mktemp)
+            ERR=$(mktemp)
+
+            # Run the command ONCE, capturing both stdout and stderr
+            bash -c "$CMD" >"$OUT" 2>"$ERR"
             RET=$?
 
             echo "--- STDOUT ---"
-            echo "$STDOUT"
+            cat "$OUT"
 
             echo "--- STDERR ---"
-            # STDERR was already printed in real time; capture it again:
-            STDERR=$(bash -c "$CMD" 1>/dev/null 2>&1)
-            echo "$STDERR"
+            cat "$ERR"
 
             echo "--- EXIT CODE: $RET ---"
+
+            rm "$OUT" "$ERR"
           }
 
           # Use function for each command
