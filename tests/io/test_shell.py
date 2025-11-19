@@ -27,7 +27,7 @@ from qtoolkit.core.exceptions import (
 from qtoolkit.io.shell import ShellIO, ShellState
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def shell_io():
     return ShellIO()
 
@@ -138,19 +138,25 @@ class TestShellIO:
 
     def test_get_job_cmd(self, shell_io):
         get_job_cmd = shell_io.get_job_cmd(123)
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 123"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 123"
         get_job_cmd = shell_io.get_job_cmd("456")
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 456"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 456"
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 789"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 789"
+        shell_io.USERNAME_MAXCHARS = 12
+        get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
+        assert get_job_cmd == "ps -o pid,user:12,etime,state,comm -p 789"
 
     def test_get_jobs_list_cmd(self, shell_io):
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
-        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -p 125,126,127"
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
-        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -U johndoe"
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -U johndoe"
+        shell_io.USERNAME_MAXCHARS = 12
+        get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
+        assert get_jobs_list_cmd == "ps -o pid,user:12,etime,state,comm -U johndoe"
         with pytest.raises(
             ValueError,
             match=r"Cannot query by user and job\(s\) with ps, "
