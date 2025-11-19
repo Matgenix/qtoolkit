@@ -1,4 +1,5 @@
 # ruff: noqa: SLF001
+import getpass
 import re
 import sys
 
@@ -268,6 +269,8 @@ class TestShellIO:
         from qtoolkit.host.local import LocalHost
         from qtoolkit.manager import QueueManager
 
+        this_username = getpass.getuser()
+
         shell_io = ShellIO()
         shell_io.USERNAME_MAXCHARS = (
             2  # explicitly set a very small number of characters allowed for the user
@@ -281,17 +284,23 @@ class TestShellIO:
             with pytest.raises(
                 CommandFailedError,
                 match=re.compile(
-                    r"command ps failed.*Euser:2: keyword not found", re.DOTALL
+                    r"command ps failed.*user:2: keyword not found", re.DOTALL
                 ),
             ):
                 qm.get_jobs_list(jobs=[job_id])
+            shell_io.USERNAME_MAXCHARS = None
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            assert jobs_list[0].username == this_username
         else:
             with pytest.raises(
                 RuntimeError, match=r"The username was truncated: \".\+\""
             ):
                 qm.get_jobs_list(jobs=[job_id])
 
-        shell_io.USERNAME_MAXCHARS = 32
-        jobs_list = qm.get_jobs_list(jobs=[job_id])
-        assert len(jobs_list) == 1
-        assert jobs_list[0].job_id == job_id
+            shell_io.USERNAME_MAXCHARS = 32
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            assert jobs_list[0].username == this_username

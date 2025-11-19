@@ -191,9 +191,14 @@ $${qverbatim}
             raise ValueError(msg)
 
         # use etime instead of etimes for compatibility
+        ps_user_field = (
+            f"user:{self.USERNAME_MAXCHARS}"
+            if self.USERNAME_MAXCHARS is not None
+            else "user"
+        )
         command = [
             "ps",
-            f"-o pid,user:{self.USERNAME_MAXCHARS},etime,state,comm",
+            f"-o pid,{ps_user_field},etime,state,comm",
         ]
 
         if user:
