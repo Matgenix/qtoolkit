@@ -52,14 +52,30 @@ jobs:
           PID=$(cat /tmp/testpid)
           echo "PID is: $PID"
 
-          echo "--- ps -eo pid,user,uid,etime,state,comm | grep PID ---"
-          ps -eo pid,user,uid,etime,state,comm | grep " $PID" || true
+          run_and_capture() {
+            CMD="$1"
+            echo
+            echo "### Running: $CMD"
 
-          echo "--- ps -o pid,user,uid,etime,state,comm -p PID ---"
-          ps -o pid,user,uid,etime,state,comm -p "$PID" || true
+            # Capture stdout to a variable
+            STDOUT=$(bash -c "$CMD" 2> >(cat >&2))
+            RET=$?
 
-          echo "--- ps -o pid,user:32,uid,etime,state,comm -p PID ---"
-                    ps -o pid,user:32,uid,etime,state,comm -p "$PID" || true
+            echo "--- STDOUT ---"
+            echo "$STDOUT"
+
+            echo "--- STDERR ---"
+            # STDERR was already printed in real time; capture it again:
+            STDERR=$(bash -c "$CMD" 1>/dev/null 2>&1)
+            echo "$STDERR"
+
+            echo "--- EXIT CODE: $RET ---"
+          }
+
+          # Use function for each command
+          run_and_capture "ps -eo pid,user,uid,etime,state,comm | grep \" $PID\""
+          run_and_capture "ps -o pid,user,uid,etime,state,comm -p $PID"
+          run_and_capture "ps -o pid,user:32,uid,etime,state,comm -p $PID"
   lint:
     runs-on: ubuntu-latest
     steps:
