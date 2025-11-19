@@ -66,8 +66,12 @@ $${qverbatim}
 """
 
     CANCEL_CMD: str | None = "kill -9"
-    # 32 characters seems reasonable for the maximum size of a username
-    USERNAME_MAXCHARS = 32
+    # On Linux, the 'ps' command truncates usernames to 7-8 characters, appending a "+" if truncated.
+    # To use the full username, set this variable to the desired maximum length. The 'user' field in the
+    # ps output will then be displayed as "user:NN", where NN is this value.
+    # Previously, the default was 32. On macOS, usernames are not truncated and there is no option to fix
+    # the field width, so the default is now None.
+    USERNAME_MAXCHARS = None
 
     job_id_regex: str | None = r"^[1-9]\d*$"
 
