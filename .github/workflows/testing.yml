@@ -57,6 +57,9 @@ jobs:
 
           echo "--- ps -o pid,user,uid,etime,state,comm -p PID ---"
           ps -o pid,user,uid,etime,state,comm -p "$PID" || true
+
+          echo "--- ps -o pid,user:32,uid,etime,state,comm -p PID ---"
+                    ps -o pid,user:32,uid,etime,state,comm -p "$PID" || true
   lint:
     runs-on: ubuntu-latest
     steps:
