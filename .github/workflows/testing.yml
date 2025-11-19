@@ -8,6 +8,38 @@ on:
   pull_request:
 
 jobs:
+  macos-ps-test:
+    runs-on: macos-latest
+    steps:
+      - name: Create long username
+        run: |
+          LONGUSER="averyverylongusernamethatislong"
+
+          # Create the user with the long name
+          sudo sysadminctl -addUser "$LONGUSER" -password "testpass123" -admin
+          sudo createhomedir -c -u "$LONGUSER" > /dev/null
+
+          echo "Created user: $LONGUSER"
+
+      - name: Start background job as long user
+        run: |
+          LONGUSER="averyverylongusernamethatislong"
+
+          # Start a background process ("sleep 60") as the long user
+          sudo -u "$LONGUSER" bash -c "sleep 60 & echo \$! > /tmp/testpid"
+
+          echo "Started sleep under user: $LONGUSER"
+
+      - name: Print ps output
+        run: |
+          PID=$(cat /tmp/testpid)
+          echo "PID is: $PID"
+
+          echo "--- ps -eo pid,user,etime,state,comm ---"
+          ps -eo pid,user,etime,state,comm | grep "$PID" || true
+
+          echo "--- ps -o pid,user,etime,state,comm -p $PID ---"
+          ps -o pid,user,etime,state,comm -p "$PID" || true
   lint:
     runs-on: ubuntu-latest
     steps:
