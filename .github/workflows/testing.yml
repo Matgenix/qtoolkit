@@ -48,7 +48,10 @@ jobs:
           echo "Started background job"
 
       - name: Inspect ps output
+        shell: bash
         run: |
+          set +e   # IMPORTANT: disable GitHub’s default “exit on error”
+
           PID=$(cat /tmp/testpid)
           echo "PID is: $PID"
 
@@ -57,11 +60,9 @@ jobs:
             echo
             echo "### Running: $CMD"
 
-            # Create temp files for capturing output
             OUT=$(mktemp)
             ERR=$(mktemp)
 
-            # Run the command ONCE, capturing both stdout and stderr
             bash -c "$CMD" >"$OUT" 2>"$ERR"
             RET=$?
 
@@ -76,7 +77,6 @@ jobs:
             rm "$OUT" "$ERR"
           }
 
-          # Use function for each command
           run_and_capture "ps -eo pid,user,uid,etime,state,comm | grep \" $PID\""
           run_and_capture "ps -o pid,user,uid,etime,state,comm -p $PID"
           run_and_capture "ps -o pid,user:32,uid,etime,state,comm -p $PID"
