@@ -34,7 +34,7 @@ tests = [
     "pytest-cov >= 6,< 8",
     "pytest-mock ~= 3.14",
     "pytest ~= 8.0",
-    "ruamel.yaml",
+    "ruamel.yaml >= 0.17",
     "python-on-whales ~=0.75",
 ]
 maintain = ["git-changelog>=0.6"]
