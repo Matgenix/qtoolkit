@@ -74,12 +74,15 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Set up Docker Buildx
+        if: ${{ matrix.config.os == 'ubuntu-latest'
         uses: docker/setup-buildx-action@v3
 
       - name: List images
+        if: ${{ matrix.config.os == 'ubuntu-latest'
         run: docker images
 
       - name: Load test bench containers
+        if: ${{ matrix.config.os == 'ubuntu-latest'
         uses: docker/bake-action@v6
         with:
           load: true
@@ -90,6 +93,7 @@ jobs:
             *.cache-from=type=gha,scope=global
 
       - name: List images
+        if: ${{ matrix.config.os == 'ubuntu-latest'
         run: docker images
 
       - name: Install dependencies
