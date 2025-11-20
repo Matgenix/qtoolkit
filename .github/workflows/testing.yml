@@ -48,6 +48,7 @@ jobs:
             *.cache-from=type=gha,scope=global
 
   test:
+    needs: [build-test-bench]
     strategy:
       matrix:
         config:
