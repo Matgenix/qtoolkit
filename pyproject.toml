@@ -47,8 +47,8 @@ docs = [
     "sphinx_design",
 ]
 strict = []
-remote = ["fabric>=3.0.0"]
-msonable = ["monty>=2022.9.9"]
+remote = ["fabric>=3.1.0"]
+msonable = ["monty>=2023.9.5"]
 
 [project.urls]
 homepage = "https://matgenix.github.io/qtoolkit/"
