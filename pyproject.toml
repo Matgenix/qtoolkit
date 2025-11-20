@@ -39,11 +39,11 @@ tests = [
 ]
 maintain = ["git-changelog>=0.6"]
 docs = [
-    "ipython!=8.1.0",
-    "matplotlib",
+    "ipython >= 7.0, != 8.1.0 ",
+    "matplotlib >= 3.3",
     "pydata-sphinx-theme",
     "qtoolkit[remote,msonable]",
-    "sphinx",
+    "sphinx >= 5",
     "sphinx_design",
 ]
 strict = []

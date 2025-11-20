@@ -57,7 +57,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install uv
-          uv pip install --system .[msonable,tests,docs] --resolution=${{ matrix.config.resolution }}
+          uv pip install --system .[msonable,tests] --resolution=${{ matrix.config.resolution }}
 
       - name: Test
         if: matrix.config.os == 'ubuntu-latest'
