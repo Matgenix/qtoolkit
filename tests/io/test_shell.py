@@ -276,6 +276,9 @@ class TestShellIO:
         from qtoolkit.manager import QueueManager
 
         this_username = getpass.getuser()
+        assert (
+            len(this_username) > 2
+        ), "Test should be run with a username whose length is more than 2"
 
         shell_io = ShellIO()
         shell_io.USERNAME_MAXCHARS = (
@@ -286,6 +289,7 @@ class TestShellIO:
         # Here the sleep is very small should be enough to have the
         sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
         job_id = sr.job_id
+
         if sys.platform == "darwin":
             with pytest.raises(
                 CommandFailedError,
@@ -300,11 +304,21 @@ class TestShellIO:
             assert jobs_list[0].job_id == job_id
             assert jobs_list[0].username == this_username
         else:
+            shell_io.PS_USERNAME_STRICT = True
             with pytest.raises(
                 RuntimeError, match=r"The username was truncated: \".\+\""
             ):
                 qm.get_jobs_list(jobs=[job_id])
 
+            shell_io.PS_USERNAME_STRICT = False
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            # Here the username is truncated and appended with a "+" but no error is raised while parsing
+            assert jobs_list[0].username[0] == this_username[0]
+            assert jobs_list[0].username[1] == "+"
+
+            shell_io.PS_USERNAME_STRICT = True
             shell_io.USERNAME_MAXCHARS = 32
             jobs_list = qm.get_jobs_list(jobs=[job_id])
             assert len(jobs_list) == 1

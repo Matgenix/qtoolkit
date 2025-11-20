@@ -72,6 +72,7 @@ $${qverbatim}
     # Previously, the default was 32. On macOS, usernames are not truncated and there is no option to fix
     # the field width, so the default is now None.
     USERNAME_MAXCHARS = None
+    PS_USERNAME_STRICT = False
 
     job_id_regex: str | None = r"^[1-9]\d*$"
 
@@ -251,7 +252,7 @@ $${qverbatim}
             qjob.job_id = data[0]
             # If the ps command truncates the username, a "+" will be in username
             # Consider having the possibility to set a larger output for username (currently 32 characters)
-            if "+" in data[1]:
+            if self.PS_USERNAME_STRICT and "+" in data[1]:
                 raise RuntimeError(f'The username was truncated: "{data[1]}".')
             qjob.username = data[1]
             qjob.runtime = self._convert_str_to_time(data[2])
