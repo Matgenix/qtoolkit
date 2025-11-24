@@ -291,6 +291,7 @@ class TestShellIO:
         job_id = sr.job_id
 
         if sys.platform == "darwin":
+            # darwin is Apple's open-source Unix-like operating system on top of which macOS is built
             with pytest.raises(
                 CommandFailedError,
                 match=re.compile(

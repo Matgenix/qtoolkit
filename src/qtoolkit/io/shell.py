@@ -84,7 +84,8 @@ $${qverbatim}
         On Linux, the 'ps' command truncates usernames to 7-8 characters, appending a "+" if truncated.
         To use the full username, set this variable to the desired maximum length. The 'user' field in the
         ps output will then be displayed as "user:NN", where NN is this value.
-        Previously, the default was 32. On macOS, usernames are not truncated and there is no option to fix
+        Previously, the default for the max number of characters for the username was 32.
+        On macOS, usernames are not truncated and there is no option to fix
         the field width, so the default is now None.
 
         Parameters
