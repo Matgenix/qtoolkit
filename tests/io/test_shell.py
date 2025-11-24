@@ -143,7 +143,7 @@ class TestShellIO:
         assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 456"
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
         assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 789"
-        shell_io.USERNAME_MAXCHARS = 12
+        shell_io.username_maxchars = 12
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
         assert get_job_cmd == "ps -o pid,user:12,etime,state,comm -p 789"
 
@@ -154,7 +154,7 @@ class TestShellIO:
         assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
         assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -U johndoe"
-        shell_io.USERNAME_MAXCHARS = 12
+        shell_io.username_maxchars = 12
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
         assert get_jobs_list_cmd == "ps -o pid,user:12,etime,state,comm -U johndoe"
         with pytest.raises(
@@ -281,7 +281,7 @@ class TestShellIO:
         ), "Test should be run with a username whose length is more than 2"
 
         shell_io = ShellIO()
-        shell_io.USERNAME_MAXCHARS = (
+        shell_io.username_maxchars = (
             2  # explicitly set a very small number of characters allowed for the user
         )
         qm = QueueManager(scheduler_io=shell_io, host=LocalHost())
@@ -298,19 +298,19 @@ class TestShellIO:
                 ),
             ):
                 qm.get_jobs_list(jobs=[job_id])
-            shell_io.USERNAME_MAXCHARS = None
+            shell_io.username_maxchars = None
             jobs_list = qm.get_jobs_list(jobs=[job_id])
             assert len(jobs_list) == 1
             assert jobs_list[0].job_id == job_id
             assert jobs_list[0].username == this_username
         else:
-            shell_io.PS_USERNAME_STRICT = True
+            shell_io.ps_username_strict = True
             with pytest.raises(
                 RuntimeError, match=r"The username was truncated: \".\+\""
             ):
                 qm.get_jobs_list(jobs=[job_id])
 
-            shell_io.PS_USERNAME_STRICT = False
+            shell_io.ps_username_strict = False
             jobs_list = qm.get_jobs_list(jobs=[job_id])
             assert len(jobs_list) == 1
             assert jobs_list[0].job_id == job_id
@@ -318,8 +318,8 @@ class TestShellIO:
             assert jobs_list[0].username[0] == this_username[0]
             assert jobs_list[0].username[1] == "+"
 
-            shell_io.PS_USERNAME_STRICT = True
-            shell_io.USERNAME_MAXCHARS = 32
+            shell_io.ps_username_strict = True
+            shell_io.username_maxchars = 32
             jobs_list = qm.get_jobs_list(jobs=[job_id])
             assert len(jobs_list) == 1
             assert jobs_list[0].job_id == job_id

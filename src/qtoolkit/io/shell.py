@@ -66,18 +66,26 @@ $${qverbatim}
 """
 
     CANCEL_CMD: str | None = "kill -9"
-    # On Linux, the 'ps' command truncates usernames to 7-8 characters, appending a "+" if truncated.
-    # To use the full username, set this variable to the desired maximum length. The 'user' field in the
-    # ps output will then be displayed as "user:NN", where NN is this value.
-    # Previously, the default was 32. On macOS, usernames are not truncated and there is no option to fix
-    # the field width, so the default is now None.
-    USERNAME_MAXCHARS = None
-    PS_USERNAME_STRICT = False
 
     job_id_regex: str | None = r"^[1-9]\d*$"
 
-    def __init__(self, blocking=False, stdout_path="stdout", stderr_path="stderr"):
+    def __init__(
+        self,
+        blocking=False,
+        stdout_path="stdout",
+        stderr_path="stderr",
+        ps_username_strict=False,
+        username_maxchars=None,
+    ):
         """Construct the ShellIO object.
+
+        Notes
+        -----
+        On Linux, the 'ps' command truncates usernames to 7-8 characters, appending a "+" if truncated.
+        To use the full username, set this variable to the desired maximum length. The 'user' field in the
+        ps output will then be displayed as "user:NN", where NN is this value.
+        Previously, the default was 32. On macOS, usernames are not truncated and there is no option to fix
+        the field width, so the default is now None.
 
         Parameters
         ----------
@@ -87,10 +95,17 @@ $${qverbatim}
             Path to the standard output file.
         stderr_path: str or Path
             Path to the standard error file.
+        ps_username_strict: bool
+            If set to True, the parsing of the username will raise an error if the username is truncated.
+        username_maxchars: int or None
+            Width of the username field for the ps command. Default is None (which is 7-8 characters on Linux).
+            On MacOS, setting the field explicitly is not allowed but the username is never truncated.
         """
         self.blocking = blocking
         self.stdout_path = stdout_path
         self.stderr_path = stderr_path
+        self.ps_username_strict = ps_username_strict
+        self.username_maxchars = username_maxchars
 
     def get_submit_cmd(self, script_file: str | Path | None = "submit.script") -> str:
         """
@@ -197,8 +212,8 @@ $${qverbatim}
 
         # use etime instead of etimes for compatibility
         ps_user_field = (
-            f"user:{self.USERNAME_MAXCHARS}"
-            if self.USERNAME_MAXCHARS is not None
+            f"user:{self.username_maxchars}"
+            if self.username_maxchars is not None
             else "user"
         )
         command = [
@@ -252,7 +267,7 @@ $${qverbatim}
             qjob.job_id = data[0]
             # If the ps command truncates the username, a "+" will be in username
             # Consider having the possibility to set a larger output for username (currently 32 characters)
-            if self.PS_USERNAME_STRICT and "+" in data[1]:
+            if self.ps_username_strict and "+" in data[1]:
                 raise RuntimeError(f'The username was truncated: "{data[1]}".')
             qjob.username = data[1]
             qjob.runtime = self._convert_str_to_time(data[2])
