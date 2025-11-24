@@ -15,43 +15,103 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.13'
           cache: pip
           cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install .[strict,tests,dev]
+          pip install uv
+          uv pip install --system .[msonable,tests,dev]
 
       - name: Lint
         run: pre-commit run --all-files --show-diff-on-failure
 
-  test:
+  build-test-bench:
+    name: "Build test bench containers"
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test bench container
+        uses: docker/bake-action@v6
+        with:
+          load: true
+          push: false
+          files: tests/integration/dockerfiles/docker-bake.hcl
+          set: |
+            *.cache-to=type=gha,scope=global,mode=max
+            *.cache-from=type=gha,scope=global
+
+  test:
+    needs: [build-test-bench]
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        config:
+          - { os: macos-latest, python: "3.9", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.9", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.9", resolution: highest }
+          - { os: ubuntu-latest, python: "3.10", resolution: highest }
+          - { os: ubuntu-latest, python: "3.11", resolution: highest }
+          - { os: ubuntu-latest, python: "3.12", resolution: highest }
+          - { os: ubuntu-latest, python: "3.13", resolution: highest }
+          - { os: ubuntu-latest, python: "3.14", resolution: lowest-direct }
+          - { os: macos-latest, python: "3.14", resolution: highest }
+          - { os: ubuntu-latest, python: "3.14", resolution: highest }
 
+    runs-on: ${{ matrix.config.os }}
     steps:
       - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.config.python }}
           cache: pip
           cache-dependency-path: pyproject.toml
+
+      - name: Set up Docker Buildx
+        if: matrix.config.os == 'ubuntu-latest'
+        uses: docker/setup-buildx-action@v3
+
+      - name: List images
+        if: matrix.config.os == 'ubuntu-latest'
+        run: docker images
+
+      - name: Load test bench containers
+        if: matrix.config.os == 'ubuntu-latest'
+        uses: docker/bake-action@v6
+        with:
+          load: true
+          push: false
+          files: tests/integration/dockerfiles/docker-bake.hcl
+          set: |
+            *.cache-to=type=gha,scope=global,mode=max
+            *.cache-from=type=gha,scope=global
+
+      - name: List images
+        if: matrix.config.os == 'ubuntu-latest'
+        run: docker images
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-            pip install .[strict,tests,docs]
+          pip install uv
+          uv pip install --system .[msonable,remote,tests] --resolution=${{ matrix.config.resolution }}
 
       - name: Test
+        if: matrix.config.os == 'ubuntu-latest'
         run: pytest --cov=qtoolkit --cov-report=xml
 
+      - name: Test macos (no integration)
+        if: matrix.config.os == 'macos-latest'
+        run: pytest --ignore=tests/integration --cov=qtoolkit --cov-report=xml
+
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.11'
+        if: matrix.config.os == 'ubuntu-latest' && matrix.config.python == '3.13' && matrix.config.resolution == 'highest'
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -65,16 +125,17 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.13'
           cache: pip
           cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
+          python -m pip install -U pip
+          pip install uv
           # Required to generate rst files from markdown
           sudo apt install pandoc
-          python -m pip install --upgrade pip
-          pip install .[docs]
+          uv pip install --system .[docs]
 
       - name: Build Sphinx docs
         working-directory: doc

@@ -1,4 +1,8 @@
 # ruff: noqa: SLF001
+import getpass
+import re
+import sys
+
 import pytest
 
 try:
@@ -23,7 +27,7 @@ from qtoolkit.core.exceptions import (
 from qtoolkit.io.shell import ShellIO, ShellState
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def shell_io():
     return ShellIO()
 
@@ -134,19 +138,25 @@ class TestShellIO:
 
     def test_get_job_cmd(self, shell_io):
         get_job_cmd = shell_io.get_job_cmd(123)
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 123"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 123"
         get_job_cmd = shell_io.get_job_cmd("456")
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 456"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 456"
         get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
-        assert get_job_cmd == "ps -o pid,user:32,etime,state,comm -p 789"
+        assert get_job_cmd == "ps -o pid,user,etime,state,comm -p 789"
+        shell_io.username_maxchars = 12
+        get_job_cmd = shell_io.get_job_cmd(QJob(job_id="789"))
+        assert get_job_cmd == "ps -o pid,user:12,etime,state,comm -p 789"
 
     def test_get_jobs_list_cmd(self, shell_io):
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(
             jobs=[QJob(job_id=125), 126, "127"], user=None
         )
-        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -p 125,126,127"
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -p 125,126,127"
         get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
-        assert get_jobs_list_cmd == "ps -o pid,user:32,etime,state,comm -U johndoe"
+        assert get_jobs_list_cmd == "ps -o pid,user,etime,state,comm -U johndoe"
+        shell_io.username_maxchars = 12
+        get_jobs_list_cmd = shell_io.get_jobs_list_cmd(jobs=None, user="johndoe")
+        assert get_jobs_list_cmd == "ps -o pid,user:12,etime,state,comm -U johndoe"
         with pytest.raises(
             ValueError,
             match=r"Cannot query by user and job\(s\) with ps, "
@@ -265,8 +275,13 @@ class TestShellIO:
         from qtoolkit.host.local import LocalHost
         from qtoolkit.manager import QueueManager
 
+        this_username = getpass.getuser()
+        assert (
+            len(this_username) > 2
+        ), "Test should be run with a username whose length is more than 2"
+
         shell_io = ShellIO()
-        shell_io.USERNAME_MAXCHARS = (
+        shell_io.username_maxchars = (
             2  # explicitly set a very small number of characters allowed for the user
         )
         qm = QueueManager(scheduler_io=shell_io, host=LocalHost())
@@ -274,10 +289,39 @@ class TestShellIO:
         # Here the sleep is very small should be enough to have the
         sr = qm.submit(["echo Start sleep", "sleep 0.2", "echo Finished sleep"])
         job_id = sr.job_id
-        with pytest.raises(RuntimeError, match=r"The username was truncated: \".\+\""):
-            qm.get_jobs_list(jobs=[job_id])
 
-        shell_io.USERNAME_MAXCHARS = 32
-        jobs_list = qm.get_jobs_list(jobs=[job_id])
-        assert len(jobs_list) == 1
-        assert jobs_list[0].job_id == job_id
+        if sys.platform == "darwin":
+            # darwin is Apple's open-source Unix-like operating system on top of which macOS is built
+            with pytest.raises(
+                CommandFailedError,
+                match=re.compile(
+                    r"command ps failed.*user:2: keyword not found", re.DOTALL
+                ),
+            ):
+                qm.get_jobs_list(jobs=[job_id])
+            shell_io.username_maxchars = None
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            assert jobs_list[0].username == this_username
+        else:
+            shell_io.ps_username_strict = True
+            with pytest.raises(
+                RuntimeError, match=r"The username was truncated: \".\+\""
+            ):
+                qm.get_jobs_list(jobs=[job_id])
+
+            shell_io.ps_username_strict = False
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            # Here the username is truncated and appended with a "+" but no error is raised while parsing
+            assert jobs_list[0].username[0] == this_username[0]
+            assert jobs_list[0].username[1] == "+"
+
+            shell_io.ps_username_strict = True
+            shell_io.username_maxchars = 32
+            jobs_list = qm.get_jobs_list(jobs=[job_id])
+            assert len(jobs_list) == 1
+            assert jobs_list[0].job_id == job_id
+            assert jobs_list[0].username == this_username

@@ -31,25 +31,24 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pre-commit>=3.0.0"]
 tests = [
-    "monty>=2022.9.9",
     "pytest-cov >= 6,< 8",
     "pytest-mock ~= 3.14",
     "pytest ~= 8.0",
-    "ruamel.yaml",
+    "ruamel.yaml >= 0.17",
     "python-on-whales ~=0.75",
 ]
 maintain = ["git-changelog>=0.6"]
 docs = [
-    "ipython!=8.1.0",
-    "matplotlib",
+    "ipython >= 7.0, != 8.1.0 ",
+    "matplotlib >= 3.3",
     "pydata-sphinx-theme",
     "qtoolkit[remote,msonable]",
-    "sphinx",
+    "sphinx >= 5",
     "sphinx_design",
 ]
 strict = []
-remote = ["fabric>=3.0.0"]
-msonable = ["monty>=2022.9.9"]
+remote = ["fabric>=3.1.0"]
+msonable = ["monty>=2023.9.5"]
 
 [project.urls]
 homepage = "https://matgenix.github.io/qtoolkit/"
