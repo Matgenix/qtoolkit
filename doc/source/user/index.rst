@@ -1,19 +1,28 @@
 .. _user_guide:
 
-###################
-QToolKit user guide
-###################
+##################
+User Documentation
+##################
 
-This guide is an overview and explains the important features;
-details are found in :ref:`api`.
+Welcome to the ``qtoolkit`` user documentation. This guide will help you understand how to use ``qtoolkit`` to manage your computational jobs on HPC clusters.
 
 .. toctree::
-   :caption: Getting started
    :maxdepth: 1
+   :caption: Introduction
 
-   whatisqtoolkit
+   overview
    install
    quickstart
+   core_concepts
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Component Guides
+
+   schedulers
+   resources
+   manager
+   hosts
 
 .. toctree::
    :hidden:
@@ -21,3 +30,10 @@ details are found in :ref:`api`.
 
    ../glossary
    ../license
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
