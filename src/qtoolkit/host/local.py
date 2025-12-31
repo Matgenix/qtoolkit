@@ -10,7 +10,9 @@ from qtoolkit.utils import cd
 class LocalHost(BaseHost):
     # def __init__(self, config):
     #     self.config = config
-    def execute(self, command: str | list[str], workdir: str | Path | None = None):
+    def execute(
+        self, command: str | list[str], workdir: str | Path | None = None
+    ) -> tuple[str, str, int]:
         """Execute the given command on the host.
 
         Note that the command is executed with shell=True, so commands can

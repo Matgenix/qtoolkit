@@ -31,7 +31,12 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     default_unit: str
     power_labels: ClassVar[dict]
 
-    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
+    def parse_submit_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> SubmissionResult:
+        """
+        Parse the output of the qsub command.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -58,11 +63,19 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         )
 
     @abc.abstractmethod
-    def extract_job_id(self, stdout):
+    def extract_job_id(self, stdout: str) -> str | None:
+        """
+        Extract the job ID from the submission output.
+        """
+        # pragma: no cover - implementation in subclasses
         raise NotImplementedError
 
-    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        """Parse the output of the qdel command."""
+    def parse_cancel_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> CancelResult:
+        """
+        Parse the output of the qdel command.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -86,7 +99,11 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         )
 
     @abc.abstractmethod
-    def extract_job_id_from_cancel(self, stderr):
+    def extract_job_id_from_cancel(self, stderr: str) -> str | None:
+        """
+        Extract the job ID from the cancellation output.
+        """
+        # pragma: no cover - implementation in subclasses
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -95,23 +112,41 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     ) -> str:
         raise NotImplementedError
 
-    def _check_user_and_job_ids_conflict(self):
+    def _check_user_and_job_ids_conflict(self) -> None:
+        """
+        Check if both user and job IDs are provided, which is not supported by some schedulers.
+        """
         # Use system_name for more informative error messages
         raise ValueError(f"Cannot query by user and job(s) in {self.system_name}")
 
     @abc.abstractmethod
     def _get_qstat_base_command(self) -> list[str]:
+        """
+        Get the base qstat command parts.
+        """
+        # pragma: no cover - implementation in subclasses
         raise NotImplementedError
 
     @abc.abstractmethod
     def _get_job_ids_flag(self, job_ids_str: str) -> str:
+        """
+        Get the flag used to specify job IDs in qstat.
+        """
+        # pragma: no cover - implementation in subclasses
         raise NotImplementedError
 
     @abc.abstractmethod
     def _get_job_cmd(self, job_id: str) -> str:
+        """
+        Get the command to retrieve information for a specific job.
+        """
+        # pragma: no cover - implementation in subclasses
         raise NotImplementedError
 
     def _convert_memory_str(self, memory: str | None) -> int | None:
+        """
+        Convert a PBS/SGE memory string to an integer in bytes.
+        """
         if not memory:
             return None
 
@@ -138,7 +173,20 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         return v * (1024 ** power_labels[units.lower()])
 
     @staticmethod
-    def _convert_time_to_str(time: int | float | timedelta) -> str:  # noqa: PYI041
+    def _convert_time_to_str(time: float | timedelta) -> str:
+        """
+        Convert a time duration to the PBS/SGE format (HH:MM:SS).
+
+        Parameters
+        ----------
+        time
+            Time in seconds or a timedelta object.
+
+        Returns
+        -------
+        str
+            Formatted time string.
+        """
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 
@@ -148,6 +196,9 @@ class PBSIOBase(BaseSchedulerIO, ABC):
         return f"{hours}:{minutes}:{seconds}"
 
     def _convert_qresources(self, resources: QResources) -> dict:
+        """
+        Convert a QResources object to a dictionary of PBS/SGE options.
+        """
         header_dict = {}
         for qr_field, system_field in self._qresources_mapping.items():
             val = getattr(resources, qr_field)
@@ -218,8 +269,10 @@ class PBSIOBase(BaseSchedulerIO, ABC):
 
         return header_dict
 
-    def _add_soft_walltime(self, header_dict: dict, resources: QResources):
-        """Add soft_walltime if required by child classes (e.g., SGE)."""
+    def _add_soft_walltime(self, header_dict: dict, resources: QResources) -> None:
+        """
+        Add soft_walltime if required by child classes (e.g., SGE).
+        """
 
     @property
     def supported_qresources_keys(self) -> list:

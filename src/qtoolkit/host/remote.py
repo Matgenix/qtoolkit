@@ -150,7 +150,9 @@ class RemoteHost(BaseHost):
     def connection(self):
         return self._connection
 
-    def execute(self, command: str | list[str], workdir: str | Path | None = None):
+    def execute(
+        self, command: str | list[str], workdir: str | Path | None = None
+    ) -> tuple[str, str, int]:
         """Execute the given command on the host.
 
         Parameters

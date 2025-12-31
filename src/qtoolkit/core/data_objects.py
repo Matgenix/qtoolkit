@@ -219,7 +219,22 @@ class QResources(QTKObject):
         return True
 
     @classmethod
-    def no_constraints(cls, processes, **kwargs):
+    def no_constraints(cls, processes: int, **kwargs) -> QResources:
+        """
+        Create a QResources object with no process placement constraints.
+
+        Parameters
+        ----------
+        processes : int
+            Number of processes.
+        **kwargs :
+            Additional resource attributes.
+
+        Returns
+        -------
+        QResources
+            A QResources object configured with NO_CONSTRAINTS placement.
+        """
         if "nodes" in kwargs or "processes_per_node" in kwargs:
             msg = (
                 "nodes and processes_per_node are incompatible with no constraints jobs"
@@ -229,7 +244,26 @@ class QResources(QTKObject):
         return cls(processes=processes, **kwargs)
 
     @classmethod
-    def evenly_distributed(cls, nodes, processes_per_node, **kwargs):
+    def evenly_distributed(
+        cls, nodes: int, processes_per_node: int, **kwargs
+    ) -> QResources:
+        """
+        Create a QResources object with processes evenly distributed across nodes.
+
+        Parameters
+        ----------
+        nodes : int
+            Number of nodes.
+        processes_per_node : int
+            Number of processes per node.
+        **kwargs :
+            Additional resource attributes.
+
+        Returns
+        -------
+        QResources
+            A QResources object configured with EVENLY_DISTRIBUTED placement.
+        """
         if "processes" in kwargs:
             msg = "processes is incompatible with evenly distributed jobs"
             raise UnsupportedResourcesError(msg)
@@ -237,7 +271,22 @@ class QResources(QTKObject):
         return cls(nodes=nodes, processes_per_node=processes_per_node, **kwargs)
 
     @classmethod
-    def scattered(cls, processes, **kwargs):
+    def scattered(cls, processes: int, **kwargs) -> QResources:
+        """
+        Create a QResources object where each process runs on its own node.
+
+        Parameters
+        ----------
+        processes : int
+            Number of processes (one per node).
+        **kwargs :
+            Additional resource attributes.
+
+        Returns
+        -------
+        QResources
+            A QResources object configured with SCATTERED placement.
+        """
         if "nodes" in kwargs or "processes_per_node" in kwargs:
             msg = "nodes and processes_per_node are incompatible with scattered jobs"
             raise UnsupportedResourcesError(msg)
@@ -245,7 +294,22 @@ class QResources(QTKObject):
         return cls(processes=processes, **kwargs)
 
     @classmethod
-    def same_node(cls, processes, **kwargs):
+    def same_node(cls, processes: int, **kwargs) -> QResources:
+        """
+        Create a QResources object where all processes run on the same node.
+
+        Parameters
+        ----------
+        processes : int
+            Number of processes on the same node.
+        **kwargs :
+            Additional resource attributes.
+
+        Returns
+        -------
+        QResources
+            A QResources object configured with SAME_NODE placement.
+        """
         if "nodes" in kwargs or "processes_per_node" in kwargs:
             msg = "nodes and processes_per_node are incompatible with same node jobs"
             raise UnsupportedResourcesError(msg)
@@ -253,6 +317,14 @@ class QResources(QTKObject):
         return cls(processes=processes, **kwargs)
 
     def get_processes_distribution(self) -> list:
+        """
+        Get the distribution of nodes, processes, and processes per node.
+
+        Returns
+        -------
+        list
+            A list containing [nodes, processes, processes_per_node].
+        """
         # TODO consider moving this to the __post_init__
         nodes = self.nodes
         processes = self.processes
@@ -305,6 +377,8 @@ class QResources(QTKObject):
 
 @dataclass
 class QJobInfo(QTKObject):
+    """Resource utilization and limits for a job."""
+
     memory: int | None = None
     """Job memory in Kb."""
 
@@ -326,6 +400,8 @@ class QJobInfo(QTKObject):
 
 @dataclass
 class QJob(QTKObject):
+    """Standardized representation of a job in the queue."""
+
     name: str | None = None
     """Job name."""
 
