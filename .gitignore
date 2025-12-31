@@ -72,6 +72,10 @@ instance/
 doc/_build/
 doc/source/api/*.rst
 
+doc/source/changelog.rst
+doc/source/dev/index.rst
+doc/source/user/install.rst
+
 # PyBuilder
 .pybuilder/
 target/
