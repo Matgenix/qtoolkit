@@ -126,7 +126,12 @@ $${qverbatim}
             command = f"nohup {command} & echo $!"
         return command
 
-    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
+    def parse_submit_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> SubmissionResult:
+        """
+        Parse the output of the submission (background job).
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -152,8 +157,12 @@ $${qverbatim}
             status=status,
         )
 
-    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        """Parse the output of the kill command."""
+    def parse_cancel_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> CancelResult:
+        """
+        Parse the output of the kill command.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -178,8 +187,15 @@ $${qverbatim}
     def _get_job_cmd(self, job_id: str):
         return self._get_jobs_list_cmd(job_ids=[job_id])
 
-    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
-        """Parse the output of the ps command and return the corresponding QJob object.
+    def parse_job_output(
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_id: str | None = None,
+    ) -> QJob | None:
+        """
+        Parse the output of the ps command and return the corresponding QJob object.
 
         If the ps command returns multiple shell jobs, only the first corresponding
         QJob is returned.
@@ -187,13 +203,13 @@ $${qverbatim}
 
         Parameters
         ----------
-        exit_code : int
+        exit_code
             Exit code of the ps command.
-        stdout : str
+        stdout
             Standard output of the ps command.
-        stderr : str
+        stderr
             Standard error of the ps command.
-        job_id : str
+        job_id
             Job ID of the parsed job.
         """
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
@@ -231,19 +247,24 @@ $${qverbatim}
         return " ".join(command)
 
     def parse_jobs_list_output(
-        self, exit_code, stdout, stderr, job_ids=None
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_ids: list[str] | None = None,
     ) -> list[QJob]:
-        """Parse the output of the ps command to list jobs.
+        """
+        Parse the output of the ps command to list jobs.
 
         Parameters
         ----------
-        exit_code : int
+        exit_code
             Exit code of the ps command.
-        stdout : str
+        stdout
             Standard output of the ps command.
-        stderr : str
+        stderr
             Standard error of the ps command.
-        job_ids : list of str
+        job_ids
             List of Job IDs of the jobs to return.
         """
         if isinstance(stdout, bytes):
@@ -321,6 +342,16 @@ $${qverbatim}
         """
         Convert a string in the format used in etime [[DD-]hh:]mm:ss to a
         number of seconds.
+
+        Parameters
+        ----------
+        time_str
+            Time string from ps.
+
+        Returns
+        -------
+        int or None
+            Time in seconds, or None if input is None.
         """
         if not time_str:
             return None

@@ -76,6 +76,19 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         return "\n".join(script_blocks)
 
     def generate_header(self, options: dict | QResources | None) -> str:
+        """
+        Generate the header (directives) for the submission script.
+
+        Parameters
+        ----------
+        options
+            Scheduler options or QResources object.
+
+        Returns
+        -------
+        str
+            The generated header string.
+        """
         # needs info from self.meta_info (email, job name [also execution])
         # queuing_options (priority, account, qos and submit as hold)
         # execution (rerunnable)
@@ -128,6 +141,14 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         return commands
 
     def generate_footer(self) -> str:
+        """
+        Generate the footer for the submission script.
+
+        Returns
+        -------
+        str
+            The generated footer string.
+        """
         return ""
 
     def generate_ids_list(
@@ -156,8 +177,27 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         return f"{self.SUBMIT_CMD} {script_file}"
 
     @abc.abstractmethod
-    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
-        pass  # pragma: no cover - implementation in subclasses
+    def parse_submit_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> SubmissionResult:
+        """
+        Parse the output of a submission command.
+
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the command.
+        stdout : str or bytes
+            Standard output of the command.
+        stderr : str or bytes
+            Standard error of the command.
+
+        Returns
+        -------
+        SubmissionResult
+            The parsed submission result.
+        """
+        # pragma: no cover - implementation in subclasses
 
     def get_cancel_cmd(self, job: QJob | int | str) -> str:
         """
@@ -173,14 +213,46 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
             raise ValueError(
                 f"The id of the job to be cancelled should be defined. Received: {received}"
             )
-        self._check_job_ids(job_id)
+        self._check_job_ids(str(job_id))
         return f"{self.CANCEL_CMD} {job_id}"
 
     @abc.abstractmethod
-    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
-        pass  # pragma: no cover - implementation in subclasses
+    def parse_cancel_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> CancelResult:
+        """
+        Parse the output of a cancellation command.
+
+        Parameters
+        ----------
+        exit_code
+            Exit code of the command.
+        stdout
+            Standard output of the command.
+        stderr
+            Standard error of the command.
+
+        Returns
+        -------
+        CancelResult
+            The parsed cancellation result.
+        """
+        # pragma: no cover - implementation in subclasses
 
     def get_job_cmd(self, job: QJob | int | str) -> str:
+        """
+        Get the command used to retrieve information about a given job.
+
+        Parameters
+        ----------
+        job
+            Job identifier.
+
+        Returns
+        -------
+        str
+            The command string.
+        """
         job_id = self.generate_ids_list([job])[0]
         shlex.quote(job_id)
         return self._get_job_cmd(job_id)
@@ -190,19 +262,30 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         pass  # pragma: no cover - implementation in subclasses
 
     @abc.abstractmethod
-    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
+    def parse_job_output(
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_id: str | None = None,
+    ) -> QJob | None:
         """Parse the output of a command to get a job and return the corresponding QJob object.
 
         Parameters
         ----------
-        exit_code : int
-            Exit code of the ps command.
-        stdout : str
-            Standard output of the ps command.
-        stderr : str
-            Standard error of the ps command.
-        job_id : str
+        exit_code
+            Exit code of the command.
+        stdout
+            Standard output of the command.
+        stderr
+            Standard error of the command.
+        job_id
             Job ID of the parsed job.
+
+        Returns
+        -------
+        QJob or None
+            The parsed QJob object, or None if not found.
         """
         # pragma: no cover - implementation in subclasses
 
@@ -249,6 +332,21 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     def get_jobs_list_cmd(
         self, jobs: list[QJob | int | str] | None, user: str | None
     ) -> str:
+        """
+        Get the command used to list jobs, optionally filtered by IDs or user.
+
+        Parameters
+        ----------
+        jobs
+            List of job identifiers.
+        user
+            Username to filter by.
+
+        Returns
+        -------
+        str
+            The command string.
+        """
         job_ids = self.generate_ids_list(jobs)
         if user:
             user = shlex.quote(user)
@@ -262,21 +360,82 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     @abc.abstractmethod
     def parse_jobs_list_output(
-        self, exit_code, stdout, stderr, job_ids=None
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_ids: list[str] | None = None,
     ) -> list[QJob]:
-        pass  # pragma: no cover - implementation in subclasses
+        """
+        Parse the output of a command that lists jobs.
 
-    def sanitize_options(self, options):
+        Parameters
+        ----------
+        exit_code : int
+            Exit code of the command.
+        stdout : str or bytes
+            Standard output of the command.
+        stderr : str or bytes
+            Standard error of the command.
+        job_ids : list of str, optional
+            List of expected job IDs.
+
+        Returns
+        -------
+        list of QJob
+            List of parsed QJob objects.
+        """
+        # pragma: no cover - implementation in subclasses
+
+    def sanitize_options(self, options: dict) -> dict:
         """
         A function to sanitize the values in the options used to generate the
         header. Subclasses should implement their own sanitizations.
+
+        Parameters
+        ----------
+        options
+            Dictionary of options to sanitize.
+
+        Returns
+        -------
+        dict
+            Sanitized options.
         """
         return options
 
-    def is_valid_job_id(self, job_id):
-        return re.fullmatch(self.job_id_regex, job_id)
+    def is_valid_job_id(self, job_id: str) -> bool:
+        """
+        Check if a given job identifier is valid for the current scheduler.
 
-    def _check_job_ids(self, job_ids):
+        Parameters
+        ----------
+        job_id
+            The job identifier to check.
+
+        Returns
+        -------
+        bool
+            True if the job ID is valid, False otherwise.
+        """
+        if self.job_id_regex is None:
+            return True
+        return re.fullmatch(self.job_id_regex, job_id) is not None
+
+    def _check_job_ids(self, job_ids: str | list[str]) -> None:
+        """
+        Check a list of job IDs for validity.
+
+        Parameters
+        ----------
+        job_ids
+            Job IDs to check.
+
+        Raises
+        ------
+        InvalidJobIDError
+            If any of the job IDs is invalid.
+        """
         if not isinstance(job_ids, list):
             job_ids = [job_ids]
         if self.check_job_ids and self.job_id_regex:

@@ -102,10 +102,16 @@ $${qverbatim}"""
         "project": "group_list",
     }
 
-    def extract_job_id(self, stdout):
+    def extract_job_id(self, stdout: str) -> str | None:
+        """
+        Extract the job ID from the submission output.
+        """
         return stdout.strip()
 
-    def extract_job_id_from_cancel(self, stderr):
+    def extract_job_id_from_cancel(self, stderr: str) -> str | None:
+        """
+        Extract the job ID from the cancellation output.
+        """
         # PBS doesn't return the job ID if successfully canceled, so return None
         return None
 
@@ -126,7 +132,16 @@ $${qverbatim}"""
 
         return " ".join(command)
 
-    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
+    def parse_job_output(
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_id: str | None = None,
+    ) -> QJob | None:
+        """
+        Parse the output of the qstat command for a single job.
+        """
         out = self.parse_jobs_list_output(exit_code, stdout, stderr)
         if out:
             return out[0]
@@ -142,8 +157,15 @@ $${qverbatim}"""
         return job_ids_str
 
     def parse_jobs_list_output(
-        self, exit_code, stdout, stderr, job_ids=None
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_ids: list[str] | None = None,
     ) -> list[QJob]:
+        """
+        Parse the output of the qstat command for a list of jobs.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -270,10 +292,20 @@ $${qverbatim}"""
         return jobs_list
 
     @staticmethod
-    def _convert_str_to_time(time_str: str | None):
+    def _convert_str_to_time(time_str: str | None) -> int | None:
         """
         Convert a string in the format used by PBS DD:HH:MM:SS to a number of seconds.
         It may contain only H:M:S, only M:S or only S.
+
+        Parameters
+        ----------
+        time_str
+            Time string from PBS.
+
+        Returns
+        -------
+        int or None
+            Time in seconds, or None if input is None.
         """
         if not time_str:
             return None
@@ -292,7 +324,20 @@ $${qverbatim}"""
 
         return time[3] * 86400 + time[2] * 3600 + time[1] * 60 + time[0]
 
-    def sanitize_options(self, options):
+    def sanitize_options(self, options: dict) -> dict:
+        """
+        Sanitize the values in the options used to generate the header.
+
+        Parameters
+        ----------
+        options
+            Dictionary of options to sanitize.
+
+        Returns
+        -------
+        dict
+            Sanitized options.
+        """
         if "job_name" in options:
             options = dict(options)
             options["job_name"] = re.sub(r"[^a-zA-Z0-9_\-+.]", "_", options["job_name"])

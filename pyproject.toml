@@ -44,6 +44,7 @@ docs = [
     "pydata-sphinx-theme",
     "qtoolkit[remote,msonable]",
     "sphinx >= 5",
+    "sphinx-copybutton",
     "sphinx_design",
 ]
 strict = []

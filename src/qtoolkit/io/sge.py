@@ -143,7 +143,10 @@ $${qverbatim}"""
         super().__init__()
         self.get_job_executable = get_job_executable
 
-    def extract_job_id(self, stdout):
+    def extract_job_id(self, stdout: str) -> str | None:
+        """
+        Extract the job ID from the submission output.
+        """
         match = re.search(r'Your job (\d+) \(".*?"\) has been submitted', stdout)
         if not match:
             raise OutputParsingError(
@@ -151,7 +154,10 @@ $${qverbatim}"""
             )  # pragma: no cover - trivial
         return match.group(1)
 
-    def extract_job_id_from_cancel(self, stderr):
+    def extract_job_id_from_cancel(self, stderr: str) -> str | None:
+        """
+        Extract the job ID from the cancellation output.
+        """
         match = re.search(r"qdel: job (\d+) deleted", stderr)
         if not match:
             raise OutputParsingError(
@@ -174,8 +180,16 @@ $${qverbatim}"""
         return " ".join(command)
 
     def parse_job_output(
-        self, exit_code, stdout, stderr, job_id=None
-    ) -> QJob | None:  # aiida style
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_id: str | None = None,
+    ) -> QJob | None:
+        """
+        Parse the output of the qstat command for a single job.
+        """
+        # aiida style
         if job_id is None:
             raise RuntimeError("job_id should be passed for sge.")
         out = self.parse_jobs_list_output(exit_code, stdout, stderr, job_ids=[job_id])
@@ -212,15 +226,22 @@ $${qverbatim}"""
         return " ".join(self._get_qstat_base_command()) + ' -u "*"'
 
     def parse_jobs_list_output(
-        self, exit_code, stdout, stderr, job_ids=None
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_ids: list[str] | None = None,
     ) -> list[QJob]:
-        if exit_code != 0:
-            msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
-            raise CommandFailedError(msg)
+        """
+        Parse the output of the qstat command for a list of jobs.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
             stderr = stderr.decode()
+        if exit_code != 0:
+            msg = f"command {self.get_job_executable or 'qacct'} failed: {stderr}"
+            raise CommandFailedError(msg)
 
         if not stdout:
             return []
@@ -284,6 +305,19 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None) -> int | None:
+        """
+        Convert a string in the format used by SGE to a number of seconds.
+
+        Parameters
+        ----------
+        time_str
+            Time string from SGE.
+
+        Returns
+        -------
+        int or None
+            Time in seconds, or None if input is None.
+        """
         if time_str is None:
             return None
 
@@ -308,7 +342,20 @@ $${qverbatim}"""
             resources.time_limit * 0.99
         )
 
-    def sanitize_options(self, options):
+    def sanitize_options(self, options: dict) -> dict:
+        """
+        Sanitize the values in the options used to generate the header.
+
+        Parameters
+        ----------
+        options
+            Dictionary of options to sanitize.
+
+        Returns
+        -------
+        dict
+            Sanitized options.
+        """
         if "job_name" in options:
             options = dict(options)
             options["job_name"] = re.sub(r"[\s/@*\\:]", "_", options["job_name"])

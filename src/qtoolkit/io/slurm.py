@@ -174,6 +174,8 @@ class SlurmIO(BaseSchedulerIO):
 #SBATCH --priority=$${priority}
 #SBATCH --array=$${array}
 #SBATCH --exclusive=$${exclusive}
+#SBATCH --gpus=$${gpus}
+#SBATCH --gpus-per-node=$${gpus_per_node}
 $${qverbatim}"""
 
     SUBMIT_CMD: str | None = "sbatch"
@@ -202,7 +204,12 @@ $${qverbatim}"""
         self.get_job_executable = get_job_executable
         self.split_separator = split_separator
 
-    def parse_submit_output(self, exit_code, stdout, stderr) -> SubmissionResult:
+    def parse_submit_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> SubmissionResult:
+        """
+        Parse the output of the sbatch command.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -233,7 +240,9 @@ $${qverbatim}"""
             status=status,
         )
 
-    def parse_cancel_output(self, exit_code, stdout, stderr) -> CancelResult:
+    def parse_cancel_output(
+        self, exit_code: int, stdout: str | bytes, stderr: str | bytes
+    ) -> CancelResult:
         """Parse the output of the scancel command."""
         # Possible error messages:
         # scancel: error: No job identification provided
@@ -294,7 +303,16 @@ $${qverbatim}"""
 
         return cmd
 
-    def parse_job_output(self, exit_code, stdout, stderr, job_id=None) -> QJob | None:
+    def parse_job_output(
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_id: str | None = None,
+    ) -> QJob | None:
+        """
+        Parse the output of the scontrol command for a single job.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()
         if isinstance(stderr, bytes):
@@ -397,8 +415,15 @@ $${qverbatim}"""
         return " ".join(command)
 
     def parse_jobs_list_output(
-        self, exit_code, stdout, stderr, job_ids=None
+        self,
+        exit_code: int,
+        stdout: str | bytes,
+        stderr: str | bytes,
+        job_ids: list[str] | None = None,
     ) -> list[QJob]:
+        """
+        Parse the output of the squeue or scontrol command for a list of jobs.
+        """
         if isinstance(stdout, bytes):
             stdout = stdout.decode()  # pragma: no cover - trivial
         if isinstance(stderr, bytes):
@@ -488,7 +513,19 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None) -> int | None:
-        """Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds."""
+        """
+        Convert a string in the format used by SLURM DD-HH:MM:SS to a number of seconds.
+
+        Parameters
+        ----------
+        time_str
+            Time string from Slurm.
+
+        Returns
+        -------
+        int or None
+            Time in seconds, or None if input is None.
+        """
         if not time_str:
             return None
 
@@ -521,6 +558,19 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_memory_str(memory: str | None) -> int | None:
+        """
+        Convert a Slurm memory string to an integer in MB.
+
+        Parameters
+        ----------
+        memory : str or None
+            Memory string from Slurm (e.g. '1000M', '2G').
+
+        Returns
+        -------
+        int or None
+            Memory in MB, or None if input is None.
+        """
         if not memory:
             return None
 
@@ -540,6 +590,19 @@ $${qverbatim}"""
 
     @staticmethod
     def _convert_time_to_str(time: int | float | timedelta) -> str:  # noqa: PYI041
+        """
+        Convert a time duration to the Slurm format (DD-HH:MM:SS).
+
+        Parameters
+        ----------
+        time
+            Time in seconds or a timedelta object.
+
+        Returns
+        -------
+        str
+            Slurm-formatted time string.
+        """
         if not isinstance(time, timedelta):
             time = timedelta(seconds=time)
 

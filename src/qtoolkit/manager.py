@@ -15,35 +15,41 @@ if TYPE_CHECKING:
 
 
 class QueueManager(QTKObject):
-    """Base class for job queues.
+    """
+    Main interface to interact with a job queue on a given host.
 
     Attributes
     ----------
-    scheduler_io : str
-        Name of the queue
+    scheduler_io : BaseSchedulerIO
+        The scheduler IO implementation (e.g., SlurmIO).
     host : BaseHost
-        Host where the command should be executed.
+        The host where commands are executed (e.g., LocalHost, RemoteHost).
     """
 
     def __init__(self, scheduler_io: BaseSchedulerIO, host: BaseHost = None):
         self.scheduler_io = scheduler_io
         self.host = host or LocalHost()
 
-    def execute_cmd(self, cmd: str, workdir: str | Path | None = None):
+    def execute_cmd(
+        self, cmd: str, workdir: str | Path | None = None
+    ) -> tuple[str, str, int]:
         """Execute a command.
 
         Parameters
         ----------
-        cmd : str
-            Command to be executed
-        workdir: str or None
-            path where the command will be executed.
+        cmd
+            Command to be executed.
+        workdir
+            Path where the command will be executed.
 
         Returns
         -------
         stdout : str
+            Standard output of the command.
         stderr : str
+            Standard error of the command.
         exit_code : int
+            Exit code of the command.
         """
         return self.host.execute(cmd, workdir)
 
@@ -54,9 +60,31 @@ class QueueManager(QTKObject):
         work_dir: str | Path | None = None,
         pre_run: str | list[str] | None = None,
         post_run: str | list[str] | None = None,
-        environment=None,
+        environment: dict | None = None,
     ) -> str:
-        """ """
+        """
+        Generate the full submission script.
+
+        Parameters
+        ----------
+        commands
+            The main commands to execute in the job.
+        options
+            Scheduler options.
+        work_dir
+            Working directory for the job.
+        pre_run
+            Commands to run before the main commands.
+        post_run
+            Commands to run after the main commands.
+        environment
+            Configuration for the execution environment (modules, conda, env vars).
+
+        Returns
+        -------
+        str
+            The generated submission script content.
+        """
         commands_list = []
         if environment_setup := self.get_environment_setup(environment):
             commands_list.append(environment_setup)
@@ -70,7 +98,20 @@ class QueueManager(QTKObject):
             commands_list.append(post_run)
         return self.scheduler_io.get_submission_script(commands_list, options)
 
-    def get_environment_setup(self, env_config) -> str:
+    def get_environment_setup(self, env_config: dict | None) -> str | None:
+        """
+        Generate bash commands to set up the execution environment.
+
+        Parameters
+        ----------
+        env_config
+            Environment configuration dictionary.
+
+        Returns
+        -------
+        str or None
+            The environment setup commands, or None if no config provided.
+        """
         if env_config:
             env_setup = []
             if "modules" in env_config:
@@ -98,32 +139,111 @@ class QueueManager(QTKObject):
         return None
 
     def get_change_dir(self, dir_path: str | Path | None) -> str:
+        """
+        Generate the command to change to the working directory.
+
+        Parameters
+        ----------
+        dir_path
+            The directory path.
+
+        Returns
+        -------
+        str
+            The 'cd' command string.
+        """
         if dir_path:
             return f"cd {dir_path}"
         return ""
 
-    def get_pre_run(self, pre_run) -> str:
+    def get_pre_run(self, pre_run: str | list[str] | None) -> str | None:
+        """
+        Process the pre-run commands.
+
+        Parameters
+        ----------
+        pre_run
+            The pre-run commands.
+
+        Returns
+        -------
+        str or None
+            The processed pre-run commands string.
+        """
+        if isinstance(pre_run, list):
+            return "\n".join(pre_run)
         return pre_run
 
-    def get_run_commands(self, commands) -> str:
+    def get_run_commands(self, commands: str | list[str] | None) -> str | None:
+        """
+        Process the main run commands.
+
+        Parameters
+        ----------
+        commands
+            The main commands.
+
+        Returns
+        -------
+        str or None
+            The processed run commands string.
+        """
         if isinstance(commands, str):
             return commands
         if isinstance(commands, list):
             return "\n".join(commands)
         raise ValueError("commands should be a str or a list of str.")
 
-    def get_post_run(self, post_run) -> str:
+    def get_post_run(self, post_run: str | list[str] | None) -> str | None:
+        """
+        Process the post-run commands.
+
+        Parameters
+        ----------
+        post_run
+            The post-run commands.
+
+        Returns
+        -------
+        str or None
+            The processed post-run commands string.
+        """
+        if isinstance(post_run, list):
+            return "\n".join(post_run)
         return post_run
 
     def submit(
         self,
         commands: str | list[str] | None,
-        options=None,
-        work_dir=None,
-        environment=None,
-        script_fname="submit.script",
-        create_submit_dir=False,
+        options: dict | QResources | None = None,
+        work_dir: str | Path | None = None,
+        environment: dict | None = None,
+        script_fname: str = "submit.script",
+        create_submit_dir: bool = False,
     ) -> SubmissionResult:
+        """
+        Submit a job to the queue.
+
+        Parameters
+        ----------
+        commands
+            The commands to run in the job.
+        options
+            Scheduler options.
+        work_dir
+            Working directory for the job.
+        environment
+            Environment setup configuration.
+        script_fname
+            Filename for the submission script.
+        create_submit_dir
+            Whether to create the working directory if it doesn't exist.
+
+        Returns
+        -------
+        SubmissionResult
+            The result of the submission.
+        """
         script_str = self.get_submission_script(
             commands=commands,
             options=options,
@@ -148,6 +268,19 @@ class QueueManager(QTKObject):
         )
 
     def cancel(self, job: QJob | int | str) -> CancelResult:
+        """
+        Cancel a job from the queue.
+
+        Parameters
+        ----------
+        job
+            The job to cancel.
+
+        Returns
+        -------
+        CancelResult
+            The result of the cancellation.
+        """
         cancel_cmd = self.scheduler_io.get_cancel_cmd(job)
         stdout, stderr, returncode = self.execute_cmd(cancel_cmd)
         return self.scheduler_io.parse_cancel_output(
@@ -159,7 +292,7 @@ class QueueManager(QTKObject):
 
         Parameters
         ----------
-        job: QJob or int or str
+        job
             Identifier of the job to get.
 
         Returns
@@ -183,6 +316,21 @@ class QueueManager(QTKObject):
     def get_jobs_list(
         self, jobs: list[QJob | int | str] | None = None, user: str | None = None
     ) -> list[QJob]:
+        """
+        Get a list of jobs from the queue.
+
+        Parameters
+        ----------
+        jobs
+            List of job identifiers to retrieve.
+        user
+            Filter jobs by username.
+
+        Returns
+        -------
+        list of QJob
+            The list of retrieved jobs.
+        """
         job_cmd = self.scheduler_io.get_jobs_list_cmd(jobs, user)
         job_ids_str = self.scheduler_io.generate_ids_list(jobs)
         stdout, stderr, returncode = self.execute_cmd(job_cmd)
