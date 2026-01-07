@@ -147,36 +147,8 @@ _STATUS_MAPPING = {
 
 
 class SlurmIO(BaseSchedulerIO):
-    header_template: str = """
-#SBATCH --partition=$${partition}
-#SBATCH --job-name=$${job_name}
-#SBATCH --nodes=$${nodes}
-#SBATCH --ntasks=$${ntasks}
-#SBATCH --ntasks-per-node=$${ntasks_per_node}
-#SBATCH --cpus-per-task=$${cpus_per_task}
-#SBATCH --mem=$${mem}
-#SBATCH --mem-per-cpu=$${mem_per_cpu}
-#SBATCH --hint=$${hint}
-#SBATCH --time=$${time}
-#SBATCH	--exclude=$${exclude_nodes}
-#SBATCH --account=$${account}
-#SBATCH --mail-user=$${mail_user}
-#SBATCH --mail-type=$${mail_type}
-#SBATCH --constraint=$${constraint}
-#SBATCH --gres=$${gres}
-#SBATCH --requeue=$${requeue}
-#SBATCH --nodelist=$${nodelist}
-#SBATCH --propagate=$${propagate}
-#SBATCH --licenses=$${licenses}
-#SBATCH --output=$${qout_path}
-#SBATCH --error=$${qerr_path}
-#SBATCH --qos=$${qos}
-#SBATCH --priority=$${priority}
-#SBATCH --array=$${array}
-#SBATCH --exclusive=$${exclusive}
-#SBATCH --gpus=$${gpus}
-#SBATCH --gpus-per-node=$${gpus_per_node}
-$${qverbatim}"""
+    header_template: str
+    header_template_file: str = "slurm"
 
     SUBMIT_CMD: str | None = "sbatch"
     CANCEL_CMD: str | None = (

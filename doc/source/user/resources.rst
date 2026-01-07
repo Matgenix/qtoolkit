@@ -154,3 +154,36 @@ will be added to the header as is, allowing to pass any scheduler-specific optio
         "qverbatim": "#SBATCH --tmp=10G\n#SBATCH --nice=100"
     }
     script = slurm_io.get_submission_script(commands="echo 'Hello'", options=options)
+
+Scheduler Templates
+===================
+
+Below are the default header templates for each supported scheduler. You can use any of the placeholders shown (e.g., ``partition``, ``job_name``) as keys in your ``options`` dictionary.
+
+.. dropdown:: Slurm Template
+    :color: primary
+    :icon: eye
+
+    .. literalinclude:: ../../../src/qtoolkit/io/templates/slurm
+       :language: bash
+
+.. dropdown:: PBS Template
+    :color: primary
+    :icon: eye
+
+    .. literalinclude:: ../../../src/qtoolkit/io/templates/pbs
+       :language: bash
+
+.. dropdown:: SGE Template
+    :color: primary
+    :icon: eye
+
+    .. literalinclude:: ../../../src/qtoolkit/io/templates/sge
+       :language: bash
+
+.. dropdown:: Shell Template
+    :color: primary
+    :icon: eye
+
+    .. literalinclude:: ../../../src/qtoolkit/io/templates/shell
+       :language: bash

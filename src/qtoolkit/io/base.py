@@ -5,15 +5,15 @@ import difflib
 import re
 import shlex
 from dataclasses import fields
+from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING
 
 from qtoolkit.core.base import QTKObject
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
 from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
 
-if TYPE_CHECKING:
-    from pathlib import Path
+MODULE_DIR = Path(__file__).absolute().parent
+TEMPLATE_DIR = Path(f"{MODULE_DIR}/templates")
 
 
 class QTemplate(Template):
@@ -46,6 +46,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     """Base class for job queues."""
 
     header_template: str
+    header_template_file: str | None = None
 
     SUBMIT_CMD: str | None
     CANCEL_CMD: str | None
@@ -56,6 +57,12 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
 
     job_id_regex: str | None = None
     check_job_ids: bool = True
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if cls.header_template_file:
+            with open(TEMPLATE_DIR / cls.header_template_file) as f:
+                cls.header_template = f.read()
 
     def get_submission_script(
         self,

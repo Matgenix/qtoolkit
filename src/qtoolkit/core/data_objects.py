@@ -225,9 +225,9 @@ class QResources(QTKObject):
 
         Parameters
         ----------
-        processes : int
+        processes
             Number of processes.
-        **kwargs :
+        kwargs
             Additional resource attributes.
 
         Returns
@@ -252,11 +252,11 @@ class QResources(QTKObject):
 
         Parameters
         ----------
-        nodes : int
+        nodes
             Number of nodes.
-        processes_per_node : int
+        processes_per_node
             Number of processes per node.
-        **kwargs :
+        kwargs
             Additional resource attributes.
 
         Returns
@@ -277,9 +277,9 @@ class QResources(QTKObject):
 
         Parameters
         ----------
-        processes : int
+        processes
             Number of processes (one per node).
-        **kwargs :
+        kwargs
             Additional resource attributes.
 
         Returns
@@ -300,9 +300,9 @@ class QResources(QTKObject):
 
         Parameters
         ----------
-        processes : int
+        processes
             Number of processes on the same node.
-        **kwargs :
+        kwargs
             Additional resource attributes.
 
         Returns
@@ -377,7 +377,7 @@ class QResources(QTKObject):
 
 @dataclass
 class QJobInfo(QTKObject):
-    """Resource utilization and limits for a job."""
+    """Resource utilization for a job."""
 
     memory: int | None = None
     """Job memory in Kb."""
