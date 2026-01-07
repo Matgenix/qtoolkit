@@ -33,7 +33,7 @@ dev = ["pre-commit>=3.0.0"]
 tests = [
     "pytest-cov >= 6,< 8",
     "pytest-mock ~= 3.14",
-    "pytest ~= 8.0",
+    "pytest >= 8,< 10",
     "ruamel.yaml >= 0.17",
     "python-on-whales ~=0.75",
 ]
