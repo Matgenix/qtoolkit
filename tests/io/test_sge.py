@@ -233,7 +233,6 @@ class TestSGEIO:
         assert (
             script_qresources.split("\n")
             == """#!/bin/bash
-
 #$ -q test_queue
 #$ -N test_job
 #$ -l select=1:ncpus=1:mpiprocs=1:mem=1000mb
@@ -245,6 +244,7 @@ class TestSGEIO:
 #$ -o test_output_filepath
 #$ -e test_error_filepath
 #$ -p 1
+
 ls -l""".split("\n")
         )
 

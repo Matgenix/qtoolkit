@@ -1,4 +1,3 @@
-
 #$ -cwd $${cwd}
 #$ -q $${queue}
 #$ -N $${job_name}

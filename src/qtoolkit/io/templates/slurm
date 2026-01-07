@@ -1,4 +1,3 @@
-
 #SBATCH --partition=$${partition}
 #SBATCH --job-name=$${job_name}
 #SBATCH --nodes=$${nodes}

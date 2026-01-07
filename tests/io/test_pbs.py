@@ -311,7 +311,6 @@ class TestPBSIO:
         assert (
             script_qresources.split("\n")
             == """#!/bin/bash
-
 #PBS -q test_queue
 #PBS -N test_job
 #PBS -l select=1:ncpus=1:mpiprocs=1
@@ -322,6 +321,7 @@ class TestPBSIO:
 #PBS -o test_output_filepath
 #PBS -e test_error_filepath
 #PBS -p 1
+
 ls -l""".split("\n")
         )
 

@@ -1,4 +1,3 @@
-
 #PBS -q $${queue}
 #PBS -N $${job_name}
 #PBS -A $${account}
