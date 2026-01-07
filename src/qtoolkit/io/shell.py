@@ -57,13 +57,8 @@ _STATUS_MAPPING = {
 
 
 class ShellIO(BaseSchedulerIO):
-    header_template: str = """
-exec > $${qout_path}
-exec 2> $${qerr_path}
-
-echo $${job_name}
-$${qverbatim}
-"""
+    header_template: str
+    header_template_file: str = "shell"
 
     CANCEL_CMD: str | None = "kill -9"
 

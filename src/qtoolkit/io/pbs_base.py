@@ -22,6 +22,7 @@ class PBSIOBase(BaseSchedulerIO, ABC):
     """Abstract class for PBS and SGE schedulers."""
 
     header_template: str
+    header_template_file: str | None = None
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"

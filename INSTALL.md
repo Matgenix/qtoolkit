@@ -6,6 +6,24 @@ QToolKit is available on [PyPI](https://pypi.org/project/qtoolkit) and can be in
 pip install qtoolkit
 ```
 
+## Remote tools installation
+
+To be able to use the `QueueManager` object on a remote cluster, QToolKit needs
+to be installed with the `remote` extra:
+
+```shell
+pip install qtoolkit[remote]
+```
+
+## MSONable installation
+
+If the objects need to be JSON serializable (MSONable), QToolKit needs to be installed with the `msonable` extra:
+
+```shell
+pip install qtoolkit[msonable]
+```
+
+
 ## Development installation
 
 Clone this repository and then install with `pip` in the virtual environment of your choice.

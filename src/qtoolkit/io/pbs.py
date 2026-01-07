@@ -69,23 +69,8 @@ _STATUS_MAPPING = {
 
 
 class PBSIO(PBSIOBase):
-    header_template: str = """
-#PBS -q $${queue}
-#PBS -N $${job_name}
-#PBS -A $${account}
-#PBS -l $${select}
-#PBS -l walltime=$${walltime}
-#PBS -l model=$${model}
-#PBS -l place=$${place}
-#PBS -W group_list=$${group_list}
-#PBS -M $${mail_user}
-#PBS -m $${mail_type}
-#PBS -o $${qout_path}
-#PBS -e $${qerr_path}
-#PBS -p $${priority}
-#PBS -r $${rerunnable}
-#PBS -J $${array}
-$${qverbatim}"""
+    header_template: str
+    header_template_file: str = "pbs"
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"

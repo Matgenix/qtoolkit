@@ -104,25 +104,8 @@ _STATUS_MAPPING = {
 
 
 class SGEIO(PBSIOBase):
-    header_template: str = """
-#$ -cwd $${cwd}
-#$ -q $${queue}
-#$ -N $${job_name}
-#$ -P $${device}
-#$ -l $${select}
-#$ -l h_rt=$${walltime}
-#$ -l s_rt=$${soft_walltime}
-#$ -pe $${model}
-#$ -binding $${place}
-#$ -W group_list=$${group_list}
-#$ -M $${mail_user}
-#$ -m $${mail_type}
-#$ -o $${qout_path}
-#$ -e $${qerr_path}
-#$ -p $${priority}
-#$ -r $${rerunnable}
-#$ -t $${array}
-$${qverbatim}"""
+    header_template: str
+    header_template_file: str = "sge"
 
     SUBMIT_CMD: str | None = "qsub"
     CANCEL_CMD: str | None = "qdel"

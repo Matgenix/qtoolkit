@@ -1,0 +1,6 @@
+
+exec > $${qout_path}
+exec 2> $${qerr_path}
+
+echo $${job_name}
+$${qverbatim}
