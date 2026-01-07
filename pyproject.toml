@@ -59,6 +59,7 @@ changelog = "https://matgenix.github.io/qtoolkit/changelog"
 
 [tool.setuptools.package-data]
 qtoolkit = ["py.typed"]
+"qtoolkit.io.templates" = ["*"]
 
 [build-system]
 requires = ["setuptools >= 42", "versioningit  ~=  1.0", "wheel"]
