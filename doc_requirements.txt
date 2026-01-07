@@ -1,6 +1,6 @@
 # doxygen required, use apt-get or dnf
 sphinx>=4.5.0
-numpydoc==1.4
+numpydoc==1.10.0
 pydata-sphinx-theme==0.16.1
 sphinx-design
 sphinx-apidoc
