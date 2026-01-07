@@ -112,7 +112,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.config.os == 'ubuntu-latest' && matrix.config.python == '3.13' && matrix.config.resolution == 'highest'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: matgenix/qtoolkit
