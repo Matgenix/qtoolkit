@@ -62,7 +62,7 @@ qtoolkit = ["py.typed"]
 "qtoolkit.io.templates" = ["*"]
 
 [build-system]
-requires = ["setuptools >= 42", "versioningit  ~=  1.0", "wheel"]
+requires = ["setuptools >= 42", "versioningit  >= 1,< 4", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.versioningit.vcs]
