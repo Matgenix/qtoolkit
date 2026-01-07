@@ -1,4 +1,3 @@
-
 exec > $${qout_path}
 exec 2> $${qerr_path}
 
