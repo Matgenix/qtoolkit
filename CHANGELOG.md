@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.1.7](https://github.com/Matgenix/qtoolkit/tree/v0.1.7) (2026-01-07)
+
+[Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.6...v0.1.7)
+
+**Closed issues:**
+
+- qverbatim flag not being written out [\#56](https://github.com/Matgenix/qtoolkit/issues/56)
+- gpus not part of slurm template [\#54](https://github.com/Matgenix/qtoolkit/issues/54)
+
+**Merged pull requests:**
+
+- Bump codecov/codecov-action from 3 to 5 [\#69](https://github.com/Matgenix/qtoolkit/pull/69) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/checkout from 3 to 6 [\#68](https://github.com/Matgenix/qtoolkit/pull/68) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump actions/setup-python from 4 to 6 [\#67](https://github.com/Matgenix/qtoolkit/pull/67) ([dependabot[bot]](https://github.com/apps/dependabot))
+- update release workflow [\#62](https://github.com/Matgenix/qtoolkit/pull/62) ([gpetretto](https://github.com/gpetretto))
+- Documentation and docstrings [\#61](https://github.com/Matgenix/qtoolkit/pull/61) ([gpetretto](https://github.com/gpetretto))
+- Fixing maxchars for macos + update of github workflow [\#60](https://github.com/Matgenix/qtoolkit/pull/60) ([davidwaroquiers](https://github.com/davidwaroquiers))
+- Option to run integration tests on selected containers [\#58](https://github.com/Matgenix/qtoolkit/pull/58) ([gpetretto](https://github.com/gpetretto))
+- Raise if qstat command fails in PBS [\#57](https://github.com/Matgenix/qtoolkit/pull/57) ([gpetretto](https://github.com/gpetretto))
+- Integration tests + various fixes [\#55](https://github.com/Matgenix/qtoolkit/pull/55) ([davidwaroquiers](https://github.com/davidwaroquiers))
+
 ## [v0.1.6](https://github.com/Matgenix/qtoolkit/tree/v0.1.6) (2025-01-20)
 
 [Full Changelog](https://github.com/Matgenix/qtoolkit/compare/v0.1.5...v0.1.6)
