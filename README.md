@@ -13,10 +13,11 @@
 
 </div>
 
-**[Full Documentation][docs]**
+QToolKit is a Python package that provides a clean, programmatic interface for interacting with common queue managers on high-performance computing (HPC) systems, such as Slurm, PBS, and SGE. It is designed to help third-party software submit, monitor, and manage jobs without being tightly coupled to a specific scheduler or execution environment.
 
-> [!WARNING]
-> 🚧 This repository is still under construction. 🚧
+## Documentation
+
+Full documentation, including a quickstart guide, core concepts, and advanced usage, is available **[here][docs]**:
 
 ## Need help?
 
