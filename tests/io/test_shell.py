@@ -245,6 +245,37 @@ class TestShellIO:
         assert "exec 2> /some/file" in header
         assert "NAME" in header
 
+    @pytest.mark.parametrize(
+        "job_name",
+        [
+            "static_1/12_(fm)",
+            "with space",
+            "it's",
+            'dq"uote',
+            "a;b&c|d",
+            "$HOME `id` $(id)",
+            "back\\slash\\n",
+            "-n",
+            "*",
+        ],
+    )
+    @pytest.mark.parametrize("shell", ["bash", "sh", "zsh", "dash"])
+    def test_job_name_sanitized(self, shell_io, tmp_path, shell, job_name):
+        import shutil
+        import subprocess
+
+        if shutil.which(shell) is None:
+            pytest.skip(f"{shell} not available")
+
+        script = shell_io.get_submission_script(
+            ["true"],
+            {"job_name": job_name, "qout_path": "out", "qerr_path": "err"},
+        )
+        (tmp_path / "script.sh").write_text(script)
+        subprocess.run([shell, "script.sh"], cwd=tmp_path, check=True)  # noqa: S603
+        assert (tmp_path / "err").read_text() == ""
+        assert (tmp_path / "out").read_text() == job_name + "\n"
+
     def test_parse_job_output(self, shell_io):
         job = shell_io.parse_job_output(
             exit_code=0,
