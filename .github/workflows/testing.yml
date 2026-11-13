@@ -52,9 +52,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - { os: macos-latest, python: "3.10", resolution: lowest-direct }
-          - { os: ubuntu-latest, python: "3.10", resolution: lowest-direct }
-          - { os: ubuntu-latest, python: "3.10", resolution: highest }
+          - { os: macos-latest, python: "3.11", resolution: lowest-direct }
+          - { os: ubuntu-latest, python: "3.11", resolution: lowest-direct }
           - { os: ubuntu-latest, python: "3.11", resolution: highest }
           - { os: ubuntu-latest, python: "3.12", resolution: highest }
           - { os: ubuntu-latest, python: "3.13", resolution: highest }

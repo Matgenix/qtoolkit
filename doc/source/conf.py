@@ -209,3 +209,9 @@ todo_include_todos = True
 
 # To print the content of the docstring of the __init__ method as well.
 autoclass_content = "both"
+
+# -- Options for sphinx-design extension -------------------------------------
+
+# Disable the deprecated '^^^'/'+++' card header/footer separators; cards use the
+# 'card-header'/'card-footer' directives instead.
+sd_card_legacy_separators = False
