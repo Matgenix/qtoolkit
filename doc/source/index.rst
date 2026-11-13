@@ -24,77 +24,81 @@ QToolKit is an interface to Distributed Resource Management (DRM) systems, e.g. 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/getting_started.svg
 
-        Getting Started
-        ^^^^^^^^^^^^^^^
+        .. card-header::
+
+            Getting Started
 
         If you want to get started quickly, check out our quickstart section.
         It contains an introduction to QToolKit's main concepts.
 
-        +++
+        .. card-footer::
 
-        .. button-ref:: user/quickstart
-            :expand:
-            :color: secondary
-            :click-parent:
+            .. button-ref:: user/quickstart
+                :expand:
+                :color: secondary
+                :click-parent:
 
-            Quickstart
+                Quickstart
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/user_guide.svg
 
-        User Guide
-        ^^^^^^^^^^
+        .. card-header::
+
+            User Guide
 
         The user guide provides in-depth information on the
         key concepts of QToolKit with useful background information and explanation.
 
-        +++
+        .. card-footer::
 
-        .. button-ref:: user_guide
-            :expand:
-            :color: secondary
-            :click-parent:
+            .. button-ref:: user_guide
+                :expand:
+                :color: secondary
+                :click-parent:
 
-            User Guide
+                User Guide
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/api.svg
 
-        API Reference
-        ^^^^^^^^^^^^^
+        .. card-header::
+
+            API Reference
 
         The reference guide contains a detailed description of the functions,
         modules, and objects included in QToolKit. The reference describes how the
         methods work and which parameters can be used. It assumes that you have an
         understanding of the key concepts.
 
-        +++
+        .. card-footer::
 
-        .. button-ref:: api
-            :expand:
-            :color: secondary
-            :click-parent:
+            .. button-ref:: api
+                :expand:
+                :color: secondary
+                :click-parent:
 
-            API Reference
+                API Reference
 
     .. grid-item-card::
         :img-top: ../source/_static/index-images/contributor.svg
 
-        Contributor's Guide
-        ^^^^^^^^^^^^^^^^^^^
+        .. card-header::
+
+            Contributor's Guide
 
         Want to add to the codebase? Can help add support to an additional DRM system?
         The contributing guidelines will guide you through the
         process of improving QToolKit.
 
-        +++
+        .. card-footer::
 
-        .. button-ref:: devindex
-            :expand:
-            :color: secondary
-            :click-parent:
+            .. button-ref:: devindex
+                :expand:
+                :color: secondary
+                :click-parent:
 
-            To the contributor's guide
+                To the contributor's guide
 
 .. This is not really the index page, that is found in
    _templates/indexcontent.html The toctree content here will be added to the
