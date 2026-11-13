@@ -109,9 +109,6 @@ html_theme_options = {
         "alt_text": "QToolKit",
     },
     "collapse_navigation": True,
-    "announcement": (
-        "<p>QToolKit is still in beta phase. The API may change at any time.</p>"
-    ),
     # "navbar_end": ["theme-switcher", "navbar-icon-links"],
     # "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],
 }
