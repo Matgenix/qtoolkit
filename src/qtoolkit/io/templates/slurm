@@ -26,4 +26,5 @@
 #SBATCH --exclusive=$${exclusive}
 #SBATCH --gpus=$${gpus}
 #SBATCH --gpus-per-node=$${gpus_per_node}
+#SBATCH --reservation=$${reservation}
 $${qverbatim}
