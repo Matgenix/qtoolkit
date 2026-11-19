@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 from typing import TYPE_CHECKING, ClassVar
 
 from qtoolkit.core.data_objects import (
@@ -331,6 +332,30 @@ class ShellIO(BaseSchedulerIO):
         does not pass an unsupported value, expecting to have an effect.
         """
         return list(self._qresources_mapping)
+
+    def sanitize_options(self, options: dict) -> dict:
+        """
+        Sanitize the values in the options used to generate the header.
+
+        The job name is only echoed by the script, so it is not restricted to a
+        set of allowed characters, but shell-quoted to be interpreted as a
+        single literal word. ``shlex.quote`` uses single quotes, which behave
+        the same in all POSIX-like shells (bash, zsh, dash, ...).
+
+        Parameters
+        ----------
+        options
+            Dictionary of options to sanitize.
+
+        Returns
+        -------
+        dict
+            Sanitized options.
+        """
+        if "job_name" in options:
+            options = dict(options)
+            options["job_name"] = shlex.quote(str(options["job_name"]))
+        return options
 
     @staticmethod
     def _convert_str_to_time(time_str: str | None) -> int | None:
