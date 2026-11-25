@@ -14,6 +14,7 @@ from qtoolkit.core.data_objects import (
 )
 from qtoolkit.core.exceptions import APIError
 from qtoolkit.io.api import AWSBatchIO, AWSBatchState, api_scheduler_mapping
+from qtoolkit.io.api.aws_batch import sanitize_job_name
 
 try:
     import monty
@@ -160,6 +161,25 @@ class TestAWSBatchIO:
             "batch", endpoint_url="http://localhost:4566"
         )
 
+    def test_client_creation_error_raises_api_error(self, monkeypatch, tmp_path):
+        pytest.importorskip("boto3")
+        monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "config"))
+        monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "creds"))
+        io = AWSBatchIO(job_queue="q", job_definition="d", profile_name="missing")
+        with pytest.raises(APIError, match="Failed to create the AWS Batch client"):
+            io.submit("echo hi")
+
+    def test_sanitize_job_name(self):
+        assert sanitize_job_name("Force field static 1/2") == "Force_field_static_1_2"
+        assert sanitize_job_name("_hidden") == "job__hidden"
+        assert len(sanitize_job_name("a" * 200)) == 128
+
+        io = AWSBatchIO(job_queue="q", job_definition="d")
+        io._client = MagicMock()
+        io._client.submit_job.return_value = {"jobId": "x"}
+        io.submit("echo hi", options={"jobName": "relax 1/2"})
+        assert io._client.submit_job.call_args.kwargs["jobName"] == "relax_1_2"
+
     def test_missing_boto3_raises_helpful_error(self, monkeypatch):
         io = AWSBatchIO(job_queue="q", job_definition="d")
         real_import = builtins.__import__
@@ -229,12 +249,15 @@ class TestAWSBatchIO:
         assert job.state == QState.DONE
         assert job.sub_state == AWSBatchState.SUCCEEDED
         assert job.info is not None
+        # moto ignores the resourceRequirements overrides and reports the job
+        # definition values (2 vCPUs, 2048 MiB). The override payload itself is
+        # checked in test_convert_resources_and_merge.
         assert job.info.cpus == 2
         assert job.info.memory == 2048 * 1024
         assert job.info.time_limit == 1800
 
         raw = batch.describe_jobs(jobs=[sub.job_id])["jobs"][0]
-        assert raw["container"]["command"] == ["/bin/sh", "-c", "echo hello"]
+        assert raw["container"]["command"] == ["/bin/bash", "-c", "echo hello"]
         assert {"name": "OMP_NUM_THREADS", "value": "4"} in raw["container"][
             "environment"
         ]
@@ -380,7 +403,7 @@ class TestAWSBatchIO:
         assert sent["jobDefinition"] == "d"
         assert sent["jobName"] == "qtoolkit-job"
         assert sent["containerOverrides"]["command"] == [
-            "/bin/sh",
+            "/bin/bash",
             "-c",
             "echo step1\necho step2",
         ]

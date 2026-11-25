@@ -23,6 +23,9 @@ class BaseAPISchedulerIO(_BaseScheduler):
     Read methods (:meth:`get_job`, :meth:`get_jobs_list`) raise
     :class:`~qtoolkit.core.exceptions.APIError` on backend failures, while
     :meth:`submit` and :meth:`cancel` return ``FAILED`` result objects.
+    All four methods raise :class:`~qtoolkit.core.exceptions.APIError` if
+    creating the API client fails with a backend error (for example, an
+    unknown credentials profile or no configured region).
     """
 
     supported_resources_cls: tuple[type, ...] = (QCloudResources, QResources)

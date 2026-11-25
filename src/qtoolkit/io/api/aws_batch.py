@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, ClassVar, cast
 
@@ -66,6 +67,21 @@ _MERGEABLE_OVERRIDE_LISTS = (
 )
 
 
+def sanitize_job_name(name: str) -> str:
+    """Make ``name`` a valid AWS Batch job name.
+
+    AWS Batch job names have at most 128 characters, start with a letter or a
+    digit, and contain only letters, digits, hyphens, and underscores.
+    Leading and trailing spaces are removed and other characters are replaced
+    with ``_``. A name that does not start with a letter or a digit gets the
+    prefix ``job_``.
+    """
+    name = re.sub(r"[^A-Za-z0-9_-]", "_", name.strip())
+    if not name[:1].isalnum():
+        name = f"job_{name}"
+    return name[:128]
+
+
 def _normalize_queue_name(queue: str | None) -> str | None:
     if isinstance(queue, str) and "job-queue/" in queue:
         return queue.rsplit("job-queue/", 1)[-1]
@@ -111,11 +127,14 @@ class AWSBatchIO(BaseAPISchedulerIO):
     endpoint_url
         Optional custom endpoint URL (e.g. for local testing or VPC endpoints).
     default_job_name
-        Job name used when none is provided in ``options``.
+        Job name used when none is provided in ``options``. Every job name is
+        passed through :func:`sanitize_job_name` before submission.
     shell_cmd
         Shell executable used to wrap ``str`` or ``list[str]`` commands as
-        ``[shell_cmd, "-c", script]`` (default ``"/bin/sh"``). Set to ``None``
-        to pass ``commands: list[str]`` directly as container ``argv``.
+        ``[shell_cmd, "-c", script]`` (default ``"/bin/bash"``, the same shell
+        as qtoolkit's HPC submission scripts). The container image must
+        provide it. Set to ``None`` to pass ``commands: list[str]`` directly
+        as container ``argv``.
     """
 
     job_id_regex: str | None = (
@@ -145,7 +164,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
         profile_name: str | None = None,
         endpoint_url: str | None = None,
         default_job_name: str = "qtoolkit-job",
-        shell_cmd: str | None = "/bin/sh",
+        shell_cmd: str | None = "/bin/bash",
     ) -> None:
         self.job_queue = job_queue
         self.job_definition = job_definition
@@ -158,7 +177,14 @@ class AWSBatchIO(BaseAPISchedulerIO):
         self._boto_errors: tuple[type[Exception], ...] | None = None
 
     def _get_client_and_errors(self) -> tuple[Any, tuple[type[Exception], ...]]:
-        """Return the cached boto3 Batch client and botocore error classes."""
+        """Return the cached boto3 Batch client and botocore error classes.
+
+        Raises
+        ------
+        APIError
+            If the client cannot be created, for example when no AWS region is
+            configured or the credentials profile does not exist.
+        """
         if self._boto_errors is None or self._client is None:
             try:
                 import boto3
@@ -172,17 +198,24 @@ class AWSBatchIO(BaseAPISchedulerIO):
 
             self._boto_errors = (ClientError, BotoCoreError)
             if self._client is None:
-                session = boto3.Session(
-                    region_name=self.region_name,
-                    profile_name=self.profile_name,
-                )
-                self._client = session.client("batch", endpoint_url=self.endpoint_url)
+                try:
+                    session = boto3.Session(
+                        region_name=self.region_name,
+                        profile_name=self.profile_name,
+                    )
+                    self._client = session.client(
+                        "batch", endpoint_url=self.endpoint_url
+                    )
+                except self._boto_errors as exc:
+                    raise APIError(
+                        f"Failed to create the AWS Batch client: {exc}"
+                    ) from exc
         return self._client, self._boto_errors
 
     def format_command(self, commands: str | list[str]) -> list[str]:
         """Convert ``commands`` to an AWS Batch ``containerOverrides.command`` list.
 
-        When :attr:`shell_cmd` is set (default ``"/bin/sh"``), ``str`` or
+        When :attr:`shell_cmd` is set (default ``"/bin/bash"``), ``str`` or
         ``list[str]`` lines are joined with ``"\\n"`` (as in
         :meth:`~qtoolkit.io.base.BaseSchedulerIO.generate_run_commands`) and
         wrapped as ``[shell_cmd, "-c", script]``. When :attr:`shell_cmd` is
@@ -312,6 +345,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
             raise ValueError(
                 "A non-empty jobName must be provided either on AWSBatchIO or in options."
             )
+        payload["jobName"] = sanitize_job_name(payload["jobName"])
 
         for incompatible_key in _INCOMPATIBLE_OVERRIDE_KEYS:
             if payload.get(incompatible_key) is not None:
