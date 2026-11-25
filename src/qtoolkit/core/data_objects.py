@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import math
 from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING
 
@@ -373,6 +374,69 @@ class QResources(QTKObject):
                 processes = 1
 
         return [nodes, processes, processes_per_node]
+
+
+@dataclass
+class QCloudResources(QTKObject):
+    """Data defining resources for a cloud batch job."""
+
+    queue_name: str | None = None
+    """Name or identifier of the job queue or compute pool."""
+
+    job_name: str | None = None
+    """Name of the job."""
+
+    vcpus: float | None = None
+    """Number of vCPUs requested for the job."""
+
+    memory: int | None = None
+    """Total memory requested for the job in MiB."""
+
+    gpus: int | None = None
+    """Number of GPUs requested for the job."""
+
+    time_limit: int | None = None
+    """Time limit for the job in seconds."""
+
+    max_retries: int | None = None
+    """Maximum number of retries on failure (0 means no retries)."""
+
+    environment: dict[str, str] | None = None
+    """Environment variables passed to the job container."""
+
+    priority: int | None = None
+    """Scheduling priority of the job."""
+
+    image: str | None = None
+    """Container image to run the job in."""
+
+    scheduler_kwargs: dict | None = None
+    """Additional backend-specific keyword arguments."""
+
+    def __post_init__(self) -> None:
+        if self.vcpus is not None and (
+            isinstance(self.vcpus, bool)
+            or not isinstance(self.vcpus, (int, float))
+            or not math.isfinite(self.vcpus)
+            or self.vcpus <= 0
+        ):
+            raise ValueError("vcpus must be a positive finite number.")
+        for name, min_val in (
+            ("memory", 1),
+            ("gpus", 0),
+            ("time_limit", 1),
+            ("max_retries", 0),
+        ):
+            val = getattr(self, name)
+            if val is not None and (
+                isinstance(val, bool) or not isinstance(val, int) or val < min_val
+            ):
+                raise ValueError(f"{name} must be an integer >= {min_val}.")
+        if self.priority is not None and (
+            isinstance(self.priority, bool) or not isinstance(self.priority, int)
+        ):
+            raise ValueError("priority must be an integer.")
+        self.scheduler_kwargs = self.scheduler_kwargs or {}
 
 
 @dataclass

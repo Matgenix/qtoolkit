@@ -27,3 +27,9 @@ class InvalidJobIDError(QTKError):
     """
     Exception raised when a job ID does not match the expected format.
     """
+
+
+class APIError(QTKError):
+    """
+    Exception raised when a scheduler API request fails.
+    """

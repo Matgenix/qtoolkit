@@ -6,6 +6,7 @@ from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
     ProcessPlacement,
+    QCloudResources,
     QJob,
     QJobInfo,
     QResources,
@@ -679,3 +680,65 @@ class TestQJob:
             queue_name="mymain",
         )
         assert test_utils.is_msonable(qjob)
+
+
+class TestQCloudResources:
+    def test_defaults_and_validation(self):
+        empty = QCloudResources()
+        assert empty.vcpus is None
+        assert empty.memory is None
+        assert empty.scheduler_kwargs == {}
+
+        full = QCloudResources(
+            queue_name="gpu-queue",
+            job_name="mace-md",
+            vcpus=4.0,
+            memory=16384,
+            gpus=1,
+            time_limit=7200,
+            max_retries=2,
+            environment={"CUDA_VISIBLE_DEVICES": "0"},
+            priority=10,
+            image="ghcr.io/example/jobflow:latest",
+            scheduler_kwargs={"tags": {"team": "matgen"}},
+        )
+        assert full.gpus == 1
+        assert full.max_retries == 2
+        assert QCloudResources(max_retries=0).max_retries == 0
+
+        for bad_vcpus in (0, -1, float("nan"), float("inf"), True):
+            with pytest.raises(ValueError, match="vcpus"):
+                QCloudResources(vcpus=bad_vcpus)
+        for bad_mem in (0, -1, 1.5, True):
+            with pytest.raises(ValueError, match="memory"):
+                QCloudResources(memory=bad_mem)  # type: ignore[arg-type]
+        for bad_gpus in (-1, 0.5, True, False):
+            with pytest.raises(ValueError, match="gpus"):
+                QCloudResources(gpus=bad_gpus)  # type: ignore[arg-type]
+        for bad_time in (0, -5, 10.5, True):
+            with pytest.raises(ValueError, match="time_limit"):
+                QCloudResources(time_limit=bad_time)  # type: ignore[arg-type]
+        for bad_retries in (-1, 1.5, True, False):
+            with pytest.raises(ValueError, match="max_retries"):
+                QCloudResources(max_retries=bad_retries)  # type: ignore[arg-type]
+        for bad_prio in (1.5, True, False):
+            with pytest.raises(ValueError, match="priority"):
+                QCloudResources(priority=bad_prio)  # type: ignore[arg-type]
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        res = QCloudResources(
+            queue_name="gpu-queue",
+            job_name="mace-md",
+            vcpus=2.5,
+            memory=8192,
+            gpus=1,
+            time_limit=3600,
+            max_retries=2,
+            environment={"OMP_NUM_THREADS": "2"},
+            priority=5,
+            image="python:3.12",
+            scheduler_kwargs={"tags": {"a": "b"}},
+        )
+        assert test_utils.is_msonable(res)
+        assert test_utils.is_msonable(QCloudResources())
