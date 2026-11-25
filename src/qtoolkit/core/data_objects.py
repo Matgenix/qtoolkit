@@ -127,8 +127,17 @@ class ProcessPlacement(QTKEnum):
     EVENLY_DISTRIBUTED = "EVENLY_DISTRIBUTED"
 
 
+class BaseQResources(QTKObject):
+    """Base class for scheduler resource specifications."""
+
+    scheduler_kwargs: dict | None
+
+    def __post_init__(self) -> None:
+        self.scheduler_kwargs = self.scheduler_kwargs or {}
+
+
 @dataclass
-class QResources(QTKObject):
+class QResources(BaseQResources):
     """Data defining resources for a given job (submitted or to be submitted)."""
 
     queue_name: str | None = None
@@ -204,7 +213,7 @@ class QResources(QTKObject):
                     "Otherwise all the fields must be empty."
                 )
                 raise UnsupportedResourcesError(msg)
-        self.scheduler_kwargs = self.scheduler_kwargs or {}
+        super().__post_init__()
 
     def _check_no_values(
         self, excluded=("job_name", "output_filepath", "error_filepath")
@@ -377,7 +386,7 @@ class QResources(QTKObject):
 
 
 @dataclass
-class QCloudResources(QTKObject):
+class QCloudResources(BaseQResources):
     """Data defining resources for a cloud batch job."""
 
     queue_name: str | None = None
@@ -436,7 +445,9 @@ class QCloudResources(QTKObject):
             isinstance(self.priority, bool) or not isinstance(self.priority, int)
         ):
             raise ValueError("priority must be an integer.")
-        self.scheduler_kwargs = self.scheduler_kwargs or {}
+        if self.environment is not None and not isinstance(self.environment, dict):
+            raise TypeError("environment must be a dict.")
+        super().__post_init__()
 
 
 @dataclass

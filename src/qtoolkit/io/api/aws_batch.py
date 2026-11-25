@@ -1,27 +1,26 @@
 from __future__ import annotations
 
-import copy
 import time
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from qtoolkit.core.data_objects import (
+    BaseQResources,
     CancelResult,
     CancelStatus,
     QCloudResources,
     QJob,
     QJobInfo,
-    QResources,
     QState,
     QSubState,
     SubmissionResult,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import APIError, UnsupportedResourcesError
+from qtoolkit.core.exceptions import APIError
 from qtoolkit.io.api.base import BaseAPISchedulerIO
 
 
 class AWSBatchState(QSubState):
-    """Job states in AWS Batch mapped to standardized :class:`~qtoolkit.QState` values."""
+    """Job states in AWS Batch mapped to :class:`~qtoolkit.QState` values."""
 
     SUBMITTED = "SUBMITTED"
     PENDING = "PENDING"
@@ -61,6 +60,10 @@ _INCOMPATIBLE_OVERRIDE_KEYS = (
     "eksPropertiesOverride",
     "ecsPropertiesOverride",
 )
+_MERGEABLE_OVERRIDE_LISTS = (
+    ("resourceRequirements", "type"),
+    ("environment", "name"),
+)
 
 
 def _normalize_queue_name(queue: str | None) -> str | None:
@@ -72,31 +75,23 @@ def _normalize_queue_name(queue: str | None) -> str | None:
 def _merge_container_overrides(
     base: dict[str, Any], extra: dict[str, Any]
 ) -> dict[str, Any]:
-    """Merge AWS Batch ``containerOverrides`` dicts without clobbering list items."""
-    merged = copy.deepcopy(base)
+    """Merge ``containerOverrides`` dicts, merging ``resourceRequirements`` and ``environment`` by key."""
+    merged = dict(base)
+    merge_keys = dict(_MERGEABLE_OVERRIDE_LISTS)
     for key, value in extra.items():
-        if key == "resourceRequirements" and isinstance(value, list):
-            by_type = {
-                item["type"]: dict(item)
-                for item in merged.get("resourceRequirements", [])
-                if isinstance(item, dict) and "type" in item
+        id_field = merge_keys.get(key)
+        if id_field and isinstance(value, list):
+            by_id = {
+                item[id_field]: dict(item)
+                for item in merged.get(key, [])
+                if isinstance(item, dict) and id_field in item
             }
             for item in value:
-                if isinstance(item, dict) and "type" in item:
-                    by_type[item["type"]] = dict(item)
-            merged["resourceRequirements"] = list(by_type.values())
-        elif key == "environment" and isinstance(value, list):
-            by_name = {
-                item["name"]: dict(item)
-                for item in merged.get("environment", [])
-                if isinstance(item, dict) and "name" in item
-            }
-            for item in value:
-                if isinstance(item, dict) and "name" in item:
-                    by_name[item["name"]] = dict(item)
-            merged["environment"] = list(by_name.values())
+                if isinstance(item, dict) and id_field in item:
+                    by_id[item[id_field]] = dict(item)
+            merged[key] = list(by_id.values())
         else:
-            merged[key] = copy.deepcopy(value)
+            merged[key] = list(value) if isinstance(value, list) else value
     return merged
 
 
@@ -114,13 +109,13 @@ class AWSBatchIO(BaseAPISchedulerIO):
     profile_name
         AWS shared credentials profile name.
     endpoint_url
-        Optional custom endpoint URL (useful for local testing or VPC endpoints).
+        Optional custom endpoint URL (e.g. for local testing or VPC endpoints).
     default_job_name
         Job name used when none is provided in ``options``.
     shell_cmd
-        Shell executable used to run string or multi-line shell commands via
+        Shell executable used to wrap ``str`` or ``list[str]`` commands as
         ``[shell_cmd, "-c", script]`` (default ``"/bin/sh"``). Set to ``None``
-        to pass ``commands: list[str]`` directly as a container ``argv`` list.
+        to pass ``commands: list[str]`` directly as container ``argv``.
     """
 
     job_id_regex: str | None = (
@@ -128,6 +123,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
         r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}([:#]\d+)?$"
     )
     supported_resources_cls: tuple[type, ...] = (QCloudResources,)
+    # "image" is omitted because AWS Batch sets the container image on the jobDefinition.
     _supported_keys: ClassVar[list[str]] = [
         "queue_name",
         "job_name",
@@ -159,12 +155,14 @@ class AWSBatchIO(BaseAPISchedulerIO):
         self.default_job_name = default_job_name
         self.shell_cmd = shell_cmd
         self._client: Any = None
+        self._boto_errors: tuple[type[Exception], ...] | None = None
 
-    def _get_client(self) -> Any:
-        """Return a cached boto3 Batch client, importing boto3 lazily."""
-        if self._client is None:
+    def _get_client_and_errors(self) -> tuple[Any, tuple[type[Exception], ...]]:
+        """Return the cached boto3 Batch client and botocore error classes."""
+        if self._boto_errors is None or self._client is None:
             try:
                 import boto3
+                from botocore.exceptions import BotoCoreError, ClientError
             except ModuleNotFoundError as exc:
                 msg = (
                     "boto3 is required for AWSBatchIO. "
@@ -172,35 +170,24 @@ class AWSBatchIO(BaseAPISchedulerIO):
                 )
                 raise ImportError(msg) from exc
 
-            session = boto3.Session(
-                region_name=self.region_name,
-                profile_name=self.profile_name,
-            )
-            self._client = session.client("batch", endpoint_url=self.endpoint_url)
-        return self._client
-
-    @staticmethod
-    def _get_boto_errors() -> tuple[type[Exception], ...]:
-        """Return boto/botocore error classes (imported lazily after boto3 check)."""
-        try:
-            from botocore.exceptions import BotoCoreError, ClientError
-        except ModuleNotFoundError as exc:
-            msg = (
-                "boto3 is required for AWSBatchIO. "
-                "Install it with 'pip install qtoolkit[aws]'."
-            )
-            raise ImportError(msg) from exc
-        return (ClientError, BotoCoreError)
+            self._boto_errors = (ClientError, BotoCoreError)
+            if self._client is None:
+                session = boto3.Session(
+                    region_name=self.region_name,
+                    profile_name=self.profile_name,
+                )
+                self._client = session.client("batch", endpoint_url=self.endpoint_url)
+        return self._client, self._boto_errors
 
     def format_command(self, commands: str | list[str]) -> list[str]:
         """Convert ``commands`` to an AWS Batch ``containerOverrides.command`` list.
 
-        When :attr:`shell_cmd` is set (default ``"/bin/sh"``), both a ``str``
-        and a ``list[str]`` of shell lines are joined with ``"\\n"`` and wrapped
-        as ``[shell_cmd, "-c", script]``, matching
-        :meth:`~qtoolkit.io.base.BaseSchedulerIO.generate_run_commands`.
-        When :attr:`shell_cmd` is ``None``, ``commands`` must be a ``list[str]``
-        and is passed directly as container ``argv``.
+        When :attr:`shell_cmd` is set (default ``"/bin/sh"``), ``str`` or
+        ``list[str]`` lines are joined with ``"\\n"`` (as in
+        :meth:`~qtoolkit.io.base.BaseSchedulerIO.generate_run_commands`) and
+        wrapped as ``[shell_cmd, "-c", script]``. When :attr:`shell_cmd` is
+        ``None``, ``commands`` must be a ``list[str]`` and is passed directly
+        as container ``argv``.
         """
         if self.shell_cmd is None:
             if (
@@ -214,15 +201,12 @@ class AWSBatchIO(BaseAPISchedulerIO):
                 )
             return list(commands)
 
-        if isinstance(commands, str):
-            script = commands
-        elif isinstance(commands, list):
-            if not commands or any(not isinstance(c, str) for c in commands):
-                raise ValueError("commands must be a non-empty list of strings.")
-            script = "\n".join(commands)
-        else:
+        if not isinstance(commands, (str, list)) or (
+            isinstance(commands, list)
+            and (not commands or any(not isinstance(c, str) for c in commands))
+        ):
             raise TypeError("commands must be a str or a list of str.")
-
+        script = self.generate_run_commands(commands)
         if not script.strip():
             raise ValueError("commands must not be empty.")
         return [self.shell_cmd, "-c", script]
@@ -232,11 +216,8 @@ class AWSBatchIO(BaseAPISchedulerIO):
         """Attribute names of :class:`~qtoolkit.QCloudResources` supported by AWS Batch."""
         return list(self._supported_keys)
 
-    def _convert_resources(self, resources: QCloudResources | QResources) -> dict:
-        if not isinstance(resources, QCloudResources):
-            raise UnsupportedResourcesError(
-                f"AWSBatchIO only supports QCloudResources, got {type(resources).__name__}."
-            )
+    def _convert_resources(self, resources: BaseQResources) -> dict:
+        resources = cast("QCloudResources", resources)
 
         payload: dict[str, Any] = {}
         container_overrides: dict[str, Any] = {}
@@ -291,13 +272,12 @@ class AWSBatchIO(BaseAPISchedulerIO):
                 raise ValueError(
                     "AWS Batch schedulingPriorityOverride must be between 0 and 9999."
                 )
-            # Note: AWS Batch requires a fair-share scheduling policy on the
-            # job queue (and shareIdentifier in scheduler_kwargs) when using
-            # schedulingPriorityOverride.
+            # AWS Batch requires a fair-share scheduling policy on the job queue
+            # (and shareIdentifier in scheduler_kwargs) for schedulingPriorityOverride.
             payload["schedulingPriorityOverride"] = resources.priority
 
         if resources.scheduler_kwargs:
-            extra = copy.deepcopy(resources.scheduler_kwargs)
+            extra = dict(resources.scheduler_kwargs)
             if "containerOverrides" in extra:
                 extra_overrides = extra.pop("containerOverrides")
                 if extra_overrides is not None:
@@ -312,23 +292,23 @@ class AWSBatchIO(BaseAPISchedulerIO):
         return payload
 
     def _submit(self, commands: str | list[str], options: dict) -> SubmissionResult:
-        payload = copy.deepcopy(options)
-        if not payload.get("jobQueue"):
+        payload = dict(options)
+        if not str(payload.get("jobQueue") or "").strip():
             payload["jobQueue"] = self.job_queue
-        if not payload.get("jobDefinition"):
+        if not str(payload.get("jobDefinition") or "").strip():
             payload["jobDefinition"] = self.job_definition
-        if not payload.get("jobName"):
+        if not str(payload.get("jobName") or "").strip():
             payload["jobName"] = self.default_job_name
 
-        if not payload.get("jobQueue"):
+        if not str(payload.get("jobQueue") or "").strip():
             raise ValueError(
                 "A jobQueue must be provided either on AWSBatchIO or in options."
             )
-        if not payload.get("jobDefinition"):
+        if not str(payload.get("jobDefinition") or "").strip():
             raise ValueError(
                 "A jobDefinition must be provided either on AWSBatchIO or in options."
             )
-        if not payload.get("jobName"):
+        if not str(payload.get("jobName") or "").strip():
             raise ValueError(
                 "A non-empty jobName must be provided either on AWSBatchIO or in options."
             )
@@ -343,13 +323,14 @@ class AWSBatchIO(BaseAPISchedulerIO):
         container_overrides = payload.get("containerOverrides")
         if container_overrides is None:
             container_overrides = {}
-            payload["containerOverrides"] = container_overrides
-        elif not isinstance(container_overrides, dict):
+        elif isinstance(container_overrides, dict):
+            container_overrides = dict(container_overrides)
+        else:
             raise TypeError("containerOverrides must be a dict.")
         container_overrides["command"] = self.format_command(commands)
+        payload["containerOverrides"] = container_overrides
 
-        client = self._get_client()
-        boto_errors = self._get_boto_errors()
+        client, boto_errors = self._get_client_and_errors()
         try:
             response = client.submit_job(**payload)
         except boto_errors as exc:
@@ -368,12 +349,10 @@ class AWSBatchIO(BaseAPISchedulerIO):
         )
 
     def _cancel(self, job_id: str, reason: str | None = None) -> CancelResult:
-        client = self._get_client()
-        boto_errors = self._get_boto_errors()
+        client, boto_errors = self._get_client_and_errors()
         cancel_reason = reason or "Cancelled by qtoolkit"
         try:
-            # TerminateJob handles both queued (SUBMITTED/PENDING/RUNNABLE)
-            # and running (STARTING/RUNNING) jobs in AWS Batch.
+            # TerminateJob cancels queued jobs and terminates running jobs.
             client.terminate_job(jobId=job_id, reason=cancel_reason)
         except boto_errors as exc:
             return CancelResult(
@@ -384,18 +363,8 @@ class AWSBatchIO(BaseAPISchedulerIO):
         return CancelResult(job_id=job_id, status=CancelStatus("SUCCESSFUL"))
 
     def _get_job(self, job_id: str) -> QJob | None:
-        client = self._get_client()
-        boto_errors = self._get_boto_errors()
-        try:
-            response = client.describe_jobs(jobs=[job_id])
-        except boto_errors as exc:
-            raise APIError(
-                f"Failed to describe AWS Batch job '{job_id}': {exc}"
-            ) from exc
-        raw_jobs = response.get("jobs", [])
-        if not raw_jobs:
-            return None
-        return self._parse_job(raw_jobs[0])
+        jobs = self._describe_jobs_chunked([job_id])
+        return jobs[0] if jobs else None
 
     def _get_jobs_list(
         self,
@@ -422,9 +391,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
             aws_statuses = list(_ACTIVE_STATES)
 
         if job_ids is not None:
-            client = self._get_client()
-            boto_errors = self._get_boto_errors()
-            jobs = self._describe_jobs_chunked(client, job_ids, boto_errors)
+            jobs = self._describe_jobs_chunked(job_ids)
             if queue is not None:
                 norm_queue = _normalize_queue_name(queue)
                 jobs = [j for j in jobs if j.queue_name == norm_queue]
@@ -439,9 +406,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
                 "'queue' when 'jobs' is None."
             )
 
-        client = self._get_client()
-        boto_errors = self._get_boto_errors()
-
+        client, boto_errors = self._get_client_and_errors()
         collected_ids: list[str] = []
         seen_ids: set[str] = set()
         for aws_status in aws_statuses:
@@ -468,20 +433,12 @@ class AWSBatchIO(BaseAPISchedulerIO):
 
         if not collected_ids:
             return []
-        jobs = self._describe_jobs_chunked(client, collected_ids, boto_errors)
-        target_states = (
-            state_set
-            if state_set is not None
-            else {_STATUS_MAPPING[s] for s in aws_statuses}
-        )
+        jobs = self._describe_jobs_chunked(collected_ids)
+        target_states = state_set or {QState("QUEUED"), QState("RUNNING")}
         return [j for j in jobs if j.state in target_states]
 
-    def _describe_jobs_chunked(
-        self,
-        client: Any,
-        job_ids: list[str],
-        boto_errors: tuple[type[Exception], ...],
-    ) -> list[QJob]:
+    def _describe_jobs_chunked(self, job_ids: list[str]) -> list[QJob]:
+        client, boto_errors = self._get_client_and_errors()
         unique_ids = list(dict.fromkeys(job_ids))
         results: list[QJob] = []
         for idx in range(0, len(unique_ids), _DESCRIBE_JOBS_BATCH_SIZE):
@@ -519,7 +476,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
             elif state == QState.RUNNING:
                 runtime = max(0, int(time.time() - started_at / 1000))
 
-        # Extract resource utilization into QJobInfo (memory in KiB).
+        # Extract configured container resources into QJobInfo (memory in KiB).
         vcpus_val: float | None = None
         memory_mib: int | None = None
         for req in container.get("resourceRequirements") or []:
@@ -543,6 +500,7 @@ class AWSBatchIO(BaseAPISchedulerIO):
         if memory_mib is None and container.get("memory") is not None:
             memory_mib = int(container["memory"])
 
+        # QJobInfo.cpus is int-only, so fractional vCPUs (e.g. 0.5 on Fargate) map to None.
         cpus = (
             int(vcpus_val)
             if vcpus_val is not None and vcpus_val >= 1 and vcpus_val.is_integer()
@@ -550,8 +508,8 @@ class AWSBatchIO(BaseAPISchedulerIO):
         )
         memory_kib = memory_mib * 1024 if memory_mib is not None else None
 
-        node_props = raw.get("nodeProperties")
-        if isinstance(node_props, dict) and node_props.get("numNodes") is not None:
+        node_props = raw.get("nodeProperties") or {}
+        if node_props.get("numNodes") is not None:
             nodes: int | None = int(node_props["numNodes"])
         elif container:
             nodes = 1

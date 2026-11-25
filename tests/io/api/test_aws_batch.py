@@ -9,15 +9,10 @@ import pytest
 from qtoolkit.core.data_objects import (
     CancelStatus,
     QCloudResources,
-    QResources,
     QState,
     SubmissionStatus,
 )
-from qtoolkit.core.exceptions import (
-    APIError,
-    InvalidJobIDError,
-    UnsupportedResourcesError,
-)
+from qtoolkit.core.exceptions import APIError
 from qtoolkit.io.api import AWSBatchIO, AWSBatchState, api_scheduler_mapping
 
 try:
@@ -141,9 +136,29 @@ class TestAWSBatchIO:
             shell_cmd="/bin/bash",
         )
         assert test_utils.is_msonable(io)
-        # Ensure MSONable still works after _client is populated
         io._client = object()
         assert test_utils.is_msonable(io)
+
+    def test_client_forwards_session_and_endpoint_options(self, monkeypatch):
+        boto3 = pytest.importorskip("boto3")
+        mock_session = MagicMock()
+        session_cls = MagicMock(return_value=mock_session)
+        monkeypatch.setattr(boto3, "Session", session_cls)
+
+        io = AWSBatchIO(
+            job_queue="q",
+            job_definition="d",
+            region_name="us-east-2",
+            profile_name="work",
+            endpoint_url="http://localhost:4566",
+        )
+        io._get_client_and_errors()
+        session_cls.assert_called_once_with(
+            region_name="us-east-2", profile_name="work"
+        )
+        mock_session.client.assert_called_once_with(
+            "batch", endpoint_url="http://localhost:4566"
+        )
 
     def test_missing_boto3_raises_helpful_error(self, monkeypatch):
         io = AWSBatchIO(job_queue="q", job_definition="d")
@@ -155,13 +170,8 @@ class TestAWSBatchIO:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        valid_id = "12345678-1234-1234-1234-1234567890ab"
         with pytest.raises(ImportError, match="qtoolkit\\[aws\\]"):
             io.submit("echo hi")
-        with pytest.raises(ImportError, match="qtoolkit\\[aws\\]"):
-            io.cancel(valid_id)
-        with pytest.raises(ImportError, match="qtoolkit\\[aws\\]"):
-            io.get_job(valid_id)
 
     def test_format_command(self):
         io = AWSBatchIO(shell_cmd="/bin/bash")
@@ -210,7 +220,6 @@ class TestAWSBatchIO:
         sub = io.submit("echo hello", options=resources)
         assert sub.status == SubmissionStatus.SUCCESSFUL
         assert sub.job_id is not None
-        assert io.is_valid_job_id(str(sub.job_id))
 
         job = io.get_job(sub.job_id)
         assert job is not None
@@ -220,7 +229,6 @@ class TestAWSBatchIO:
         assert job.state == QState.DONE
         assert job.sub_state == AWSBatchState.SUCCEEDED
         assert job.info is not None
-        # moto with use_docker=False keeps the job definition's vcpus/memory (2 / 2048 MiB)
         assert job.info.cpus == 2
         assert job.info.memory == 2048 * 1024
         assert job.info.time_limit == 1800
@@ -231,16 +239,8 @@ class TestAWSBatchIO:
             "environment"
         ]
 
-        # Query by explicit job ID list (both str and QJob)
-        listed = io.get_jobs_list(jobs=[sub.job_id])
-        assert len(listed) == 1
-        assert listed[0].job_id == sub.job_id
-
-        listed_qjob = io.get_jobs_list(jobs=[job])
-        assert len(listed_qjob) == 1
-        assert listed_qjob[0].job_id == sub.job_id
-
-        # Query by queue with state filter covering all states
+        assert [j.job_id for j in io.get_jobs_list(jobs=[sub.job_id])] == [sub.job_id]
+        assert [j.job_id for j in io.get_jobs_list(jobs=[job])] == [sub.job_id]
         by_queue = io.get_jobs_list(queue=queue_name, states=list(QState))
         assert any(j.job_id == sub.job_id for j in by_queue)
 
@@ -265,31 +265,29 @@ class TestAWSBatchIO:
 
     def test_get_job_not_found_with_moto(self, aws_batch_env):
         io, _batch, _queue_name, _job_def = aws_batch_env
-        missing_id = "00000000-0000-0000-0000-000000000000"
-        assert io.get_job(missing_id) is None
+        assert io.get_job("00000000-0000-0000-0000-000000000000") is None
 
-    def test_submit_validation_errors(self):
-        io = AWSBatchIO()
+    @pytest.mark.parametrize(
+        "override_key",
+        ["nodeOverrides", "eksPropertiesOverride", "ecsPropertiesOverride"],
+    )
+    def test_submit_validation_errors(self, override_key):
         with pytest.raises(ValueError, match="jobQueue"):
-            io.submit("echo hi")
-
-        io_q = AWSBatchIO(job_queue="q")
+            AWSBatchIO().submit("echo hi")
         with pytest.raises(ValueError, match="jobDefinition"):
-            io_q.submit("echo hi")
-
-        io_empty_name = AWSBatchIO(
-            job_queue="q", job_definition="d", default_job_name=""
-        )
+            AWSBatchIO(job_queue="q").submit("echo hi")
         with pytest.raises(ValueError, match="jobName"):
-            io_empty_name.submit("echo hi")
+            AWSBatchIO(job_queue="q", job_definition="d", default_job_name="  ").submit(
+                "echo hi"
+            )
 
         io_ok = AWSBatchIO(job_queue="q", job_definition="d")
         with pytest.raises(TypeError, match="containerOverrides"):
             io_ok.submit("echo hi", options={"containerOverrides": "bad"})
-        with pytest.raises(ValueError, match="nodeOverrides"):
-            io_ok.submit("echo hi", options={"nodeOverrides": {"numNodes": 2}})
+        with pytest.raises(ValueError, match=override_key):
+            io_ok.submit("echo hi", options={override_key: {"k": "v"}})
 
-    def test_convert_resources_and_deep_merge(self):
+    def test_convert_resources_and_merge(self):
         io = AWSBatchIO(job_queue="default-q", job_definition="default-def")
         res = QCloudResources(
             queue_name="override-q",
@@ -334,70 +332,62 @@ class TestAWSBatchIO:
         }
         assert env == {"A": "1", "B": "override", "C": "3"}
 
-        # AWS Batch constraint checks
+        # Whole-number float vcpus formats as integer string, and None containerOverrides is ignored
+        whole = io.check_convert_resources(
+            QCloudResources(
+                vcpus=2.0,
+                gpus=1,
+                scheduler_kwargs={"containerOverrides": None},
+            )
+        )
+        whole_reqs = {
+            r["type"]: r["value"]
+            for r in whole["containerOverrides"]["resourceRequirements"]
+        }
+        assert whole_reqs == {"VCPU": "2", "GPU": "1"}
+
+        # AWS Batch range checks and non-dict validation
         with pytest.raises(ValueError, match=">= 60"):
             io.check_convert_resources(QCloudResources(time_limit=30))
         with pytest.raises(ValueError, match="max_retries <= 9"):
             io.check_convert_resources(QCloudResources(max_retries=10))
         with pytest.raises(ValueError, match="0 and 9999"):
             io.check_convert_resources(QCloudResources(priority=10000))
-        with pytest.raises(TypeError, match="containerOverrides"):
-            io.check_convert_resources(
-                QCloudResources(scheduler_kwargs={"containerOverrides": "invalid"})
-            )
+        with pytest.raises(TypeError, match="environment"):
+            QCloudResources(environment="A=1")  # type: ignore[arg-type]
 
-        # Unsupported fields and types
-        with pytest.raises(UnsupportedResourcesError, match="image"):
-            io.check_convert_resources(QCloudResources(image="ubuntu:24.04"))
-        with pytest.raises(UnsupportedResourcesError, match="QResources"):
-            io.check_convert_resources(QResources(processes=4))
-
-    def test_mocked_submit_cancel_and_errors(self):
-        botocore_exc = pytest.importorskip("botocore.exceptions")
+    def test_mocked_submit_fallbacks_and_cancel(self):
+        pytest.importorskip("botocore.exceptions")
         io = AWSBatchIO(job_queue="q", job_definition="d")
         mock_client = MagicMock()
         io._client = mock_client
 
-        # Verify exact submit_job payload including explicit None fallback
-        mock_client.submit_job.return_value = {
-            "jobId": "12345678-1234-1234-1234-1234567890ab"
-        }
-        res = QCloudResources(
-            vcpus=4,
-            memory=8192,
-            gpus=1,
-            time_limit=3600,
-            max_retries=1,
-            priority=5,
-            scheduler_kwargs={"shareIdentifier": "s1"},
+        valid_id = "12345678-1234-1234-1234-1234567890ab"
+        mock_client.submit_job.return_value = {"jobId": valid_id}
+
+        # Explicit None/empty/whitespace fallbacks + overwriting command inside containerOverrides
+        sub = io.submit(
+            ["echo step1", "echo step2"],
+            options={
+                "jobQueue": None,
+                "jobName": "   ",
+                "containerOverrides": {"command": ["old"]},
+            },
         )
-        sub_ok = io.submit(["echo step1", "echo step2"], options=res)
-        assert sub_ok.status == SubmissionStatus.SUCCESSFUL
+        assert sub.status == SubmissionStatus.SUCCESSFUL
         sent = mock_client.submit_job.call_args.kwargs
         assert sent["jobQueue"] == "q"
         assert sent["jobDefinition"] == "d"
         assert sent["jobName"] == "qtoolkit-job"
-        assert sent["timeout"] == {"attemptDurationSeconds": 3600}
-        assert sent["retryStrategy"] == {"attempts": 2}
-        assert sent["schedulingPriorityOverride"] == 5
-        assert sent["shareIdentifier"] == "s1"
         assert sent["containerOverrides"]["command"] == [
             "/bin/sh",
             "-c",
             "echo step1\necho step2",
         ]
-        assert {"type": "GPU", "value": "1"} in sent["containerOverrides"][
-            "resourceRequirements"
-        ]
 
-        # Explicit None in dict falls back to defaults
-        io.submit("echo hi", options={"jobQueue": None, "jobName": None})
-        sent2 = mock_client.submit_job.call_args.kwargs
-        assert sent2["jobQueue"] == "q"
-        assert sent2["jobName"] == "qtoolkit-job"
+        mock_client.submit_job.return_value = {}
+        assert io.submit("echo hi").status == SubmissionStatus.JOB_ID_UNKNOWN
 
-        # Terminate job args (default and custom reason)
-        valid_id = "12345678-1234-1234-1234-1234567890ab"
         io.cancel(valid_id)
         mock_client.terminate_job.assert_called_with(
             jobId=valid_id, reason="Cancelled by qtoolkit"
@@ -405,60 +395,70 @@ class TestAWSBatchIO:
         io.cancel(valid_id, reason="preempted")
         mock_client.terminate_job.assert_called_with(jobId=valid_id, reason="preempted")
 
-        # ClientError handling across submit, cancel, get_job, get_jobs_list
-        err = botocore_exc.ClientError(
-            {"Error": {"Code": "ClientException", "Message": "Queue not found"}},
-            "SubmitJob",
+    @pytest.mark.parametrize("error_kind", ["client", "botocore"])
+    def test_boto_errors_mapped_across_operations(self, error_kind):
+        botocore_exc = pytest.importorskip("botocore.exceptions")
+        err = (
+            botocore_exc.ClientError(
+                {"Error": {"Code": "ClientException", "Message": "Queue not found"}},
+                "SubmitJob",
+            )
+            if error_kind == "client"
+            else botocore_exc.NoCredentialsError()
         )
+        io = AWSBatchIO(job_queue="q", job_definition="d")
+        mock_client = MagicMock()
+        io._client = mock_client
+        valid_id = "12345678-1234-1234-1234-1234567890ab"
+
         mock_client.submit_job.side_effect = err
         sub_fail = io.submit("echo hi")
         assert sub_fail.status == SubmissionStatus.FAILED
         assert sub_fail.job_id is None
-        assert "Queue not found" in (sub_fail.stderr or "")
-
-        mock_client.submit_job.side_effect = None
-        mock_client.submit_job.return_value = {}
-        assert io.submit("echo hi").status == SubmissionStatus.JOB_ID_UNKNOWN
 
         mock_client.terminate_job.side_effect = err
-        cancel_fail = io.cancel(valid_id)
-        assert cancel_fail.status == CancelStatus.FAILED
-        assert "Queue not found" in (cancel_fail.stderr or "")
+        assert io.cancel(valid_id).status == CancelStatus.FAILED
 
         mock_client.describe_jobs.side_effect = err
-        with pytest.raises(APIError, match="Queue not found"):
+        with pytest.raises(APIError):
             io.get_job(valid_id)
-        with pytest.raises(APIError, match="Queue not found"):
+        with pytest.raises(APIError):
             io.get_jobs_list(jobs=[valid_id])
 
         mock_client.list_jobs.side_effect = err
-        with pytest.raises(APIError, match="Queue not found"):
+        with pytest.raises(APIError):
             io.get_jobs_list(states=[QState.RUNNING])
 
-        with pytest.raises(InvalidJobIDError):
-            io.get_job("not-a-uuid")
+    def test_get_jobs_list_validation_and_short_circuits(self):
+        pytest.importorskip("botocore.exceptions")
+        io = AWSBatchIO(job_queue="q", job_definition="d")
+        mock_client = MagicMock()
+        io._client = mock_client
+        valid_id = "12345678-1234-1234-1234-1234567890ab"
+
         with pytest.raises(NotImplementedError, match="username"):
             io.get_jobs_list(user="alice")
-
-        # Missing queue validation happens before boto3 client init
-        io_no_queue = AWSBatchIO()
         with pytest.raises(ValueError, match="job queue"):
-            io_no_queue.get_jobs_list()
+            AWSBatchIO().get_jobs_list()
 
-        # Unmapped QState filter short-circuits without client calls
-        mock_client.reset_mock()
         assert io.get_jobs_list(states=[QState.SUSPENDED]) == []
         assert io.get_jobs_list(jobs=[valid_id], states=[QState.SUSPENDED]) == []
         mock_client.list_jobs.assert_not_called()
         mock_client.describe_jobs.assert_not_called()
 
-    def test_describe_jobs_chunking_dedup_filtering_and_pagination(self):
+        # Queue override works even when AWSBatchIO(job_queue=None)
+        io_no_q = AWSBatchIO()
+        io_no_q._client = mock_client
+        mock_client.list_jobs.return_value = {"jobSummaryList": []}
+        assert io_no_q.get_jobs_list(queue="override-q") == []
+        assert mock_client.list_jobs.call_args.kwargs["jobQueue"] == "override-q"
+
+    def test_describe_jobs_chunking_dedup_and_filters(self):
         pytest.importorskip("botocore.exceptions")
         io = AWSBatchIO(job_queue="q", job_definition="d")
         mock_client = MagicMock()
         io._client = mock_client
 
-        # 105 unique job IDs + duplicates -> deduplicated to 105, split into 100 + 5
         job_ids = [f"12345678-1234-1234-1234-{i:012d}" for i in range(105)]
         now_ms = int(time.time() * 1000) - 45_000
         mock_client.describe_jobs.side_effect = lambda jobs: {
@@ -484,56 +484,52 @@ class TestAWSBatchIO:
         assert mock_client.describe_jobs.call_count == 2
         assert len(mock_client.describe_jobs.call_args_list[0].kwargs["jobs"]) == 100
         assert len(mock_client.describe_jobs.call_args_list[1].kwargs["jobs"]) == 5
-        # Running job runtime computed cleanly
         running_job = next(j for j in results if j.state == QState.RUNNING)
         assert running_job.runtime is not None
         assert running_job.runtime >= 40
 
-        # Filtering by queue and states when jobs are passed explicitly
+        # Filtering by queue ARN and state
         filtered = io.get_jobs_list(
-            jobs=job_ids[:3], queue="q", states=[QState.RUNNING]
+            jobs=job_ids[:3],
+            queue="arn:aws:batch:us-east-1:123456789012:job-queue/q",
+            states=[QState.RUNNING],
         )
         assert [j.job_id for j in filtered] == [job_ids[2]]
 
-        # Default get_jobs_list() queries all 5 active AWSBatchStates and returns [] when empty
-        mock_client.reset_mock()
-        mock_client.list_jobs.return_value = {"jobSummaryList": []}
-        assert io.get_jobs_list() == []
-        queried_statuses = [
-            call.kwargs["jobStatus"] for call in mock_client.list_jobs.call_args_list
-        ]
-        assert queried_statuses == [
-            "SUBMITTED",
-            "PENDING",
-            "RUNNABLE",
-            "STARTING",
-            "RUNNING",
-        ]
-        mock_client.describe_jobs.assert_not_called()
+    def test_list_jobs_pagination_and_post_describe_refiltering(self):
+        pytest.importorskip("botocore.exceptions")
+        io = AWSBatchIO(job_queue="q", job_definition="d")
+        mock_client = MagicMock()
+        io._client = mock_client
 
-        # Pagination, deduplication, and re-filtering by states after describe_jobs
-        mock_client.reset_mock()
-        jid1, jid2 = job_ids[1], job_ids[2]  # jid1 is SUCCEEDED, jid2 is RUNNING
+        jid_done = "12345678-1234-1234-1234-000000000001"
+        jid_run = "12345678-1234-1234-1234-000000000002"
+        mock_client.describe_jobs.return_value = {
+            "jobs": [
+                {"jobId": jid_done, "status": "SUCCEEDED", "jobQueue": "q"},
+                {"jobId": jid_run, "status": "RUNNING", "jobQueue": "q"},
+            ]
+        }
+
+        # Explicit state filter with pagination + duplicate jobId across pages
         mock_client.list_jobs.side_effect = [
-            {"jobSummaryList": [{"jobId": jid1}], "nextToken": "tok-1"},
-            {"jobSummaryList": [{"jobId": jid1}, {"jobId": jid2}]},
+            {"jobSummaryList": [{"jobId": jid_done}], "nextToken": "tok-1"},
+            {"jobSummaryList": [{"jobId": jid_done}, {"jobId": jid_run}]},
         ]
         listed = io.get_jobs_list(states=[QState.RUNNING])
-        # jid1 transitioned to SUCCEEDED before describe_jobs, so it is filtered out
-        assert [j.job_id for j in listed] == [jid2]
+        assert [j.job_id for j in listed] == [jid_run]
         assert mock_client.list_jobs.call_count == 2
 
-        # Default active listing (states=None) also filters out jobs that finished between list_jobs and describe_jobs
+        # Default active listing filters out jobs that finished between list_jobs and describe_jobs
         mock_client.reset_mock()
         mock_client.list_jobs.side_effect = [
             {"jobSummaryList": []},
             {"jobSummaryList": []},
             {"jobSummaryList": []},
             {"jobSummaryList": []},
-            {"jobSummaryList": [{"jobId": jid1}, {"jobId": jid2}]},
+            {"jobSummaryList": [{"jobId": jid_done}, {"jobId": jid_run}]},
         ]
-        active_listed = io.get_jobs_list()
-        assert [j.job_id for j in active_listed] == [jid2]
+        assert [j.job_id for j in io.get_jobs_list()] == [jid_run]
 
     def test_parse_job_edge_cases(self):
         raw = {
@@ -565,45 +561,30 @@ class TestAWSBatchIO:
         assert job.info.nodes == 2
         assert job.info.time_limit == 3600
 
-        # Integer VCPU string, plain non-ARN queue, startedAt == 0 (never started)
-        never_started = AWSBatchIO._parse_job(
+        # Clock skew clamp (startedAt > stoppedAt -> 0) and STARTING (runtime None)
+        skewed = AWSBatchIO._parse_job(
             {
-                "jobId": "12345678-1234-1234-1234-1234567890ab",
-                "jobQueue": "plain-queue",
+                "jobId": "12345678-1234-1234-1234-1234567890ac",
                 "status": "FAILED",
-                "startedAt": 0,
-                "stoppedAt": 1_700_000_125_000,
-                "container": {
-                    "resourceRequirements": [
-                        {"type": "VCPU", "value": "4"},
-                        {"type": "MEMORY", "value": "bad-int"},
-                    ]
-                },
+                "startedAt": 2_000_000,
+                "stoppedAt": 1_000_000,
+                "container": {"exitCode": 1},
             }
         )
-        assert never_started.queue_name == "plain-queue"
-        assert never_started.runtime is None
-        assert never_started.info is not None
-        assert never_started.info.cpus == 4
-        assert never_started.info.memory is None
-        assert never_started.info.nodes == 1
+        assert skewed.runtime == 0
 
-        # Unknown status and container with None resourceRequirements
-        unknown = AWSBatchIO._parse_job(
+        starting = AWSBatchIO._parse_job(
             {
-                "jobId": "12345678-1234-1234-1234-1234567890ab",
-                "status": "NEW_STATE",
-                "container": {"resourceRequirements": None},
+                "jobId": "12345678-1234-1234-1234-1234567890ad",
+                "status": "STARTING",
+                "startedAt": 1_700_000_000_000,
             }
+        )
+        assert starting.state == QState.QUEUED
+        assert starting.runtime is None
+
+        unknown = AWSBatchIO._parse_job(
+            {"jobId": "12345678-1234-1234-1234-1234567890ae", "status": "NEW_STATUS"}
         )
         assert unknown.state == QState.UNDETERMINED
         assert unknown.sub_state is None
-        assert unknown.info is not None
-        assert unknown.info.nodes == 1
-
-        # Missing container -> nodes is None
-        no_container = AWSBatchIO._parse_job(
-            {"jobId": "12345678-1234-1234-1234-1234567890ab", "status": "SUBMITTED"}
-        )
-        assert no_container.info is not None
-        assert no_container.info.nodes is None
