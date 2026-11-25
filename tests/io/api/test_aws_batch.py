@@ -523,6 +523,18 @@ class TestAWSBatchIO:
         assert [j.job_id for j in listed] == [jid2]
         assert mock_client.list_jobs.call_count == 2
 
+        # Default active listing (states=None) also filters out jobs that finished between list_jobs and describe_jobs
+        mock_client.reset_mock()
+        mock_client.list_jobs.side_effect = [
+            {"jobSummaryList": []},
+            {"jobSummaryList": []},
+            {"jobSummaryList": []},
+            {"jobSummaryList": []},
+            {"jobSummaryList": [{"jobId": jid1}, {"jobId": jid2}]},
+        ]
+        active_listed = io.get_jobs_list()
+        assert [j.job_id for j in active_listed] == [jid2]
+
     def test_parse_job_edge_cases(self):
         raw = {
             "jobId": "12345678-1234-1234-1234-1234567890ab",

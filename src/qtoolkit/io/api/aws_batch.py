@@ -469,9 +469,12 @@ class AWSBatchIO(BaseAPISchedulerIO):
         if not collected_ids:
             return []
         jobs = self._describe_jobs_chunked(client, collected_ids, boto_errors)
-        if state_set is not None:
-            jobs = [j for j in jobs if j.state in state_set]
-        return jobs
+        target_states = (
+            state_set
+            if state_set is not None
+            else {_STATUS_MAPPING[s] for s in aws_statuses}
+        )
+        return [j for j in jobs if j.state in target_states]
 
     def _describe_jobs_chunked(
         self,
