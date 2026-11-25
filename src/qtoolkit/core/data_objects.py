@@ -408,7 +408,10 @@ class QCloudResources(BaseQResources):
     """Time limit for the job in seconds."""
 
     max_retries: int | None = None
-    """Maximum number of retries on failure (0 means no retries)."""
+    """Maximum number of retries on failure (0 means no retries).
+
+    On AWS Batch this replaces the retry strategy of the job definition, and
+    any failure except a timeout is retried up to max_retries times."""
 
     environment: dict[str, str] | None = None
     """Environment variables passed to the job container."""
