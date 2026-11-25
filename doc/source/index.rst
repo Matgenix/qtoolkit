@@ -74,6 +74,7 @@ QToolKit is an interface to Distributed Resource Management (DRM) systems, e.g. 
         .. card-footer::
 
             .. button-ref:: api
+                :ref-type: ref
                 :expand:
                 :color: secondary
                 :click-parent:
