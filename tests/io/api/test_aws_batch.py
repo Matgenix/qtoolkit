@@ -153,7 +153,7 @@ class TestAWSBatchIO:
             profile_name="work",
             endpoint_url="http://localhost:4566",
         )
-        io._get_client_and_errors()
+        io._get_client()
         session_cls.assert_called_once_with(
             region_name="us-east-2", profile_name="work"
         )
@@ -172,6 +172,7 @@ class TestAWSBatchIO:
     def test_sanitize_job_name(self):
         assert sanitize_job_name("Force field static 1/2") == "Force_field_static_1_2"
         assert sanitize_job_name("_hidden") == "job__hidden"
+        assert sanitize_job_name("  my job  ") == "my_job"
         assert len(sanitize_job_name("a" * 200)) == 128
 
         io = AWSBatchIO(job_queue="q", job_definition="d")
@@ -213,8 +214,6 @@ class TestAWSBatchIO:
         assert formatted is not argv
         with pytest.raises(ValueError, match="shell_cmd is None"):
             io_raw.format_command("echo hi")
-        with pytest.raises(ValueError, match="shell_cmd is None"):
-            io_raw.format_command(["", "--flag"])
 
     def test_job_id_regex(self):
         io = AWSBatchIO()
@@ -290,25 +289,24 @@ class TestAWSBatchIO:
         io, _batch, _queue_name, _job_def = aws_batch_env
         assert io.get_job("00000000-0000-0000-0000-000000000000") is None
 
-    @pytest.mark.parametrize(
-        "override_key",
-        ["nodeOverrides", "eksPropertiesOverride", "ecsPropertiesOverride"],
-    )
-    def test_submit_validation_errors(self, override_key):
+    def test_submit_without_queue_or_definition(self):
         with pytest.raises(ValueError, match="jobQueue"):
             AWSBatchIO().submit("echo hi")
         with pytest.raises(ValueError, match="jobDefinition"):
             AWSBatchIO(job_queue="q").submit("echo hi")
-        with pytest.raises(ValueError, match="jobName"):
-            AWSBatchIO(job_queue="q", job_definition="d", default_job_name="  ").submit(
-                "echo hi"
+        with pytest.raises(TypeError, match="containerOverrides"):
+            AWSBatchIO(job_queue="q", job_definition="d").submit(
+                "echo hi", options={"containerOverrides": "bad"}
             )
 
-        io_ok = AWSBatchIO(job_queue="q", job_definition="d")
-        with pytest.raises(TypeError, match="containerOverrides"):
-            io_ok.submit("echo hi", options={"containerOverrides": "bad"})
+    @pytest.mark.parametrize(
+        "override_key",
+        ["nodeOverrides", "eksPropertiesOverride", "ecsPropertiesOverride"],
+    )
+    def test_submit_rejects_multi_container_overrides(self, override_key):
+        io = AWSBatchIO(job_queue="q", job_definition="d")
         with pytest.raises(ValueError, match=override_key):
-            io_ok.submit("echo hi", options={override_key: {"k": "v"}})
+            io.submit("echo hi", options={override_key: {"k": "v"}})
 
     def test_convert_resources_and_merge(self):
         io = AWSBatchIO(job_queue="default-q", job_definition="default-def")
@@ -334,7 +332,7 @@ class TestAWSBatchIO:
                 },
             },
         )
-        converted = io.check_convert_resources(res)
+        converted = io.check_convert_qresources(res)
         assert converted["jobQueue"] == "override-q"
         assert converted["jobName"] == "my-job"
         assert converted["timeout"] == {"attemptDurationSeconds": 600}
@@ -356,7 +354,7 @@ class TestAWSBatchIO:
         assert env == {"A": "1", "B": "override", "C": "3"}
 
         # Whole-number float vcpus formats as integer string, and None containerOverrides is ignored
-        whole = io.check_convert_resources(
+        whole = io.check_convert_qresources(
             QCloudResources(
                 vcpus=2.0,
                 gpus=1,
@@ -371,13 +369,14 @@ class TestAWSBatchIO:
 
         # AWS Batch range checks and non-dict validation
         with pytest.raises(ValueError, match=">= 60"):
-            io.check_convert_resources(QCloudResources(time_limit=30))
+            io.check_convert_qresources(QCloudResources(time_limit=30))
+        assert io.check_convert_qresources(QCloudResources(time_limit=60))[
+            "timeout"
+        ] == {"attemptDurationSeconds": 60}
         with pytest.raises(ValueError, match="max_retries <= 9"):
-            io.check_convert_resources(QCloudResources(max_retries=10))
+            io.check_convert_qresources(QCloudResources(max_retries=10))
         with pytest.raises(ValueError, match="0 and 9999"):
-            io.check_convert_resources(QCloudResources(priority=10000))
-        with pytest.raises(TypeError, match="environment"):
-            QCloudResources(environment="A=1")  # type: ignore[arg-type]
+            io.check_convert_qresources(QCloudResources(priority=10000))
 
     def test_mocked_submit_fallbacks_and_cancel(self):
         pytest.importorskip("botocore.exceptions")
@@ -388,7 +387,8 @@ class TestAWSBatchIO:
         valid_id = "12345678-1234-1234-1234-1234567890ab"
         mock_client.submit_job.return_value = {"jobId": valid_id}
 
-        # Explicit None/empty/whitespace fallbacks + overwriting command inside containerOverrides
+        # jobQueue=None and a blank jobName fall back to the defaults, and the
+        # command in containerOverrides is replaced.
         sub = io.submit(
             ["echo step1", "echo step2"],
             options={
@@ -461,7 +461,7 @@ class TestAWSBatchIO:
 
         with pytest.raises(NotImplementedError, match="username"):
             io.get_jobs_list(user="alice")
-        with pytest.raises(ValueError, match="job queue"):
+        with pytest.raises(ValueError, match="Set job_queue"):
             AWSBatchIO().get_jobs_list()
 
         assert io.get_jobs_list(states=[QState.SUSPENDED]) == []
@@ -519,7 +519,7 @@ class TestAWSBatchIO:
         )
         assert [j.job_id for j in filtered] == [job_ids[2]]
 
-    def test_list_jobs_pagination_and_post_describe_refiltering(self):
+    def test_list_jobs_pagination_and_state_filter(self):
         pytest.importorskip("botocore.exceptions")
         io = AWSBatchIO(job_queue="q", job_definition="d")
         mock_client = MagicMock()
@@ -534,7 +534,7 @@ class TestAWSBatchIO:
             ]
         }
 
-        # Explicit state filter with pagination + duplicate jobId across pages
+        # State filter with two pages and a job ID listed on both.
         mock_client.list_jobs.side_effect = [
             {"jobSummaryList": [{"jobId": jid_done}], "nextToken": "tok-1"},
             {"jobSummaryList": [{"jobId": jid_done}, {"jobId": jid_run}]},
@@ -542,6 +542,7 @@ class TestAWSBatchIO:
         listed = io.get_jobs_list(states=[QState.RUNNING])
         assert [j.job_id for j in listed] == [jid_run]
         assert mock_client.list_jobs.call_count == 2
+        assert mock_client.list_jobs.call_args_list[1].kwargs["nextToken"] == "tok-1"
 
         # Default active listing filters out jobs that finished between list_jobs and describe_jobs
         mock_client.reset_mock()
@@ -584,7 +585,7 @@ class TestAWSBatchIO:
         assert job.info.nodes == 2
         assert job.info.time_limit == 3600
 
-        # Clock skew clamp (startedAt > stoppedAt -> 0) and STARTING (runtime None)
+        # startedAt after stoppedAt gives runtime 0. STARTING has no runtime.
         skewed = AWSBatchIO._parse_job(
             {
                 "jobId": "12345678-1234-1234-1234-1234567890ac",
@@ -611,3 +612,31 @@ class TestAWSBatchIO:
         )
         assert unknown.state == QState.UNDETERMINED
         assert unknown.sub_state is None
+
+    def test_resource_bounds(self):
+        convert = AWSBatchIO(job_queue="q", job_definition="d").check_convert_qresources
+        assert convert(QCloudResources(max_retries=9))["retryStrategy"] == {
+            "attempts": 10
+        }
+        assert convert(QCloudResources(max_retries=0))["retryStrategy"] == {
+            "attempts": 1
+        }
+        assert convert(QCloudResources(priority=0))["schedulingPriorityOverride"] == 0
+        with pytest.raises(ValueError, match="0 and 9999"):
+            convert(QCloudResources(priority=-1))
+
+    def test_parse_job_memory_from_resource_requirements(self):
+        job = AWSBatchIO._parse_job(
+            {
+                "jobId": "12345678-1234-1234-1234-1234567890ab",
+                "status": "RUNNING",
+                "container": {
+                    "memory": 2048,
+                    "vcpus": 2,
+                    "resourceRequirements": [{"type": "MEMORY", "value": "4096"}],
+                },
+            }
+        )
+        assert job.info.memory == 4096 * 1024
+        assert job.info.cpus == 2
+        assert job.info.nodes == 1

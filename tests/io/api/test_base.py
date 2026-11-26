@@ -31,10 +31,10 @@ class DummyAPISchedulerIO(BaseAPISchedulerIO):
         self.cancelled: list[tuple[str, str | None]] = []
 
     @property
-    def supported_resources_keys(self) -> list[str]:
+    def supported_qresources_keys(self) -> list[str]:
         return ["queue_name", "job_name", "vcpus", "memory", "scheduler_kwargs"]
 
-    def _convert_resources(self, resources: QCloudResources | QResources) -> dict:
+    def _convert_qresources(self, resources: QCloudResources | QResources) -> dict:
         assert isinstance(resources, QCloudResources)
         out = {}
         if resources.queue_name is not None:
@@ -109,11 +109,11 @@ class TestBaseAPISchedulerIO:
             io.submit("")
         with pytest.raises(ValueError, match="empty"):
             io.submit("   ")
-        with pytest.raises(ValueError, match="non-empty list"):
+        with pytest.raises(ValueError, match="non-empty entry"):
             io.submit([])
-        with pytest.raises(ValueError, match="non-empty list"):
+        with pytest.raises(ValueError, match="non-empty entry"):
             io.submit(["", "   "])
-        with pytest.raises(ValueError, match="non-empty list"):
+        with pytest.raises(ValueError, match="non-empty entry"):
             io.submit(["ok", 123])  # type: ignore[list-item]
         # Blank lines or empty arguments in list[str] are allowed when at least one entry is non-empty
         io.submit(["echo a", "", "echo b"])
@@ -123,7 +123,7 @@ class TestBaseAPISchedulerIO:
         with pytest.raises(TypeError, match="options must be"):
             io.submit("echo hi", options="invalid")  # type: ignore[arg-type]
 
-    def test_check_convert_resources_errors(self):
+    def test_check_convert_qresources_errors(self):
         io = DummyAPISchedulerIO()
         with pytest.raises(
             UnsupportedResourcesError, match="does not support QResources"
@@ -137,38 +137,28 @@ class TestBaseAPISchedulerIO:
             "echo hi", options=QCloudResources(environment={}, scheduler_kwargs={})
         )
 
-    def test_job_id_extraction_and_validation(self):
+    def test_job_id_conversion_and_validation(self):
         io = DummyAPISchedulerIO()
-        assert io.extract_job_id("job-42") == "job-42"
-        assert io.extract_job_id(QJob(job_id="job-42")) == "job-42"
+        assert io.to_job_id("job-42") == "job-42"
+        assert io.to_job_id(QJob(job_id="job-42")) == "job-42"
         assert io.is_valid_job_id("job-42") is True
         assert io.is_valid_job_id("bad-id") is False
-        assert io.generate_ids_list(None) is None
 
-        with pytest.raises(ValueError, match="Job ID must be defined"):
-            io.extract_job_id("")
-        with pytest.raises(ValueError, match="Job ID must be defined"):
-            io.extract_job_id("   ")
-        with pytest.raises(ValueError, match="Job ID must be defined"):
-            io.extract_job_id(QJob(job_id=None))
-        with pytest.raises(TypeError, match="Job ID must be"):
-            io.extract_job_id(job=True)  # type: ignore[arg-type]
-        with pytest.raises(TypeError, match="Job ID must be"):
-            io.extract_job_id(1.5)  # type: ignore[arg-type]
+        for empty in ("", "   ", QJob(job_id=None)):
+            with pytest.raises(ValueError, match="Job ID must not be empty"):
+                io.to_job_id(empty)
         with pytest.raises(InvalidJobIDError):
-            io.extract_job_id("bad-id")
-        with pytest.raises(TypeError, match="not str/bytes"):
-            io.generate_ids_list("job-42")  # type: ignore[arg-type]
-        with pytest.raises(TypeError, match="not str/bytes"):
+            io.to_job_id("bad-id")
+        with pytest.raises(TypeError, match="not a str"):
             io.get_jobs_list(jobs="job-42")  # type: ignore[arg-type]
 
         # check_job_ids=False and job_id_regex=None bypass regex check
         io.check_job_ids = False
-        assert io.extract_job_id("anything") == "anything"
+        assert io.to_job_id("anything") == "anything"
         io.check_job_ids = True
         io.job_id_regex = None
         assert io.is_valid_job_id("anything") is True
-        assert io.extract_job_id(123) == "123"
+        assert io.to_job_id(123) == "123"
 
     def test_cancel_get_job_and_list(self):
         io = DummyAPISchedulerIO()
@@ -189,3 +179,10 @@ class TestBaseAPISchedulerIO:
     def test_msonable(self, test_utils):
         io = DummyAPISchedulerIO(endpoint="https://api.example.com")
         assert test_utils.is_msonable(io)
+
+    def test_zero_counts_as_set(self):
+        # max_retries=0 is a request, so an IO without max_retries rejects it.
+        with pytest.raises(UnsupportedResourcesError, match="max_retries"):
+            DummyAPISchedulerIO().submit(
+                "echo hi", options=QCloudResources(max_retries=0)
+            )

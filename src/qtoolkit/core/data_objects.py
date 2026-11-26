@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import math
 from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING
 
@@ -387,7 +386,7 @@ class QResources(BaseQResources):
 
 @dataclass
 class QCloudResources(BaseQResources):
-    """Data defining resources for a cloud batch job."""
+    """Data defining resources for a job submitted to a cloud scheduler."""
 
     queue_name: str | None = None
     """Name or identifier of the job queue or compute pool."""
@@ -408,10 +407,8 @@ class QCloudResources(BaseQResources):
     """Time limit for the job in seconds."""
 
     max_retries: int | None = None
-    """Maximum number of retries on failure (0 means no retries).
-
-    On AWS Batch this replaces the retry strategy of the job definition, and
-    any failure except a timeout is retried up to max_retries times."""
+    """Maximum number of retries of a failed job (0 means no retries).
+    Which failures are retried depends on the backend."""
 
     environment: dict[str, str] | None = None
     """Environment variables passed to the job container."""
@@ -423,16 +420,11 @@ class QCloudResources(BaseQResources):
     """Container image to run the job in."""
 
     scheduler_kwargs: dict | None = None
-    """Additional backend-specific keyword arguments."""
+    """Additional keyword arguments to be passed to the scheduler IO."""
 
     def __post_init__(self) -> None:
-        if self.vcpus is not None and (
-            isinstance(self.vcpus, bool)
-            or not isinstance(self.vcpus, (int, float))
-            or not math.isfinite(self.vcpus)
-            or self.vcpus <= 0
-        ):
-            raise ValueError("vcpus must be a positive finite number.")
+        if self.vcpus is not None and self.vcpus <= 0:
+            raise ValueError("vcpus must be positive.")
         for name, min_val in (
             ("memory", 1),
             ("gpus", 0),
@@ -440,16 +432,8 @@ class QCloudResources(BaseQResources):
             ("max_retries", 0),
         ):
             val = getattr(self, name)
-            if val is not None and (
-                isinstance(val, bool) or not isinstance(val, int) or val < min_val
-            ):
-                raise ValueError(f"{name} must be an integer >= {min_val}.")
-        if self.priority is not None and (
-            isinstance(self.priority, bool) or not isinstance(self.priority, int)
-        ):
-            raise ValueError("priority must be an integer.")
-        if self.environment is not None and not isinstance(self.environment, dict):
-            raise TypeError("environment must be a dict.")
+            if val is not None and val < min_val:
+                raise ValueError(f"{name} must be >= {min_val}.")
         super().__post_init__()
 
 

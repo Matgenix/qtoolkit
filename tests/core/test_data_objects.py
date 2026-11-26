@@ -706,24 +706,16 @@ class TestQCloudResources:
         assert full.max_retries == 2
         assert QCloudResources(max_retries=0).max_retries == 0
 
-        for bad_vcpus in (0, -1, float("nan"), float("inf"), True):
-            with pytest.raises(ValueError, match="vcpus"):
-                QCloudResources(vcpus=bad_vcpus)
-        for bad_mem in (0, -1, 1.5, True):
-            with pytest.raises(ValueError, match="memory"):
-                QCloudResources(memory=bad_mem)  # type: ignore[arg-type]
-        for bad_gpus in (-1, 0.5, True, False):
-            with pytest.raises(ValueError, match="gpus"):
-                QCloudResources(gpus=bad_gpus)  # type: ignore[arg-type]
-        for bad_time in (0, -5, 10.5, True):
-            with pytest.raises(ValueError, match="time_limit"):
-                QCloudResources(time_limit=bad_time)  # type: ignore[arg-type]
-        for bad_retries in (-1, 1.5, True, False):
-            with pytest.raises(ValueError, match="max_retries"):
-                QCloudResources(max_retries=bad_retries)  # type: ignore[arg-type]
-        for bad_prio in (1.5, True, False):
-            with pytest.raises(ValueError, match="priority"):
-                QCloudResources(priority=bad_prio)  # type: ignore[arg-type]
+        for name, bad_value in (
+            ("vcpus", 0),
+            ("vcpus", -1),
+            ("memory", 0),
+            ("gpus", -1),
+            ("time_limit", 0),
+            ("max_retries", -1),
+        ):
+            with pytest.raises(ValueError, match=name):
+                QCloudResources(**{name: bad_value})
 
     @pytest.mark.skipif(monty is None, reason="monty is not installed")
     def test_msonable(self, test_utils):

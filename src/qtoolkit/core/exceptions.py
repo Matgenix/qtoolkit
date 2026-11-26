@@ -31,5 +31,5 @@ class InvalidJobIDError(QTKError):
 
 class APIError(QTKError):
     """
-    Exception raised when a scheduler API request fails.
+    Exception raised when a scheduler API request fails or its client cannot be created.
     """

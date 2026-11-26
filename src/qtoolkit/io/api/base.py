@@ -7,7 +7,6 @@ from qtoolkit.core.data_objects import (
     CancelResult,
     QCloudResources,
     QJob,
-    QResources,
     QState,
     SubmissionResult,
 )
@@ -16,19 +15,15 @@ from qtoolkit.io.base import _BaseScheduler
 
 
 class BaseAPISchedulerIO(_BaseScheduler):
-    """Base class for scheduler backends controlled directly through an API.
+    """Base class for schedulers driven through an API instead of shell commands.
 
-    Unlike :class:`~qtoolkit.io.base.BaseSchedulerIO`, subclasses execute submit,
-    cancel, get, and list operations directly instead of generating shell scripts.
-    Read methods (:meth:`get_job`, :meth:`get_jobs_list`) raise
-    :class:`~qtoolkit.core.exceptions.APIError` on backend failures, while
-    :meth:`submit` and :meth:`cancel` return ``FAILED`` result objects.
-    All four methods raise :class:`~qtoolkit.core.exceptions.APIError` if
-    creating the API client fails with a backend error (for example, an
-    unknown credentials profile or no configured region).
+    If a request fails, :meth:`submit` and :meth:`cancel` return a result with
+    status ``FAILED``, and :meth:`get_job` and :meth:`get_jobs_list` raise
+    :class:`~qtoolkit.core.exceptions.APIError`. All of them raise ``APIError``
+    if the API client cannot be created.
     """
 
-    supported_resources_cls: tuple[type, ...] = (QCloudResources, QResources)
+    supported_resources_cls: tuple[type, ...] = (QCloudResources,)
 
     def submit(
         self,
@@ -60,7 +55,7 @@ class BaseAPISchedulerIO(_BaseScheduler):
                 or not any(c.strip() for c in commands)
             ):
                 raise ValueError(
-                    "commands must be a non-empty list of strings with at least one non-empty entry."
+                    "commands must be a list of str with at least one non-empty entry."
                 )
         else:
             raise TypeError("commands must be a str or a list of str.")
@@ -70,11 +65,10 @@ class BaseAPISchedulerIO(_BaseScheduler):
         elif isinstance(options, dict):
             converted_options = dict(options)
         elif isinstance(options, BaseQResources):
-            converted_options = self.check_convert_resources(options)
+            converted_options = self.check_convert_qresources(options)
         else:
-            raise TypeError(
-                "options must be a dict, QCloudResources, QResources, or None."
-            )
+            supported = ", ".join(cls.__name__ for cls in self.supported_resources_cls)
+            raise TypeError(f"options must be None, a dict, or one of: {supported}.")
 
         return self._submit(commands=commands, options=converted_options)
 
@@ -84,7 +78,7 @@ class BaseAPISchedulerIO(_BaseScheduler):
 
     def cancel(self, job: QJob | int | str, reason: str | None = None) -> CancelResult:
         """Cancel or terminate a job through the scheduler API."""
-        return self._cancel(job_id=self.extract_job_id(job), reason=reason)
+        return self._cancel(job_id=self.to_job_id(job), reason=reason)
 
     @abc.abstractmethod
     def _cancel(self, job_id: str, reason: str | None = None) -> CancelResult:
@@ -92,7 +86,7 @@ class BaseAPISchedulerIO(_BaseScheduler):
 
     def get_job(self, job: QJob | int | str) -> QJob | None:
         """Retrieve details of a single job, or ``None`` if not found."""
-        return self._get_job(job_id=self.extract_job_id(job))
+        return self._get_job(job_id=self.to_job_id(job))
 
     @abc.abstractmethod
     def _get_job(self, job_id: str) -> QJob | None:
@@ -111,9 +105,11 @@ class BaseAPISchedulerIO(_BaseScheduler):
         active (non-terminal) jobs. An empty ``jobs`` list returns ``[]``
         without querying the backend.
         """
-        job_ids = self.generate_ids_list(jobs)
-        if job_ids == []:
+        if isinstance(jobs, str):
+            raise TypeError("jobs must be a list, not a str.")
+        if jobs is not None and not jobs:
             return []
+        job_ids = None if jobs is None else [self.to_job_id(job) for job in jobs]
         return self._get_jobs_list(
             job_ids=job_ids, user=user, queue=queue, states=states
         )
@@ -128,7 +124,7 @@ class BaseAPISchedulerIO(_BaseScheduler):
     ) -> list[QJob]:
         """Backend-specific job listing implementation."""
 
-    def check_convert_resources(self, resources: BaseQResources) -> dict:
+    def check_convert_qresources(self, resources: BaseQResources) -> dict:
         """Validate and convert a resource object into backend options."""
         if not isinstance(resources, self.supported_resources_cls):
             supported = ", ".join(cls.__name__ for cls in self.supported_resources_cls)
@@ -138,40 +134,24 @@ class BaseAPISchedulerIO(_BaseScheduler):
             )
 
         self._validate_resource_fields(
-            resources, self.supported_resources_keys, ignore_empty_dict=True
+            resources, self.supported_qresources_keys, zero_is_set=True
         )
-        return self._convert_resources(resources)
+        return self._convert_qresources(resources)
 
     @abc.abstractmethod
-    def _convert_resources(self, resources: BaseQResources) -> dict:
+    def _convert_qresources(self, resources: BaseQResources) -> dict:
         """Convert a validated resource object into a backend options dictionary."""
 
     @property
-    def supported_resources_keys(self) -> list[str]:
-        """Attribute names handled by :meth:`_convert_resources`."""
+    def supported_qresources_keys(self) -> list[str]:
+        """Attribute names handled by :meth:`_convert_qresources`."""
         return []  # pragma: no cover
 
-    def extract_job_id(self, job: QJob | int | str) -> str:
-        """Extract and validate a single job ID from a ``QJob``, ``int``, or ``str``."""
-        raw_id = job.job_id if isinstance(job, QJob) else job
-        if raw_id is None:
-            raise ValueError("Job ID must be defined. Received: None")
-        if isinstance(raw_id, bool) or not isinstance(raw_id, (int, str)):
-            raise TypeError(
-                f"Job ID must be a QJob, int, or str. Received: {type(raw_id).__name__}"
-            )
-        job_id_str = str(raw_id)
-        if not job_id_str.strip():
-            raise ValueError("Job ID must be defined. Received: '' (empty string)")
-        self._check_job_ids(job_id_str)
-        return job_id_str
-
-    def generate_ids_list(
-        self, jobs: list[QJob | int | str] | None
-    ) -> list[str] | None:
-        """Normalize and validate a list of job identifiers."""
-        if jobs is None:
-            return None
-        if isinstance(jobs, (str, bytes)):
-            raise TypeError("jobs must be a list of job identifiers, not str/bytes.")
-        return [self.extract_job_id(j) for j in jobs]
+    def to_job_id(self, job: QJob | int | str) -> str:
+        """Return the job ID of a ``QJob``, ``int``, or ``str`` as a string."""
+        job_id = job.job_id if isinstance(job, QJob) else job
+        if job_id is None or not str(job_id).strip():
+            raise ValueError(f"Job ID must not be empty. Received: {job_id!r}")
+        job_id = str(job_id)
+        self._check_job_ids(job_id)
+        return job_id

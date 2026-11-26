@@ -7,10 +7,15 @@ import shlex
 from dataclasses import fields
 from pathlib import Path
 from string import Template
-from typing import Any
 
 from qtoolkit.core.base import QTKObject
-from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
+from qtoolkit.core.data_objects import (
+    BaseQResources,
+    CancelResult,
+    QJob,
+    QResources,
+    SubmissionResult,
+)
 from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
 
 MODULE_DIR = Path(__file__).absolute().parent
@@ -57,17 +62,16 @@ class _BaseScheduler(QTKObject, abc.ABC):
 
     def _validate_resource_fields(
         self,
-        resources: Any,
+        resources: BaseQResources,
         supported_keys: list[str],
-        ignore_empty_dict: bool = False,
+        zero_is_set: bool = False,
     ) -> None:
         not_empty = set()
         for field in fields(resources):
             val = getattr(resources, field.name)
-            if ignore_empty_dict:
-                # Treat empty dicts as unset (scheduler_kwargs defaults to {}),
-                # while keeping 0/False (e.g. max_retries=0, gpus=0) as set.
-                if val is not None and not (isinstance(val, dict) and len(val) == 0):
+            if zero_is_set:
+                # Only None and {} count as unset, so max_retries=0 is kept.
+                if val is not None and val != {}:
                     not_empty.add(field.name)
             elif val:
                 not_empty.add(field.name)
