@@ -301,7 +301,12 @@ class TestAWSBatchIO:
 
     @pytest.mark.parametrize(
         "override_key",
-        ["nodeOverrides", "eksPropertiesOverride", "ecsPropertiesOverride"],
+        [
+            "arrayProperties",
+            "nodeOverrides",
+            "eksPropertiesOverride",
+            "ecsPropertiesOverride",
+        ],
     )
     def test_submit_rejects_multi_container_overrides(self, override_key):
         io = AWSBatchIO(job_queue="q", job_definition="d")
@@ -319,7 +324,6 @@ class TestAWSBatchIO:
             time_limit=600,
             max_retries=2,
             environment={"A": "1", "B": "2"},
-            priority=10,
             scheduler_kwargs={
                 "tags": {"project": "phonon"},
                 "shareIdentifier": "default",
@@ -337,7 +341,6 @@ class TestAWSBatchIO:
         assert converted["jobName"] == "my-job"
         assert converted["timeout"] == {"attemptDurationSeconds": 600}
         assert converted["retryStrategy"] == {"attempts": 3}
-        assert converted["schedulingPriorityOverride"] == 10
         assert converted["tags"] == {"project": "phonon"}
         assert converted["shareIdentifier"] == "default"
 
@@ -375,8 +378,6 @@ class TestAWSBatchIO:
         ] == {"attemptDurationSeconds": 60}
         with pytest.raises(ValueError, match="max_retries <= 9"):
             io.check_convert_qresources(QCloudResources(max_retries=10))
-        with pytest.raises(ValueError, match="0 and 9999"):
-            io.check_convert_qresources(QCloudResources(priority=10000))
 
     def test_mocked_submit_fallbacks_and_cancel(self):
         pytest.importorskip("botocore.exceptions")
@@ -621,9 +622,6 @@ class TestAWSBatchIO:
         assert convert(QCloudResources(max_retries=0))["retryStrategy"] == {
             "attempts": 1
         }
-        assert convert(QCloudResources(priority=0))["schedulingPriorityOverride"] == 0
-        with pytest.raises(ValueError, match="0 and 9999"):
-            convert(QCloudResources(priority=-1))
 
     def test_parse_job_memory_from_resource_requirements(self):
         job = AWSBatchIO._parse_job(

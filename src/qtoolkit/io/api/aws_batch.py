@@ -64,6 +64,7 @@ _ACTIVE_STATES = (
 # AWS Batch DescribeJobs accepts at most 100 job IDs per API call.
 _DESCRIBE_JOBS_BATCH_SIZE = 100
 _INCOMPATIBLE_OVERRIDE_KEYS = (
+    "arrayProperties",
     "nodeOverrides",
     "eksPropertiesOverride",
     "ecsPropertiesOverride",
@@ -121,7 +122,7 @@ def _merge_container_overrides(
 
 
 class AWSBatchIO(BaseAPISchedulerIO):
-    """Scheduler IO for single-container AWS Batch jobs.
+    """Scheduler IO for single AWS Batch container jobs.
 
     A ``max_retries`` set in :class:`~qtoolkit.QCloudResources` replaces the
     whole retry strategy of the job definition, including its
@@ -225,7 +226,6 @@ class AWSBatchIO(BaseAPISchedulerIO):
             "time_limit",
             "max_retries",
             "environment",
-            "priority",
             "scheduler_kwargs",
         ]
 
@@ -280,15 +280,6 @@ class AWSBatchIO(BaseAPISchedulerIO):
                 )
             payload["retryStrategy"] = {"attempts": attempts}
 
-        if resources.priority is not None:
-            if not 0 <= resources.priority <= 9999:
-                raise ValueError(
-                    "AWS Batch schedulingPriorityOverride must be between 0 and 9999."
-                )
-            # AWS Batch requires a fair-share scheduling policy on the job queue
-            # (and shareIdentifier in scheduler_kwargs) for schedulingPriorityOverride.
-            payload["schedulingPriorityOverride"] = resources.priority
-
         if resources.scheduler_kwargs:
             extra = dict(resources.scheduler_kwargs)
             extra_overrides = extra.pop("containerOverrides", None)
@@ -316,7 +307,8 @@ class AWSBatchIO(BaseAPISchedulerIO):
             if payload.get(incompatible_key) is not None:
                 raise ValueError(
                     f"{incompatible_key} is not supported. "
-                    "AWSBatchIO submits single-container jobs only."
+                    "AWSBatchIO submits single container jobs only "
+                    "(no array, multi-node, EKS, or ECS task jobs)."
                 )
 
         container_overrides = payload.get("containerOverrides")

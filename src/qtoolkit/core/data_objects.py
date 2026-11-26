@@ -413,9 +413,6 @@ class QCloudResources(BaseQResources):
     environment: dict[str, str] | None = None
     """Environment variables passed to the job container."""
 
-    priority: int | None = None
-    """Scheduling priority of the job."""
-
     image: str | None = None
     """Container image to run the job in."""
 

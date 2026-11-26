@@ -698,7 +698,6 @@ class TestQCloudResources:
             time_limit=7200,
             max_retries=2,
             environment={"CUDA_VISIBLE_DEVICES": "0"},
-            priority=10,
             image="ghcr.io/example/jobflow:latest",
             scheduler_kwargs={"tags": {"team": "matgen"}},
         )
@@ -728,7 +727,6 @@ class TestQCloudResources:
             time_limit=3600,
             max_retries=2,
             environment={"OMP_NUM_THREADS": "2"},
-            priority=5,
             image="python:3.12",
             scheduler_kwargs={"tags": {"a": "b"}},
         )
