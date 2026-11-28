@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import abc
 import difflib
-import re
 import shlex
-from dataclasses import fields
 from pathlib import Path
 from string import Template
 
-from qtoolkit.core.base import QTKObject
+from qtoolkit.core.base import BaseScheduler
 from qtoolkit.core.data_objects import CancelResult, QJob, QResources, SubmissionResult
-from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
 
 MODULE_DIR = Path(__file__).absolute().parent
 TEMPLATE_DIR = Path(f"{MODULE_DIR}/templates")
@@ -42,7 +39,7 @@ class QTemplate(Template):
         return ids
 
 
-class BaseSchedulerIO(QTKObject, abc.ABC):
+class BaseSchedulerIO(BaseScheduler):
     """Base class for job queues."""
 
     header_template: str
@@ -54,9 +51,6 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
     shebang: str = "#!/bin/bash"
 
     sanitize_job_name: bool = False
-
-    job_id_regex: str | None = None
-    check_job_ids: bool = True
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -140,12 +134,6 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         clean_header = [line for line in unclean_header.split("\n") if "$$" not in line]
 
         return "\n".join(clean_header)
-
-    def generate_run_commands(self, commands: list[str] | str) -> str:
-        if isinstance(commands, list):
-            commands = "\n".join(commands)
-
-        return commands
 
     def generate_footer(self) -> str:
         """
@@ -303,17 +291,7 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
         Also checks that passed values are declared to be handled by the corresponding
         subclass.
         """
-        not_empty = set()
-        for field in fields(resources):
-            if getattr(resources, field.name):
-                not_empty.add(field.name)
-
-        unsupported_options = not_empty.difference(self.supported_qresources_keys)
-
-        if unsupported_options:
-            msg = f"Keys not supported: {', '.join(sorted(unsupported_options))}"
-            raise UnsupportedResourcesError(msg)
-
+        self._validate_resource_fields(resources, self.supported_qresources_keys)
         return self._convert_qresources(resources)
 
     @abc.abstractmethod
@@ -410,44 +388,3 @@ class BaseSchedulerIO(QTKObject, abc.ABC):
             Sanitized options.
         """
         return options
-
-    def is_valid_job_id(self, job_id: str) -> bool:
-        """
-        Check if a given job identifier is valid for the current scheduler.
-
-        Parameters
-        ----------
-        job_id
-            The job identifier to check.
-
-        Returns
-        -------
-        bool
-            True if the job ID is valid, False otherwise.
-        """
-        if self.job_id_regex is None:
-            return True
-        return re.fullmatch(self.job_id_regex, job_id) is not None
-
-    def _check_job_ids(self, job_ids: str | list[str]) -> None:
-        """
-        Check a list of job IDs for validity.
-
-        Parameters
-        ----------
-        job_ids
-            Job IDs to check.
-
-        Raises
-        ------
-        InvalidJobIDError
-            If any of the job IDs is invalid.
-        """
-        if not isinstance(job_ids, list):
-            job_ids = [job_ids]
-        if self.check_job_ids and self.job_id_regex:
-            for job_id in job_ids:
-                if not self.is_valid_job_id(job_id=job_id):
-                    raise InvalidJobIDError(
-                        f"Job ID '{job_id}' is invalid for this scheduler"
-                    )

@@ -36,7 +36,9 @@ tests = [
     "pytest >= 8,< 10",
     "ruamel.yaml >= 0.17",
     "python-on-whales ~=0.75",
+    "moto >= 5.0.20",
 ]
+aws = ["boto3 >= 1.35.0"]
 maintain = ["git-changelog>=0.6"]
 docs = [
     "ipython >= 7.0, != 8.1.0 ",

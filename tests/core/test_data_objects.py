@@ -1,11 +1,15 @@
 """Unit tests for the core.data_objects module of QToolKit."""
 
+from dataclasses import fields
+
 import pytest
 
 from qtoolkit.core.data_objects import (
+    BaseQResources,
     CancelResult,
     CancelStatus,
     ProcessPlacement,
+    QCloudResources,
     QJob,
     QJobInfo,
     QResources,
@@ -679,3 +683,65 @@ class TestQJob:
             queue_name="mymain",
         )
         assert test_utils.is_msonable(qjob)
+
+
+class TestQCloudResources:
+    def test_defaults_and_validation(self):
+        empty = QCloudResources()
+        assert empty.vcpus is None
+        assert empty.memory is None
+        assert empty.scheduler_kwargs == {}
+
+        full = QCloudResources(
+            queue_name="gpu-queue",
+            job_name="mace-md",
+            vcpus=4.0,
+            memory=16384,
+            gpus=1,
+            time_limit=7200,
+            max_retries=2,
+            environment={"CUDA_VISIBLE_DEVICES": "0"},
+            scheduler_kwargs={"tags": {"team": "matgen"}},
+        )
+        assert full.gpus == 1
+        assert full.max_retries == 2
+        assert QCloudResources(max_retries=0).max_retries == 0
+
+        for name, bad_value in (
+            ("vcpus", 0),
+            ("vcpus", -1),
+            ("memory", 0),
+            ("gpus", -1),
+            ("time_limit", 0),
+            ("max_retries", -1),
+        ):
+            with pytest.raises(ValueError, match=name):
+                QCloudResources(**{name: bad_value})
+
+    def test_shared_base_fields(self):
+        assert [f.name for f in fields(BaseQResources)] == ["queue_name", "job_name"]
+        for cls in (QResources, QCloudResources):
+            names = [f.name for f in fields(cls)]
+            assert names[:2] == ["queue_name", "job_name"]
+            assert names[-1] == "scheduler_kwargs"
+            assert "time_limit" in names
+        # The positional arguments of QResources keep their order.
+        res = QResources("debug", "relax", 2000, None, 4)
+        assert (res.queue_name, res.job_name) == ("debug", "relax")
+        assert (res.memory_per_thread, res.processes) == (2000, 4)
+
+    @pytest.mark.skipif(monty is None, reason="monty is not installed")
+    def test_msonable(self, test_utils):
+        res = QCloudResources(
+            queue_name="gpu-queue",
+            job_name="mace-md",
+            vcpus=2.5,
+            memory=8192,
+            gpus=1,
+            time_limit=3600,
+            max_retries=2,
+            environment={"OMP_NUM_THREADS": "2"},
+            scheduler_kwargs={"tags": {"a": "b"}},
+        )
+        assert test_utils.is_msonable(res)
+        assert test_utils.is_msonable(QCloudResources())
