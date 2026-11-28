@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import builtins
+import copy
+import pickle
 import time
 from unittest.mock import MagicMock
 
 import pytest
 
+from qtoolkit.api import AWSBatchIO, AWSBatchState, api_scheduler_mapping
+from qtoolkit.api.aws_batch import sanitize_job_name
 from qtoolkit.core.data_objects import (
     CancelStatus,
     QCloudResources,
@@ -13,8 +17,6 @@ from qtoolkit.core.data_objects import (
     SubmissionStatus,
 )
 from qtoolkit.core.exceptions import APIError
-from qtoolkit.io.api import AWSBatchIO, AWSBatchState, api_scheduler_mapping
-from qtoolkit.io.api.aws_batch import sanitize_job_name
 
 try:
     import monty
@@ -134,11 +136,21 @@ class TestAWSBatchIO:
             profile_name="research",
             endpoint_url="http://localhost:5000",
             default_job_name="calc",
-            shell_cmd="/bin/bash",
+            shell_cmd=["/bin/bash", "-l"],
+            client_kwargs={"verify": False, "config": {"read_timeout": 120}},
         )
         assert test_utils.is_msonable(io)
         io._client = object()
         assert test_utils.is_msonable(io)
+
+    def test_pickle_and_deepcopy_after_client_creation(self, aws_batch_env):
+        io, _batch, _queue_name, _job_def = aws_batch_env
+        io._get_client()
+        pickled = pickle.loads(pickle.dumps(io))  # noqa: S301
+        for clone in (pickled, copy.deepcopy(io)):
+            assert clone._client is None
+            assert clone.job_queue == io.job_queue
+            assert clone.get_job("00000000-0000-0000-0000-000000000000") is None
 
     def test_client_forwards_session_and_endpoint_options(self, monkeypatch):
         boto3 = pytest.importorskip("boto3")
@@ -160,6 +172,48 @@ class TestAWSBatchIO:
         mock_session.client.assert_called_once_with(
             "batch", endpoint_url="http://localhost:4566"
         )
+
+    def test_client_kwargs(self, monkeypatch):
+        boto3 = pytest.importorskip("boto3")
+        from botocore.config import Config
+
+        mock_session = MagicMock()
+        monkeypatch.setattr(boto3, "Session", MagicMock(return_value=mock_session))
+        io = AWSBatchIO(
+            client_kwargs={
+                "verify": False,
+                "endpoint_url": "http://localhost:4566",
+                "config": {"retries": {"mode": "adaptive"}, "read_timeout": 120},
+            }
+        )
+        io._get_client()
+        kwargs = mock_session.client.call_args.kwargs
+        assert kwargs["verify"] is False
+        assert kwargs["endpoint_url"] == "http://localhost:4566"
+        assert isinstance(kwargs["config"], Config)
+        assert kwargs["config"].read_timeout == 120
+        # The stored kwargs keep the dict, so the object stays serializable.
+        assert io.client_kwargs["config"] == {
+            "retries": {"mode": "adaptive"},
+            "read_timeout": 120,
+        }
+
+        with pytest.raises(ValueError, match="aws_secret_access_key"):
+            AWSBatchIO(client_kwargs={"aws_secret_access_key": "x"})
+        with pytest.raises(ValueError, match="region_name"):
+            AWSBatchIO(client_kwargs={"region_name": "us-east-1"})
+        with pytest.raises(ValueError, match="endpoint_url"):
+            AWSBatchIO(
+                endpoint_url="http://a", client_kwargs={"endpoint_url": "http://b"}
+            )
+
+    def test_client_kwargs_not_changed_by_client_creation(self):
+        pytest.importorskip("boto3")
+        client_kwargs = {"config": {"retries": {"max_attempts": 3}}}
+        io = AWSBatchIO(region_name="us-east-1", client_kwargs=client_kwargs)
+        io._get_client()
+        assert client_kwargs == {"config": {"retries": {"max_attempts": 3}}}
+        assert io.client_kwargs == client_kwargs
 
     def test_client_creation_error_raises_api_error(self, monkeypatch, tmp_path):
         pytest.importorskip("boto3")
@@ -195,7 +249,7 @@ class TestAWSBatchIO:
             io.submit("echo hi")
 
     def test_format_command(self):
-        io = AWSBatchIO(shell_cmd="/bin/bash")
+        io = AWSBatchIO()
         assert io.format_command("echo hi && pwd") == [
             "/bin/bash",
             "-c",
@@ -206,14 +260,10 @@ class TestAWSBatchIO:
             "-c",
             "echo a\n\necho b",
         ]
-
-        io_raw = AWSBatchIO(shell_cmd=None)
-        argv = ["python", "script.py", "--prefix", "", "--sep", " "]
-        formatted = io_raw.format_command(argv)
-        assert formatted == argv
-        assert formatted is not argv
-        with pytest.raises(ValueError, match="shell_cmd is None"):
-            io_raw.format_command("echo hi")
+        io_login = AWSBatchIO(shell_cmd=["/bin/bash", "-l"])
+        assert io_login.format_command("pwd") == ["/bin/bash", "-l", "-c", "pwd"]
+        with pytest.raises(ValueError, match="shell_cmd"):
+            AWSBatchIO(shell_cmd=None)  # type: ignore[arg-type]
 
     def test_job_id_regex(self):
         io = AWSBatchIO()
@@ -266,24 +316,32 @@ class TestAWSBatchIO:
         by_queue = io.get_jobs_list(queue=queue_name, states=list(QState))
         assert any(j.job_id == sub.job_id for j in by_queue)
 
-    def test_submit_argv_and_cancel_with_moto(self, aws_batch_env):
-        _io, batch, queue_name, job_def = aws_batch_env
-        io_argv = AWSBatchIO(
-            job_queue=queue_name,
-            job_definition=job_def,
-            region_name="us-east-1",
-            shell_cmd=None,
+    def test_submit_without_commands_and_cancel_with_moto(self, aws_batch_env):
+        io, batch, _queue_name, _job_def = aws_batch_env
+        # The command given in the options runs as it is, without a shell.
+        sub = io.submit(
+            None,
+            options={"containerOverrides": {"command": ["python", "-c", "print(1)"]}},
         )
-        sub = io_argv.submit(["python", "-c", "print('ok')"])
         assert sub.status == SubmissionStatus.SUCCESSFUL
-        assert sub.job_id is not None
-
         raw = batch.describe_jobs(jobs=[sub.job_id])["jobs"][0]
-        assert raw["container"]["command"] == ["python", "-c", "print('ok')"]
+        assert raw["container"]["command"] == ["python", "-c", "print(1)"]
 
-        cancel_res = io_argv.cancel(sub.job_id, reason="no longer needed")
+        # Without any command, the job runs the command of the job definition.
+        sub_default = io.submit(None)
+        assert sub_default.status == SubmissionStatus.SUCCESSFUL
+        raw = batch.describe_jobs(jobs=[sub_default.job_id])["jobs"][0]
+        assert raw["container"]["command"] == ["echo", "default"]
+
+        cancel_res = io.cancel(sub.job_id, reason="no longer needed")
         assert cancel_res.status == CancelStatus.SUCCESSFUL
         assert cancel_res.job_id == sub.job_id
+
+    def test_submit_rejected_with_moto(self, aws_batch_env):
+        io, _batch, _queue_name, _job_def = aws_batch_env
+        sub = io.submit("echo hi", options={"jobDefinition": "missing-def"})
+        assert sub.status == SubmissionStatus.FAILED
+        assert "ClientException" in sub.stderr
 
     def test_get_job_not_found_with_moto(self, aws_batch_env):
         io, _batch, _queue_name, _job_def = aws_batch_env
@@ -388,15 +446,10 @@ class TestAWSBatchIO:
         valid_id = "12345678-1234-1234-1234-1234567890ab"
         mock_client.submit_job.return_value = {"jobId": valid_id}
 
-        # jobQueue=None and a blank jobName fall back to the defaults, and the
-        # command in containerOverrides is replaced.
+        # jobQueue=None and a blank jobName fall back to the defaults.
         sub = io.submit(
             ["echo step1", "echo step2"],
-            options={
-                "jobQueue": None,
-                "jobName": "   ",
-                "containerOverrides": {"command": ["old"]},
-            },
+            options={"jobQueue": None, "jobName": "   "},
         )
         assert sub.status == SubmissionStatus.SUCCESSFUL
         sent = mock_client.submit_job.call_args.kwargs
@@ -409,6 +462,20 @@ class TestAWSBatchIO:
             "echo step1\necho step2",
         ]
 
+        # A command in both commands and the options is ambiguous.
+        with pytest.raises(ValueError, match="not both"):
+            io.submit("echo hi", options={"containerOverrides": {"command": ["ls"]}})
+
+        # Without commands and without a command in the options, no command
+        # override is sent.
+        io.submit(None, options={"containerOverrides": {"environment": []}})
+        assert (
+            "command"
+            not in mock_client.submit_job.call_args.kwargs["containerOverrides"]
+        )
+        io.submit(None, options={"containerOverrides": {}})
+        assert "containerOverrides" not in mock_client.submit_job.call_args.kwargs
+
         mock_client.submit_job.return_value = {}
         assert io.submit("echo hi").status == SubmissionStatus.JOB_ID_UNKNOWN
 
@@ -419,29 +486,58 @@ class TestAWSBatchIO:
         io.cancel(valid_id, reason="preempted")
         mock_client.terminate_job.assert_called_with(jobId=valid_id, reason="preempted")
 
-    @pytest.mark.parametrize("error_kind", ["client", "botocore"])
+    @pytest.mark.parametrize(
+        "error_kind",
+        [
+            "rejected",
+            "param",
+            "server",
+            "throttled",
+            "credentials",
+            "connection",
+            "timeout",
+        ],
+    )
     def test_boto_errors_mapped_across_operations(self, error_kind):
         botocore_exc = pytest.importorskip("botocore.exceptions")
-        err = (
-            botocore_exc.ClientError(
-                {"Error": {"Code": "ClientException", "Message": "Queue not found"}},
-                "SubmitJob",
+
+        def client_error(code):
+            return botocore_exc.ClientError(
+                {"Error": {"Code": code, "Message": "msg"}}, "SubmitJob"
             )
-            if error_kind == "client"
-            else botocore_exc.NoCredentialsError()
-        )
+
+        err = {
+            "rejected": lambda: client_error("ClientException"),
+            "param": lambda: botocore_exc.ParamValidationError(report="bad"),
+            "server": lambda: client_error("ServerException"),
+            "throttled": lambda: client_error("TooManyRequestsException"),
+            "credentials": botocore_exc.NoCredentialsError,
+            "connection": lambda: botocore_exc.EndpointConnectionError(
+                endpoint_url="u"
+            ),
+            "timeout": lambda: botocore_exc.ReadTimeoutError(endpoint_url="u"),
+        }[error_kind]()
+        rejected = error_kind in ("rejected", "param")
         io = AWSBatchIO(job_queue="q", job_definition="d")
         mock_client = MagicMock()
         io._client = mock_client
         valid_id = "12345678-1234-1234-1234-1234567890ab"
 
+        # Only a request rejected by AWS Batch is a FAILED result. Other errors
+        # raise, since the request may have been accepted or may work later.
         mock_client.submit_job.side_effect = err
-        sub_fail = io.submit("echo hi")
-        assert sub_fail.status == SubmissionStatus.FAILED
-        assert sub_fail.job_id is None
-
         mock_client.terminate_job.side_effect = err
-        assert io.cancel(valid_id).status == CancelStatus.FAILED
+        if rejected:
+            sub_fail = io.submit("echo hi")
+            assert sub_fail.status == SubmissionStatus.FAILED
+            assert sub_fail.job_id is None
+            assert io.cancel(valid_id).status == CancelStatus.FAILED
+        else:
+            with pytest.raises(APIError, match="Failed to submit") as exc_info:
+                io.submit("echo hi")
+            assert exc_info.value.__cause__ is err
+            with pytest.raises(APIError, match="Failed to cancel"):
+                io.cancel(valid_id)
 
         mock_client.describe_jobs.side_effect = err
         with pytest.raises(APIError):
@@ -585,6 +681,33 @@ class TestAWSBatchIO:
         assert job.info.memory == 1024 * 1024
         assert job.info.nodes == 2
         assert job.info.time_limit == 3600
+        assert job.state_reason is None
+
+        # statusReason and container.reason are both kept, without repeats.
+        oom = AWSBatchIO._parse_job(
+            {
+                "jobId": "12345678-1234-1234-1234-1234567890af",
+                "status": "FAILED",
+                "statusReason": "Essential container in task exited",
+                "container": {
+                    "exitCode": 137,
+                    "reason": "OutOfMemoryError: Container killed due to memory usage",
+                },
+            }
+        )
+        assert oom.state_reason == (
+            "Essential container in task exited; "
+            "OutOfMemoryError: Container killed due to memory usage"
+        )
+        spot = AWSBatchIO._parse_job(
+            {
+                "jobId": "12345678-1234-1234-1234-1234567890a0",
+                "status": "FAILED",
+                "statusReason": "Host EC2 (instance i-0abc) terminated.",
+                "container": {"reason": "Host EC2 (instance i-0abc) terminated."},
+            }
+        )
+        assert spot.state_reason == "Host EC2 (instance i-0abc) terminated."
 
         # startedAt after stoppedAt gives runtime 0. STARTING has no runtime.
         skewed = AWSBatchIO._parse_job(

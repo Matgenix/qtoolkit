@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import re
 import time
 from typing import Any, cast
 
+from qtoolkit.api.base import BaseAPISchedulerIO
 from qtoolkit.core.data_objects import (
     BaseQResources,
     CancelResult,
@@ -17,10 +19,9 @@ from qtoolkit.core.data_objects import (
     SubmissionStatus,
 )
 from qtoolkit.core.exceptions import APIError
-from qtoolkit.io.api.base import BaseAPISchedulerIO
 
 try:
-    from botocore.exceptions import BotoCoreError, ClientError
+    from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
     _BOTO_ERRORS: tuple[type[Exception], ...] = (BotoCoreError, ClientError)
 except ModuleNotFoundError:
@@ -71,6 +72,24 @@ _INCOMPATIBLE_OVERRIDE_KEYS = (
 )
 # containerOverrides lists merged item by item, keyed by this field of each item.
 _MERGE_KEYS = {"resourceRequirements": "type", "environment": "name"}
+# Credentials are not accepted in client_kwargs, so that they do not end up in
+# serialized configurations.
+_CREDENTIAL_KEYS = ("aws_access_key_id", "aws_secret_access_key", "aws_session_token")
+
+
+def _is_rejected(exc: Exception) -> bool:
+    """Return whether AWS Batch rejected the request itself.
+
+    A rejected request did not change anything and fails again if repeated
+    unchanged. AWS Batch reports these as ``ClientException``, for example for
+    an unknown job queue or an invalid parameter value. Invalid parameters
+    found by botocore before the request is sent raise ``ParamValidationError``.
+    """
+    if isinstance(exc, ParamValidationError):
+        return True
+    if isinstance(exc, ClientError):
+        return exc.response.get("Error", {}).get("Code") == "ClientException"
+    return False
 
 
 def sanitize_job_name(name: str) -> str:
@@ -124,11 +143,24 @@ def _merge_container_overrides(
 class AWSBatchIO(BaseAPISchedulerIO):
     """Scheduler IO for single AWS Batch container jobs.
 
+    The client uses the standard boto3 credential chain: environment variables
+    such as ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``, the profile
+    ``profile_name`` (or ``AWS_PROFILE``) of the shared files ``~/.aws/credentials``
+    and ``~/.aws/config``, including IAM Identity Center (SSO) profiles, and
+    the IAM role of the EC2 instance or ECS task where the code runs. See
+    https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html.
+    Credentials cannot be passed as arguments, because the arguments are
+    stored when the object is serialized.
+
     A ``max_retries`` set in :class:`~qtoolkit.QCloudResources` replaces the
     whole retry strategy of the job definition, including its
     ``evaluateOnExit`` rules. AWS Batch retries a failed attempt until the
     attempts are used up, but it does not retry jobs that timed out, jobs that
     were cancelled or terminated, and jobs with an invalid job definition.
+
+    :meth:`submit` with ``commands=None`` does not set the container command,
+    so the job runs ``containerOverrides["command"]`` from the options if it
+    is set, and otherwise the command of the job definition or the image.
 
     Parameters
     ----------
@@ -146,11 +178,13 @@ class AWSBatchIO(BaseAPISchedulerIO):
         Job name used when none is provided in ``options``. Every job name is
         passed through :func:`sanitize_job_name` before submission.
     shell_cmd
-        Shell executable used to wrap ``str`` or ``list[str]`` commands as
-        ``[shell_cmd, "-c", script]`` (default ``"/bin/bash"``, the same shell
-        as qtoolkit's HPC submission scripts). The container image must
-        provide it. Set to ``None`` to pass ``commands: list[str]`` directly
-        as container ``argv``.
+        Shell that runs the commands, see
+        :class:`~qtoolkit.api.base.BaseAPISchedulerIO`.
+    client_kwargs
+        Other keyword arguments of ``boto3.Session.client``, for example
+        ``verify``. A ``config`` dict is converted to a ``botocore.config.Config``,
+        for example ``{"retries": {"max_attempts": 10, "mode": "adaptive"},
+        "read_timeout": 120}``. Credentials are not accepted here.
     """
 
     job_id_regex: str | None = (
@@ -166,19 +200,34 @@ class AWSBatchIO(BaseAPISchedulerIO):
         profile_name: str | None = None,
         endpoint_url: str | None = None,
         default_job_name: str = "qtoolkit-job",
-        shell_cmd: str | None = "/bin/bash",
+        shell_cmd: str | list[str] = "/bin/bash",
+        client_kwargs: dict[str, Any] | None = None,
     ) -> None:
+        super().__init__(shell_cmd=shell_cmd)
+        client_kwargs = dict(client_kwargs or {})
+        bad_keys = sorted(
+            set(client_kwargs).intersection(
+                ("service_name", "region_name", *_CREDENTIAL_KEYS)
+            )
+        )
+        if bad_keys:
+            raise ValueError(
+                f"client_kwargs must not contain {', '.join(bad_keys)}. Set "
+                "region_name on AWSBatchIO and credentials through the boto3 "
+                "credential chain."
+            )
+        if endpoint_url is not None and "endpoint_url" in client_kwargs:
+            raise ValueError("Set endpoint_url either directly or in client_kwargs.")
         self.job_queue = job_queue
         self.job_definition = job_definition
         self.region_name = region_name
         self.profile_name = profile_name
         self.endpoint_url = endpoint_url
         self.default_job_name = default_job_name
-        self.shell_cmd = shell_cmd
-        self._client: Any = None
+        self.client_kwargs = client_kwargs
 
-    def _get_client(self) -> Any:
-        """Return the boto3 Batch client, created on the first call.
+    def _create_client(self) -> Any:
+        """Create the boto3 Batch client.
 
         Raises
         ------
@@ -186,37 +235,28 @@ class AWSBatchIO(BaseAPISchedulerIO):
             If the client cannot be created, for example when no AWS region is
             configured or the credentials profile does not exist.
         """
-        if self._client is None:
-            try:
-                import boto3
-            except ModuleNotFoundError as exc:
-                msg = "AWSBatchIO needs boto3. Install it with 'pip install qtoolkit[aws]'."
-                raise ImportError(msg) from exc
-            try:
-                session = boto3.Session(
-                    region_name=self.region_name, profile_name=self.profile_name
-                )
-                self._client = session.client("batch", endpoint_url=self.endpoint_url)
-            except _BOTO_ERRORS as exc:
-                raise APIError(f"Failed to create the AWS Batch client: {exc}") from exc
-        return self._client
-
-    def format_command(self, commands: str | list[str]) -> list[str]:
-        """Return ``commands`` as the ``command`` list of the container.
-
-        With :attr:`shell_cmd` set, the command lines are joined into one script
-        that runs as ``[shell_cmd, "-c", script]``. With :attr:`shell_cmd` set to
-        ``None``, ``commands`` must be a list and is used as it is.
-        """
-        if self.shell_cmd is None:
-            if not isinstance(commands, list):
-                raise ValueError("commands must be a list when shell_cmd is None.")
-            return list(commands)
-        return [self.shell_cmd, "-c", self.generate_run_commands(commands)]
+        try:
+            import boto3
+            from botocore.config import Config
+        except ModuleNotFoundError as exc:
+            msg = "AWSBatchIO needs boto3. Install it with 'pip install qtoolkit[aws]'."
+            raise ImportError(msg) from exc
+        # botocore changes the retries dict in place, so work on a copy.
+        kwargs = copy.deepcopy(self.client_kwargs)
+        if isinstance(kwargs.get("config"), dict):
+            kwargs["config"] = Config(**kwargs["config"])
+        if self.endpoint_url is not None:
+            kwargs["endpoint_url"] = self.endpoint_url
+        try:
+            session = boto3.Session(
+                region_name=self.region_name, profile_name=self.profile_name
+            )
+            return session.client("batch", **kwargs)
+        except _BOTO_ERRORS as exc:
+            raise APIError(f"Failed to create the AWS Batch client: {exc}") from exc
 
     @property
     def supported_qresources_keys(self) -> list[str]:
-        # The job definition sets the image, so "image" is not supported.
         return [
             "queue_name",
             "job_name",
@@ -293,7 +333,9 @@ class AWSBatchIO(BaseAPISchedulerIO):
 
         return payload
 
-    def _submit(self, commands: str | list[str], options: dict) -> SubmissionResult:
+    def _submit(
+        self, commands: str | list[str] | None, options: dict
+    ) -> SubmissionResult:
         payload = dict(options)
         payload["jobQueue"] = payload.get("jobQueue") or self.job_queue
         payload["jobDefinition"] = payload.get("jobDefinition") or self.job_definition
@@ -318,13 +360,25 @@ class AWSBatchIO(BaseAPISchedulerIO):
             container_overrides = dict(container_overrides)
         else:
             raise TypeError("containerOverrides must be a dict.")
-        container_overrides["command"] = self.format_command(commands)
-        payload["containerOverrides"] = container_overrides
+        if commands is not None:
+            if "command" in container_overrides:
+                raise ValueError(
+                    "Pass the command either as commands or as "
+                    "containerOverrides['command'] in the options, not both."
+                )
+            container_overrides["command"] = self.format_command(commands)
+        if container_overrides:
+            payload["containerOverrides"] = container_overrides
+        else:
+            payload.pop("containerOverrides", None)
 
         client = self._get_client()
         try:
             response = client.submit_job(**payload)
         except _BOTO_ERRORS as exc:
+            if not _is_rejected(exc):
+                # The job may have been created, so a retry could duplicate it.
+                raise APIError(f"Failed to submit the AWS Batch job: {exc}") from exc
             return SubmissionResult(
                 status=SubmissionStatus("FAILED"),
                 stderr=str(exc),
@@ -346,6 +400,10 @@ class AWSBatchIO(BaseAPISchedulerIO):
             # TerminateJob cancels queued jobs and terminates running jobs.
             client.terminate_job(jobId=job_id, reason=cancel_reason)
         except _BOTO_ERRORS as exc:
+            if not _is_rejected(exc):
+                raise APIError(
+                    f"Failed to cancel AWS Batch job {job_id}: {exc}"
+                ) from exc
             return CancelResult(
                 job_id=job_id,
                 status=CancelStatus("FAILED"),
@@ -450,6 +508,11 @@ class AWSBatchIO(BaseAPISchedulerIO):
 
         container = raw.get("container") or {}
         exit_status = container.get("exitCode")
+        # statusReason is often generic (e.g. "Essential container in task
+        # exited"), while container.reason holds details such as an out of
+        # memory kill.
+        reasons = [raw.get("statusReason"), container.get("reason")]
+        state_reason = "; ".join(dict.fromkeys(r for r in reasons if r)) or None
 
         started_at = raw.get("startedAt")
         stopped_at = raw.get("stoppedAt")
@@ -513,4 +576,5 @@ class AWSBatchIO(BaseAPISchedulerIO):
             info=info,
             runtime=runtime,
             queue_name=queue_name,
+            state_reason=state_reason,
         )

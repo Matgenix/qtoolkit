@@ -126,24 +126,27 @@ class ProcessPlacement(QTKEnum):
     EVENLY_DISTRIBUTED = "EVENLY_DISTRIBUTED"
 
 
-class BaseQResources(QTKObject):
-    """Base class for scheduler resource specifications."""
-
-    scheduler_kwargs: dict | None
-
-    def __post_init__(self) -> None:
-        self.scheduler_kwargs = self.scheduler_kwargs or {}
-
-
 @dataclass
-class QResources(BaseQResources):
-    """Data defining resources for a given job (submitted or to be submitted)."""
+class BaseQResources(QTKObject):
+    """Base class for the resources of a job.
+
+    It holds the fields that come first in all the subclasses. Subclasses also
+    define ``time_limit`` (in seconds) and ``scheduler_kwargs``. These are
+    declared in each subclass because dataclass fields of a base class come
+    first, and moving them here would change the order of the positional
+    arguments of :class:`QResources`.
+    """
 
     queue_name: str | None = None
     """Name of the queue to submit the job to."""
 
     job_name: str | None = None
     """Name of the job."""
+
+
+@dataclass
+class QResources(BaseQResources):
+    """Data defining resources for a given job (submitted or to be submitted)."""
 
     memory_per_thread: int | None = None
     """Memory per thread in MB."""
@@ -212,7 +215,7 @@ class QResources(BaseQResources):
                     "Otherwise all the fields must be empty."
                 )
                 raise UnsupportedResourcesError(msg)
-        super().__post_init__()
+        self.scheduler_kwargs = self.scheduler_kwargs or {}
 
     def _check_no_values(
         self, excluded=("job_name", "output_filepath", "error_filepath")
@@ -386,13 +389,10 @@ class QResources(BaseQResources):
 
 @dataclass
 class QCloudResources(BaseQResources):
-    """Data defining resources for a job submitted to a cloud scheduler."""
+    """Data defining resources for a job submitted to a cloud scheduler.
 
-    queue_name: str | None = None
-    """Name or identifier of the job queue or compute pool."""
-
-    job_name: str | None = None
-    """Name of the job."""
+    ``queue_name`` is the name or identifier of the job queue or compute pool.
+    """
 
     vcpus: float | None = None
     """Number of vCPUs requested for the job."""
@@ -407,14 +407,13 @@ class QCloudResources(BaseQResources):
     """Time limit for the job in seconds."""
 
     max_retries: int | None = None
-    """Maximum number of retries of a failed job (0 means no retries).
-    Which failures are retried depends on the backend."""
+    """Maximum number of retries of a failed job. 0 means no retries. ``None``
+    leaves the default of the backend, for example the retry strategy of an
+    AWS Batch job definition. Which failures are retried depends on the
+    backend."""
 
     environment: dict[str, str] | None = None
     """Environment variables passed to the job container."""
-
-    image: str | None = None
-    """Container image to run the job in."""
 
     scheduler_kwargs: dict | None = None
     """Additional keyword arguments to be passed to the scheduler IO."""
@@ -431,7 +430,7 @@ class QCloudResources(BaseQResources):
             val = getattr(self, name)
             if val is not None and val < min_val:
                 raise ValueError(f"{name} must be >= {min_val}.")
-        super().__post_init__()
+        self.scheduler_kwargs = self.scheduler_kwargs or {}
 
 
 @dataclass
@@ -490,3 +489,7 @@ class QJob(QTKObject):
 
     username: str | None = None
     """Name of the user who owns or submitted the job."""
+
+    state_reason: str | None = None
+    """Reason reported by the scheduler for the current state, for example why
+    a job is pending or why it failed."""

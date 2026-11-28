@@ -1,8 +1,11 @@
 """Unit tests for the core.data_objects module of QToolKit."""
 
+from dataclasses import fields
+
 import pytest
 
 from qtoolkit.core.data_objects import (
+    BaseQResources,
     CancelResult,
     CancelStatus,
     ProcessPlacement,
@@ -698,7 +701,6 @@ class TestQCloudResources:
             time_limit=7200,
             max_retries=2,
             environment={"CUDA_VISIBLE_DEVICES": "0"},
-            image="ghcr.io/example/jobflow:latest",
             scheduler_kwargs={"tags": {"team": "matgen"}},
         )
         assert full.gpus == 1
@@ -716,6 +718,18 @@ class TestQCloudResources:
             with pytest.raises(ValueError, match=name):
                 QCloudResources(**{name: bad_value})
 
+    def test_shared_base_fields(self):
+        assert [f.name for f in fields(BaseQResources)] == ["queue_name", "job_name"]
+        for cls in (QResources, QCloudResources):
+            names = [f.name for f in fields(cls)]
+            assert names[:2] == ["queue_name", "job_name"]
+            assert names[-1] == "scheduler_kwargs"
+            assert "time_limit" in names
+        # The positional arguments of QResources keep their order.
+        res = QResources("debug", "relax", 2000, None, 4)
+        assert (res.queue_name, res.job_name) == ("debug", "relax")
+        assert (res.memory_per_thread, res.processes) == (2000, 4)
+
     @pytest.mark.skipif(monty is None, reason="monty is not installed")
     def test_msonable(self, test_utils):
         res = QCloudResources(
@@ -727,7 +741,6 @@ class TestQCloudResources:
             time_limit=3600,
             max_retries=2,
             environment={"OMP_NUM_THREADS": "2"},
-            image="python:3.12",
             scheduler_kwargs={"tags": {"a": "b"}},
         )
         assert test_utils.is_msonable(res)

@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import copy
+import pickle
+import threading
+
 import pytest
 
+from qtoolkit.api.base import BaseAPISchedulerIO
 from qtoolkit.core.data_objects import (
     CancelResult,
     CancelStatus,
@@ -13,7 +18,6 @@ from qtoolkit.core.data_objects import (
     SubmissionStatus,
 )
 from qtoolkit.core.exceptions import InvalidJobIDError, UnsupportedResourcesError
-from qtoolkit.io.api.base import BaseAPISchedulerIO
 
 try:
     import monty
@@ -25,10 +29,21 @@ class DummyAPISchedulerIO(BaseAPISchedulerIO):
     job_id_regex = r"^job-\d+$"
     supported_resources_cls = (QCloudResources,)
 
-    def __init__(self, endpoint: str = "https://example.invalid") -> None:
+    def __init__(
+        self,
+        endpoint: str = "https://example.invalid",
+        shell_cmd: str | list[str] = "/bin/bash",
+    ) -> None:
+        super().__init__(shell_cmd=shell_cmd)
         self.endpoint = endpoint
-        self.submitted: list[tuple[str | list[str], dict]] = []
+        self.submitted: list[tuple[str | list[str] | None, dict]] = []
         self.cancelled: list[tuple[str, str | None]] = []
+        self.clients_created = 0
+
+    def _create_client(self):
+        # A lock cannot be pickled or copied, like a boto3 client.
+        self.clients_created += 1
+        return threading.Lock()
 
     @property
     def supported_qresources_keys(self) -> list[str]:
@@ -49,7 +64,9 @@ class DummyAPISchedulerIO(BaseAPISchedulerIO):
             out.update(resources.scheduler_kwargs)
         return out
 
-    def _submit(self, commands: str | list[str], options: dict) -> SubmissionResult:
+    def _submit(
+        self, commands: str | list[str] | None, options: dict
+    ) -> SubmissionResult:
         self.submitted.append((commands, options))
         return SubmissionResult(job_id="job-1", status=SubmissionStatus.SUCCESSFUL)
 
@@ -118,8 +135,11 @@ class TestBaseAPISchedulerIO:
         # Blank lines or empty arguments in list[str] are allowed when at least one entry is non-empty
         io.submit(["echo a", "", "echo b"])
         assert io.submitted[-1] == (["echo a", "", "echo b"], {})
-        with pytest.raises(TypeError, match="str or a list"):
+        with pytest.raises(TypeError, match="a list of str, or None"):
             io.submit(123)  # type: ignore[arg-type]
+        # None leaves the command to the options or the job definition.
+        io.submit(None)
+        assert io.submitted[-1] == (None, {})
         with pytest.raises(TypeError, match="options must be"):
             io.submit("echo hi", options="invalid")  # type: ignore[arg-type]
 
@@ -130,8 +150,8 @@ class TestBaseAPISchedulerIO:
         ):
             io.submit("echo hi", options=QResources(processes=2))
 
-        with pytest.raises(UnsupportedResourcesError, match="gpus, image"):
-            io.submit("echo hi", options=QCloudResources(gpus=1, image="ubuntu:latest"))
+        with pytest.raises(UnsupportedResourcesError, match="gpus, time_limit"):
+            io.submit("echo hi", options=QCloudResources(gpus=1, time_limit=60))
 
         io.submit(
             "echo hi", options=QCloudResources(environment={}, scheduler_kwargs={})
@@ -179,6 +199,31 @@ class TestBaseAPISchedulerIO:
     def test_msonable(self, test_utils):
         io = DummyAPISchedulerIO(endpoint="https://api.example.com")
         assert test_utils.is_msonable(io)
+
+    def test_shell_cmd_and_format_command(self):
+        assert DummyAPISchedulerIO().format_command(["echo a", "echo b"]) == [
+            "/bin/bash",
+            "-c",
+            "echo a\necho b",
+        ]
+        login = DummyAPISchedulerIO(shell_cmd=["/bin/bash", "-l"])
+        assert login.format_command("echo a") == ["/bin/bash", "-l", "-c", "echo a"]
+        for bad in (None, "", "  ", [], ["/bin/bash", ""], ["/bin/bash", 1]):
+            with pytest.raises(ValueError, match="shell_cmd"):
+                DummyAPISchedulerIO(shell_cmd=bad)  # type: ignore[arg-type]
+
+    def test_client_cached_and_dropped_on_pickle_and_copy(self):
+        io = DummyAPISchedulerIO()
+        client = io._get_client()
+        assert io._get_client() is client
+        assert io.clients_created == 1
+        pickled = pickle.loads(pickle.dumps(io))  # noqa: S301
+        for clone in (pickled, copy.deepcopy(io)):
+            assert clone._client is None
+            assert clone.endpoint == io.endpoint
+            assert clone._get_client() is not client
+        # The original keeps its client.
+        assert io._client is client
 
     def test_zero_counts_as_set(self):
         # max_retries=0 is a request, so an IO without max_retries rejects it.
